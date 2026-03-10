@@ -1,60 +1,65 @@
 import 'package:flutter/material.dart';
-import '../data/mock_data.dart';
-import '../widgets/bp_pulse_widget.dart';
-import '../widgets/recent_prescriptions.dart';
-import '../widgets/next_doses.dart';
+import '../services/api_service.dart';
+import 'home_content.dart';
+import 'vault_screen.dart';
 
-class HomeScreen extends StatelessWidget {
+class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
+
+  @override
+  State<HomeScreen> createState() => _HomeScreenState();
+}
+
+class _HomeScreenState extends State<HomeScreen> {
+  int _currentIndex = 0;
+  late final ApiService _apiService;
+
+  @override
+  void initState() {
+    super.initState();
+    // Initialize API service with base URL
+    // For iOS Simulator: http://localhost:8000
+    // For Android Emulator: http://10.0.2.2:8000
+    // For Physical Device: http://YOUR_COMPUTER_IP:8000
+    _apiService = ApiService(baseUrl: 'http://localhost:8000');
+  }
 
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
+
+    final screens = [
+      const HomeContent(),
+      VaultScreen(apiService: _apiService),
+    ];
+
     return Scaffold(
       backgroundColor: theme.colorScheme.surfaceContainerLowest,
       body: SafeArea(
-        child: CustomScrollView(
-          slivers: [
-            SliverToBoxAdapter(
-              child: Padding(
-                padding: const EdgeInsets.fromLTRB(20, 24, 20, 8),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      'Home',
-                      style: theme.textTheme.headlineMedium?.copyWith(
-                        fontWeight: FontWeight.w700,
-                        color: theme.colorScheme.onSurface,
-                      ),
-                    ),
-                    const SizedBox(height: 24),
-                    // 1. BP & Pulse widget
-                    BpPulseWidget(
-                      systolic: 122,
-                      diastolic: 78,
-                      pulse: 68,
-                      lastUpdated: DateTime.now().subtract(const Duration(minutes: 30)),
-                    ),
-                    const SizedBox(height: 28),
-                    // 2. Recent opened prescriptions
-                    RecentPrescriptions(
-                      prescriptions: MockData.recentPrescriptions,
-                      onSeeAll: () {},
-                    ),
-                    const SizedBox(height: 28),
-                    // 3. Next doses
-                    NextDoses(
-                      doses: MockData.nextDoses,
-                      onSeeAll: () {},
-                    ),
-                    const SizedBox(height: 24),
-                  ],
-                ),
-              ),
-            ),
-          ],
+        child: IndexedStack(
+          index: _currentIndex,
+          children: screens,
         ),
+      ),
+      bottomNavigationBar: NavigationBar(
+        selectedIndex: _currentIndex,
+        onDestinationSelected: (index) {
+          setState(() {
+            _currentIndex = index;
+          });
+        },
+        destinations: const [
+          NavigationDestination(
+            icon: Icon(Icons.home_outlined),
+            selectedIcon: Icon(Icons.home),
+            label: 'Home',
+          ),
+          NavigationDestination(
+            icon: Icon(Icons.folder_outlined),
+            selectedIcon: Icon(Icons.folder),
+            label: 'Vault',
+          ),
+        ],
       ),
     );
   }
