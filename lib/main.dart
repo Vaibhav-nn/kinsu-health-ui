@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'screens/home_screen.dart';
+import 'theme/app_theme.dart';
 
 void main() {
   WidgetsFlutterBinding.ensureInitialized();
@@ -21,14 +22,7 @@ class KinsuHealthApp extends StatelessWidget {
     return MaterialApp(
       title: 'Kinsu Health',
       debugShowCheckedModeBanner: false,
-      theme: ThemeData(
-        colorScheme: ColorScheme.fromSeed(
-          seedColor: const Color(0xFF0A7B5C),
-          brightness: Brightness.light,
-          primary: const Color(0xFF0A7B5C),
-        ),
-        useMaterial3: true,
-      ),
+      theme: AppTheme.lightTheme(),
       home: const HomeScreen(),
     );
   }

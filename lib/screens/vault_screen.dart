@@ -1,7 +1,9 @@
 import 'package:flutter/material.dart';
+import 'package:url_launcher/url_launcher.dart';
 import '../models/health_record.dart';
 import '../services/api_service.dart';
 import '../widgets/record_card.dart';
+import '../theme/app_theme.dart';
 import 'upload_record_screen.dart';
 
 class VaultScreen extends StatefulWidget {
@@ -73,76 +75,174 @@ class _VaultScreenState extends State<VaultScreen> {
     }
   }
 
+  Future<void> _openRecord(HealthRecord record) async {
+    // If record has a file, open it in browser/download
+    if (record.fileUrl != null) {
+      final url = Uri.parse(record.fileUrl!);
+      try {
+        // For web, this will open in a new tab
+        // For mobile, this will download or open with default app
+        await launchUrl(url, mode: LaunchMode.platformDefault);
+      } catch (e) {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text('Could not open file: ${record.fileName ?? "unknown"}'),
+              action: SnackBarAction(
+                label: 'Copy URL',
+                onPressed: () {
+                  // Could implement clipboard copy here
+                },
+              ),
+            ),
+          );
+        }
+      }
+    } else {
+      // If no file, show a dialog with record details
+      if (mounted) {
+        showDialog(
+          context: context,
+          builder: (context) => AlertDialog(
+            title: Text(record.title),
+            content: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text('Type: ${record.recordType}'),
+                const SizedBox(height: 8),
+                Text('Date: ${record.recordDate.toString().split(' ')[0]}'),
+                if (record.notes != null && record.notes!.isNotEmpty) ...[
+                  const SizedBox(height: 8),
+                  Text('Notes: ${record.notes}'),
+                ],
+              ],
+            ),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.pop(context),
+                child: const Text('Close'),
+              ),
+            ],
+          ),
+        );
+      }
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-
     return Scaffold(
-      backgroundColor: theme.colorScheme.surfaceContainerLowest,
+      backgroundColor: AppTheme.background,
       body: SafeArea(
         child: CustomScrollView(
           slivers: [
-            // App bar
-            SliverAppBar(
-              floating: true,
-              backgroundColor: theme.colorScheme.surfaceContainerLowest,
-              elevation: 0,
-              title: Text(
-                'Vault',
-                style: theme.textTheme.headlineMedium?.copyWith(
-                  fontWeight: FontWeight.w700,
-                  color: theme.colorScheme.onSurface,
-                ),
-              ),
-              actions: [
-                Padding(
-                  padding: const EdgeInsets.only(right: 12),
-                  child: IconButton(
-                    onPressed: _navigateToUpload,
-                    icon: const Icon(Icons.add),
-                    style: IconButton.styleFrom(
-                      backgroundColor: theme.colorScheme.primaryContainer,
-                      foregroundColor: theme.colorScheme.onPrimaryContainer,
-                    ),
-                  ),
-                ),
-              ],
-            ),
-            // Search bar
+            // Header with modern design
             SliverToBoxAdapter(
-              child: Padding(
-                padding: const EdgeInsets.fromLTRB(20, 8, 20, 16),
-                child: TextField(
-                  controller: _searchController,
-                  enabled: false, // Non-functional in this iteration
-                  decoration: InputDecoration(
-                    hintText: 'Search records...',
-                    hintStyle: TextStyle(
-                      color: theme.colorScheme.onSurfaceVariant.withOpacity(0.5),
+              child: Container(
+                decoration: BoxDecoration(
+                  color: AppTheme.card,
+                  border: Border(
+                    bottom: BorderSide(
+                      color: AppTheme.border,
+                      width: 1,
                     ),
-                    prefixIcon: Icon(
-                      Icons.search,
-                      color: theme.colorScheme.onSurfaceVariant.withOpacity(0.5),
+                  ),
+                ),
+                padding: const EdgeInsets.fromLTRB(20, 48, 20, 16),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    // Title and action buttons
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        const Text(
+                          'Health Vault',
+                          style: TextStyle(
+                            fontSize: 22,
+                            fontWeight: FontWeight.w700,
+                            color: AppTheme.foreground,
+                          ),
+                        ),
+                        Container(
+                          width: 36,
+                          height: 36,
+                          decoration: BoxDecoration(
+                            color: AppTheme.primary,
+                            borderRadius: BorderRadius.circular(100),
+                          ),
+                          child: IconButton(
+                            onPressed: _navigateToUpload,
+                            icon: const Icon(Icons.add, size: 16),
+                            color: AppTheme.primaryForeground,
+                            padding: EdgeInsets.zero,
+                          ),
+                        ),
+                      ],
                     ),
-                    filled: true,
-                    fillColor: theme.colorScheme.surfaceContainerHighest,
-                    border: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(12),
-                      borderSide: BorderSide.none,
+                    const SizedBox(height: 16),
+                    
+                    // Search bar
+                    Container(
+                      height: 40,
+                      decoration: BoxDecoration(
+                        color: AppTheme.muted,
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                      child: TextField(
+                        controller: _searchController,
+                        enabled: false, // Non-functional in this iteration
+                        decoration: InputDecoration(
+                          hintText: 'Search records...',
+                          hintStyle: const TextStyle(
+                            fontSize: 14,
+                            color: AppTheme.mutedForeground,
+                          ),
+                          prefixIcon: const Icon(
+                            Icons.search,
+                            size: 15,
+                            color: AppTheme.mutedForeground,
+                          ),
+                          border: InputBorder.none,
+                          contentPadding: const EdgeInsets.symmetric(
+                            horizontal: 12,
+                            vertical: 10,
+                          ),
+                        ),
+                        style: const TextStyle(
+                          fontSize: 14,
+                          color: AppTheme.foreground,
+                        ),
+                      ),
                     ),
-                    contentPadding: const EdgeInsets.symmetric(
-                      horizontal: 16,
-                      vertical: 12,
+                  ],
+                ),
+              ),
+            ),
+            
+            // Records count
+            if (!_isLoading && _errorMessage == null)
+              SliverPadding(
+                padding: const EdgeInsets.fromLTRB(20, 12, 20, 8),
+                sliver: SliverToBoxAdapter(
+                  child: Text(
+                    '${_records.length} records',
+                    style: const TextStyle(
+                      fontSize: 12,
+                      color: AppTheme.mutedForeground,
                     ),
                   ),
                 ),
               ),
-            ),
+            
             // Content
             if (_isLoading)
               const SliverFillRemaining(
                 child: Center(
-                  child: CircularProgressIndicator(),
+                  child: CircularProgressIndicator(
+                    color: AppTheme.primary,
+                  ),
                 ),
               )
             else if (_errorMessage != null)
@@ -153,24 +253,44 @@ class _VaultScreenState extends State<VaultScreen> {
                     child: Column(
                       mainAxisAlignment: MainAxisAlignment.center,
                       children: [
-                        Icon(
-                          Icons.error_outline,
-                          size: 64,
-                          color: theme.colorScheme.error,
+                        Container(
+                          width: 64,
+                          height: 64,
+                          decoration: BoxDecoration(
+                            color: const Color.fromRGBO(220, 38, 38, 0.1),
+                            borderRadius: BorderRadius.circular(32),
+                          ),
+                          child: const Icon(
+                            Icons.error_outline,
+                            size: 32,
+                            color: AppTheme.destructive,
+                          ),
                         ),
                         const SizedBox(height: 16),
                         Text(
                           _errorMessage!,
-                          style: theme.textTheme.bodyLarge?.copyWith(
-                            color: theme.colorScheme.onSurfaceVariant,
+                          style: const TextStyle(
+                            fontSize: 14,
+                            color: AppTheme.mutedForeground,
                           ),
                           textAlign: TextAlign.center,
                         ),
                         const SizedBox(height: 16),
-                        FilledButton.icon(
+                        ElevatedButton.icon(
                           onPressed: _loadRecords,
-                          icon: const Icon(Icons.refresh),
+                          icon: const Icon(Icons.refresh, size: 16),
                           label: const Text('Retry'),
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: AppTheme.primary,
+                            foregroundColor: AppTheme.primaryForeground,
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 24,
+                              vertical: 12,
+                            ),
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(12),
+                            ),
+                          ),
                         ),
                       ],
                     ),
@@ -185,36 +305,51 @@ class _VaultScreenState extends State<VaultScreen> {
                     child: Column(
                       mainAxisAlignment: MainAxisAlignment.center,
                       children: [
-                        Icon(
-                          Icons.folder_open,
-                          size: 80,
-                          color: theme.colorScheme.onSurfaceVariant.withOpacity(0.5),
+                        Container(
+                          width: 80,
+                          height: 80,
+                          decoration: BoxDecoration(
+                            color: AppTheme.muted,
+                            borderRadius: BorderRadius.circular(40),
+                          ),
+                          child: const Icon(
+                            Icons.folder_open_outlined,
+                            size: 40,
+                            color: AppTheme.mutedForeground,
+                          ),
                         ),
                         const SizedBox(height: 24),
-                        Text(
+                        const Text(
                           'No Records Yet',
-                          style: theme.textTheme.headlineSmall?.copyWith(
+                          style: TextStyle(
+                            fontSize: 18,
                             fontWeight: FontWeight.w600,
-                            color: theme.colorScheme.onSurface,
+                            color: AppTheme.foreground,
                           ),
                         ),
                         const SizedBox(height: 8),
-                        Text(
+                        const Text(
                           'Upload your first health record to get started',
-                          style: theme.textTheme.bodyLarge?.copyWith(
-                            color: theme.colorScheme.onSurfaceVariant,
+                          style: TextStyle(
+                            fontSize: 14,
+                            color: AppTheme.mutedForeground,
                           ),
                           textAlign: TextAlign.center,
                         ),
                         const SizedBox(height: 24),
-                        FilledButton.icon(
+                        ElevatedButton.icon(
                           onPressed: _navigateToUpload,
-                          icon: const Icon(Icons.add),
+                          icon: const Icon(Icons.add, size: 16),
                           label: const Text('Upload Record'),
-                          style: FilledButton.styleFrom(
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: AppTheme.primary,
+                            foregroundColor: AppTheme.primaryForeground,
                             padding: const EdgeInsets.symmetric(
                               horizontal: 24,
                               vertical: 12,
+                            ),
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(12),
                             ),
                           ),
                         ),
@@ -224,21 +359,24 @@ class _VaultScreenState extends State<VaultScreen> {
                 ),
               )
             else
-              SliverList(
-                delegate: SliverChildBuilderDelegate(
-                  (context, index) {
-                    if (index < _records.length) {
-                      return RecordCard(
-                        record: _records[index],
-                        onTap: () {
-                          // Future: Navigate to detail view
-                        },
-                      );
-                    } else {
-                      return const SizedBox(height: 20);
-                    }
-                  },
-                  childCount: _records.length + 1, // +1 for bottom padding
+              SliverPadding(
+                padding: const EdgeInsets.fromLTRB(20, 0, 20, 20),
+                sliver: SliverList(
+                  delegate: SliverChildBuilderDelegate(
+                    (context, index) {
+                      if (index < _records.length) {
+                        return Padding(
+                          padding: const EdgeInsets.only(bottom: 8),
+                          child: RecordCard(
+                            record: _records[index],
+                            onTap: () => _openRecord(_records[index]),
+                          ),
+                        );
+                      }
+                      return null;
+                    },
+                    childCount: _records.length,
+                  ),
                 ),
               ),
           ],
