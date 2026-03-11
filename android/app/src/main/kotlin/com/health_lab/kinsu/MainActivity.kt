@@ -1,4 +1,4 @@
-package com.kinsu.health.kinsu_health_app
+package com.health_lab.kinsu
 
 import io.flutter.embedding.android.FlutterActivity
 

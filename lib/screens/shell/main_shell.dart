@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../home/home_screen.dart';
 import '../track/track_home.dart';
 
 /// Main app shell with bottom navigation bar.
@@ -11,10 +12,10 @@ class MainShell extends StatefulWidget {
 }
 
 class _MainShellState extends State<MainShell> {
-  int _currentIndex = 2; // Start on Track tab
+  int _currentIndex = 0; // Start on Home tab
 
   final List<Widget> _pages = [
-    const _PlaceholderPage(title: 'Home', icon: Icons.home_outlined),
+    const HomeScreen(),
     const _PlaceholderPage(title: 'Vault', icon: Icons.folder_outlined),
     const TrackHome(),
     const _PlaceholderPage(title: 'Family', icon: Icons.people_outline),

@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:dio/dio.dart';
+import 'package:firebase_core/firebase_core.dart';
 
 import 'core/constants.dart';
 import 'core/theme.dart';
@@ -17,10 +18,17 @@ import 'providers/symptoms_provider.dart';
 import 'providers/illness_provider.dart';
 import 'providers/medications_provider.dart';
 import 'providers/reminders_provider.dart';
+import 'providers/theme_provider.dart';
+import 'firebase_options.dart';
 
-import 'screens/shell/main_shell.dart';
+import 'screens/auth/auth_gate.dart';
 
-void main() {
+Future<void> main() async {
+  WidgetsFlutterBinding.ensureInitialized();
+  await Firebase.initializeApp(
+    options: DefaultFirebaseOptions.currentPlatform,
+  );
+
   // Create a shared Dio instance
   final dio = DioClient.create(baseUrl: ApiConstants.baseUrl);
 
@@ -51,12 +59,21 @@ class KinsuHealthApp extends StatelessWidget {
         ChangeNotifierProvider(
           create: (_) => RemindersProvider(RemindersService(dio)),
         ),
+        ChangeNotifierProvider(
+          create: (_) => AppThemeProvider(),
+        ),
       ],
-      child: MaterialApp(
-        title: 'Kinsu Health',
-        debugShowCheckedModeBanner: false,
-        theme: KinsuTheme.lightTheme,
-        home: const MainShell(),
+      child: Builder(
+        builder: (context) {
+          return MaterialApp(
+            title: 'Kinsu Health',
+            debugShowCheckedModeBanner: false,
+            theme: KinsuTheme.lightTheme,
+            darkTheme: KinsuTheme.darkTheme,
+            themeMode: context.watch<AppThemeProvider>().themeMode,
+            home: const AuthGate(),
+          );
+        },
       ),
     );
   }

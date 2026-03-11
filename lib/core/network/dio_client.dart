@@ -24,7 +24,7 @@ class DioClient {
       ),
     );
 
-    // 1. Firebase Auth — attaches Bearer token to every request
+    // 1. Firebase Auth — attaches Bearer token when a user is signed in
     dio.interceptors.add(FirebaseAuthInterceptor());
 
     // 2. Logging — useful during development
