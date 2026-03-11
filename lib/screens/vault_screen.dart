@@ -157,26 +157,53 @@ class _VaultScreenState extends State<VaultScreen> {
                     Row(
                       mainAxisAlignment: MainAxisAlignment.spaceBetween,
                       children: [
-                        const Text(
-                          'Health Vault',
-                          style: TextStyle(
-                            fontSize: 22,
-                            fontWeight: FontWeight.w700,
-                            color: AppTheme.foreground,
-                          ),
+                        Row(
+                          children: [
+                            const Text(
+                              'Health Vault',
+                              style: TextStyle(
+                                fontSize: 22,
+                                fontWeight: FontWeight.w700,
+                                color: AppTheme.foreground,
+                              ),
+                            ),
+                            if (!_isLoading && _errorMessage == null) ...[
+                              const SizedBox(width: 8),
+                              Container(
+                                padding: const EdgeInsets.symmetric(
+                                  horizontal: 8,
+                                  vertical: 2,
+                                ),
+                                decoration: BoxDecoration(
+                                  color: AppTheme.muted,
+                                  borderRadius: BorderRadius.circular(12),
+                                ),
+                                child: Text(
+                                  '${_records.length}',
+                                  style: const TextStyle(
+                                    fontSize: 14,
+                                    fontWeight: FontWeight.w600,
+                                    color: AppTheme.mutedForeground,
+                                  ),
+                                ),
+                              ),
+                            ],
+                          ],
                         ),
-                        Container(
+                        SizedBox(
                           width: 36,
                           height: 36,
-                          decoration: BoxDecoration(
-                            color: AppTheme.primary,
-                            borderRadius: BorderRadius.circular(100),
-                          ),
                           child: IconButton(
                             onPressed: _navigateToUpload,
                             icon: const Icon(Icons.add, size: 16),
-                            color: AppTheme.primaryForeground,
                             padding: EdgeInsets.zero,
+                            style: IconButton.styleFrom(
+                              backgroundColor: AppTheme.primary,
+                              foregroundColor: AppTheme.primaryForeground,
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(100),
+                              ),
+                            ),
                           ),
                         ),
                       ],
@@ -221,20 +248,6 @@ class _VaultScreenState extends State<VaultScreen> {
               ),
             ),
             
-            // Records count
-            if (!_isLoading && _errorMessage == null)
-              SliverPadding(
-                padding: const EdgeInsets.fromLTRB(20, 12, 20, 8),
-                sliver: SliverToBoxAdapter(
-                  child: Text(
-                    '${_records.length} records',
-                    style: const TextStyle(
-                      fontSize: 12,
-                      color: AppTheme.mutedForeground,
-                    ),
-                  ),
-                ),
-              ),
             
             // Content
             if (_isLoading)
