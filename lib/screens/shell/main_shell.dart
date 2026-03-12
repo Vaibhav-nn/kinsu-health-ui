@@ -1,6 +1,9 @@
 import 'package:flutter/material.dart';
+import '../ai/ai_screen.dart';
+import '../family/family_screen.dart';
 import '../home/home_screen.dart';
 import '../track/track_home.dart';
+import '../vault/vault_screen.dart';
 
 /// Main app shell with bottom navigation bar.
 /// Only the Track tab is functional; others show placeholders.
@@ -16,10 +19,10 @@ class _MainShellState extends State<MainShell> {
 
   final List<Widget> _pages = [
     const HomeScreen(),
-    const _PlaceholderPage(title: 'Vault', icon: Icons.folder_outlined),
+    const VaultScreen(),
     const TrackHome(),
-    const _PlaceholderPage(title: 'Family', icon: Icons.people_outline),
-    const _PlaceholderPage(title: 'AI', icon: Icons.auto_awesome_outlined),
+    const FamilyScreen(),
+    const AiScreen(),
   ];
 
   @override
@@ -59,45 +62,6 @@ class _MainShellState extends State<MainShell> {
             label: 'AI',
           ),
         ],
-      ),
-    );
-  }
-}
-
-/// Placeholder page for tabs without backend APIs yet.
-class _PlaceholderPage extends StatelessWidget {
-  final String title;
-  final IconData icon;
-
-  const _PlaceholderPage({required this.title, required this.icon});
-
-  @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      body: Center(
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Icon(icon, size: 64, color: Colors.grey.shade400),
-            const SizedBox(height: 16),
-            Text(
-              title,
-              style: TextStyle(
-                fontSize: 24,
-                fontWeight: FontWeight.w600,
-                color: Colors.grey.shade600,
-              ),
-            ),
-            const SizedBox(height: 8),
-            Text(
-              'Coming soon',
-              style: TextStyle(
-                fontSize: 14,
-                color: Colors.grey.shade400,
-              ),
-            ),
-          ],
-        ),
       ),
     );
   }

@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+
 import '../../../core/theme.dart';
 import '../../../models/symptom.dart';
 import '../../../providers/symptoms_provider.dart';
@@ -17,6 +18,7 @@ class _AddSymptomScreenState extends State<AddSymptomScreen> {
   final _nameController = TextEditingController();
   final _triggersController = TextEditingController();
   final _notesController = TextEditingController();
+
   int _severity = 5;
   String _frequency = 'daily';
   String? _bodyArea;
@@ -24,8 +26,15 @@ class _AddSymptomScreenState extends State<AddSymptomScreen> {
 
   static const _frequencies = ['daily', 'weekly', 'monthly', 'intermittent'];
   static const _bodyAreas = [
-    'Head', 'Neck', 'Chest', 'Back', 'Abdomen',
-    'Arms', 'Legs', 'Joints', 'General'
+    'Head',
+    'Neck',
+    'Chest',
+    'Back',
+    'Abdomen',
+    'Arms',
+    'Legs',
+    'Joints',
+    'General',
   ];
 
   @override
@@ -37,21 +46,38 @@ class _AddSymptomScreenState extends State<AddSymptomScreen> {
   }
 
   Future<void> _submit() async {
-    if (!_formKey.currentState!.validate()) return;
+    if (!_formKey.currentState!.validate()) {
+      return;
+    }
+
+    final provider = context.read<SymptomsProvider>();
+    if (provider.isLoading) {
+      return;
+    }
+
+    FocusScope.of(context).unfocus();
 
     final symptom = ChronicSymptom(
-      symptomName: _nameController.text,
+      symptomName: _nameController.text.trim(),
       severity: _severity,
       frequency: _frequency,
       bodyArea: _bodyArea?.toLowerCase(),
-      triggers: _triggersController.text.isNotEmpty ? _triggersController.text : null,
+      triggers: _triggersController.text.trim().isNotEmpty
+          ? _triggersController.text.trim()
+          : null,
       firstNoticed: _firstNoticed,
-      notes: _notesController.text.isNotEmpty ? _notesController.text : null,
+      notes: _notesController.text.trim().isNotEmpty
+          ? _notesController.text.trim()
+          : null,
     );
 
-    final success = await context.read<SymptomsProvider>().addSymptom(symptom);
+    final success = await provider.addSymptom(symptom);
 
-    if (success && mounted) {
+    if (!mounted) {
+      return;
+    }
+
+    if (success) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
           content: Text('Symptom added!'),
@@ -59,11 +85,24 @@ class _AddSymptomScreenState extends State<AddSymptomScreen> {
         ),
       );
       Navigator.pop(context, true);
+      return;
     }
+
+    final errorMessage =
+        provider.error ?? 'Unable to save symptom. Please try again.';
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(errorMessage),
+        backgroundColor: KinsuTheme.statusError,
+      ),
+    );
   }
 
   @override
   Widget build(BuildContext context) {
+    final isSaving = context
+        .select<SymptomsProvider, bool>((provider) => provider.isLoading);
+
     return Scaffold(
       appBar: AppBar(
         title: const Text('Add Symptom'),
@@ -83,11 +122,14 @@ class _AddSymptomScreenState extends State<AddSymptomScreen> {
                 labelText: 'Symptom Name',
                 hintText: 'e.g. Migraine, Joint Pain',
               ),
-              validator: (v) => v == null || v.isEmpty ? 'Required' : null,
+              validator: (value) {
+                if (value == null || value.trim().isEmpty) {
+                  return 'Required';
+                }
+                return null;
+              },
             ),
             const SizedBox(height: 20),
-
-            // ── Severity Slider ─────────────────────
             const Text(
               'Severity',
               style: TextStyle(
@@ -98,7 +140,8 @@ class _AddSymptomScreenState extends State<AddSymptomScreen> {
             const SizedBox(height: 8),
             Row(
               children: [
-                const Text('1', style: TextStyle(color: KinsuTheme.textSecondary)),
+                const Text('1',
+                    style: TextStyle(color: KinsuTheme.textSecondary)),
                 Expanded(
                   child: Slider(
                     value: _severity.toDouble(),
@@ -107,10 +150,12 @@ class _AddSymptomScreenState extends State<AddSymptomScreen> {
                     divisions: 9,
                     activeColor: KinsuTheme.primary,
                     label: '$_severity',
-                    onChanged: (v) => setState(() => _severity = v.round()),
+                    onChanged: (value) =>
+                        setState(() => _severity = value.round()),
                   ),
                 ),
-                const Text('10', style: TextStyle(color: KinsuTheme.textSecondary)),
+                const Text('10',
+                    style: TextStyle(color: KinsuTheme.textSecondary)),
               ],
             ),
             Center(
@@ -124,8 +169,6 @@ class _AddSymptomScreenState extends State<AddSymptomScreen> {
               ),
             ),
             const SizedBox(height: 20),
-
-            // ── Frequency ───────────────────────────
             const Text(
               'Frequency',
               style: TextStyle(fontSize: 14, fontWeight: FontWeight.w600),
@@ -133,13 +176,17 @@ class _AddSymptomScreenState extends State<AddSymptomScreen> {
             const SizedBox(height: 8),
             Wrap(
               spacing: 8,
-              children: _frequencies.map((f) {
-                final isSelected = _frequency == f;
+              children: _frequencies.map((frequency) {
+                final isSelected = _frequency == frequency;
                 return ChoiceChip(
-                  label: Text(f[0].toUpperCase() + f.substring(1)),
+                  label: Text(
+                    frequency[0].toUpperCase() + frequency.substring(1),
+                  ),
                   selected: isSelected,
                   onSelected: (selected) {
-                    if (selected) setState(() => _frequency = f);
+                    if (selected) {
+                      setState(() => _frequency = frequency);
+                    }
                   },
                   selectedColor: KinsuTheme.primary,
                   labelStyle: TextStyle(
@@ -149,19 +196,16 @@ class _AddSymptomScreenState extends State<AddSymptomScreen> {
               }).toList(),
             ),
             const SizedBox(height: 20),
-
-            // ── Body Area ───────────────────────────
             DropdownButtonFormField<String>(
-              value: _bodyArea,
+              initialValue: _bodyArea,
               decoration: const InputDecoration(labelText: 'Body Area'),
-              items: _bodyAreas.map((a) {
-                return DropdownMenuItem(value: a, child: Text(a));
-              }).toList(),
-              onChanged: (v) => setState(() => _bodyArea = v),
+              items: _bodyAreas
+                  .map((area) =>
+                      DropdownMenuItem(value: area, child: Text(area)))
+                  .toList(),
+              onChanged: (value) => setState(() => _bodyArea = value),
             ),
             const SizedBox(height: 16),
-
-            // ── First Noticed ───────────────────────
             InkWell(
               onTap: () async {
                 final date = await showDatePicker(
@@ -170,14 +214,17 @@ class _AddSymptomScreenState extends State<AddSymptomScreen> {
                   firstDate: DateTime(2015),
                   lastDate: DateTime.now(),
                 );
-                if (date != null) setState(() => _firstNoticed = date);
+                if (date != null) {
+                  setState(() => _firstNoticed = date);
+                }
               },
               child: Container(
                 padding: const EdgeInsets.all(16),
                 decoration: KinsuTheme.cardDecoration,
                 child: Row(
                   children: [
-                    const Icon(Icons.calendar_today, size: 20, color: KinsuTheme.primary),
+                    const Icon(Icons.calendar_today,
+                        size: 20, color: KinsuTheme.primary),
                     const SizedBox(width: 12),
                     Text(
                       'First noticed: ${_firstNoticed.day}/${_firstNoticed.month}/${_firstNoticed.year}',
@@ -188,7 +235,6 @@ class _AddSymptomScreenState extends State<AddSymptomScreen> {
               ),
             ),
             const SizedBox(height: 16),
-
             TextFormField(
               controller: _triggersController,
               decoration: const InputDecoration(
@@ -197,7 +243,6 @@ class _AddSymptomScreenState extends State<AddSymptomScreen> {
               ),
             ),
             const SizedBox(height: 16),
-
             TextFormField(
               controller: _notesController,
               maxLines: 3,
@@ -207,10 +252,18 @@ class _AddSymptomScreenState extends State<AddSymptomScreen> {
               ),
             ),
             const SizedBox(height: 32),
-
             ElevatedButton(
-              onPressed: _submit,
-              child: const Text('Save Symptom'),
+              onPressed: isSaving ? null : _submit,
+              child: isSaving
+                  ? const SizedBox(
+                      width: 20,
+                      height: 20,
+                      child: CircularProgressIndicator(
+                        strokeWidth: 2,
+                        valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
+                      ),
+                    )
+                  : const Text('Save Symptom'),
             ),
           ],
         ),

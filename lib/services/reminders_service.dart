@@ -1,4 +1,5 @@
 import 'package:dio/dio.dart';
+
 import '../core/constants.dart';
 import '../models/reminder.dart';
 
@@ -8,12 +9,38 @@ class RemindersService {
 
   RemindersService(this._dio);
 
+  bool _isUserBootstrapError(DioException error) {
+    final statusCode = error.response?.statusCode;
+    final data = error.response?.data;
+    final detail =
+        data is Map<String, dynamic> ? data['detail']?.toString() ?? '' : '';
+    return statusCode == 404 && detail.contains('User not found');
+  }
+
+  Future<void> _bootstrapUser() async {
+    await _dio.post(ApiConstants.authLogin);
+  }
+
+  Future<T> _withBootstrapRetry<T>(Future<T> Function() operation) async {
+    try {
+      return await operation();
+    } on DioException catch (error) {
+      if (_isUserBootstrapError(error)) {
+        await _bootstrapUser();
+        return await operation();
+      }
+      rethrow;
+    }
+  }
+
   Future<Reminder> createReminder(Reminder reminder) async {
-    final response = await _dio.post(
-      ApiConstants.reminders,
-      data: reminder.toJson(),
-    );
-    return Reminder.fromJson(response.data);
+    return _withBootstrapRetry(() async {
+      final response = await _dio.post(
+        '${ApiConstants.reminders}/',
+        data: reminder.toJson(),
+      );
+      return Reminder.fromJson(response.data);
+    });
   }
 
   Future<List<Reminder>> listReminders({
@@ -26,23 +53,31 @@ class RemindersService {
       'limit': limit,
       'offset': offset,
     };
-    if (reminderType != null) params['reminder_type'] = reminderType;
-    if (isEnabled != null) params['is_enabled'] = isEnabled;
+    if (reminderType != null) {
+      params['reminder_type'] = reminderType;
+    }
+    if (isEnabled != null) {
+      params['is_enabled'] = isEnabled;
+    }
 
-    final response = await _dio.get(
-      ApiConstants.reminders,
-      queryParameters: params,
-    );
-    return (response.data as List)
-        .map((e) => Reminder.fromJson(e))
-        .toList();
+    return _withBootstrapRetry(() async {
+      final response = await _dio.get(
+        '${ApiConstants.reminders}/',
+        queryParameters: params,
+      );
+      return (response.data as List)
+          .map((item) => Reminder.fromJson(item))
+          .toList();
+    });
   }
 
   Future<List<Reminder>> getTimeline() async {
-    final response = await _dio.get(ApiConstants.reminderTimeline);
-    return (response.data as List)
-        .map((e) => Reminder.fromJson(e))
-        .toList();
+    return _withBootstrapRetry(() async {
+      final response = await _dio.get(ApiConstants.reminderTimeline);
+      return (response.data as List)
+          .map((item) => Reminder.fromJson(item))
+          .toList();
+    });
   }
 
   Future<Reminder> getReminder(int id) async {
