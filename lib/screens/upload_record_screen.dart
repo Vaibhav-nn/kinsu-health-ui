@@ -248,10 +248,10 @@ class _UploadRecordScreenState extends State<UploadRecordScreen> {
 
   Widget _buildUploadForm(DateFormat dateFormat) {
     return Form(
-      key: _formKey,
-      child: ListView(
-        padding: const EdgeInsets.all(20),
-        children: [
+        key: _formKey,
+        child: ListView(
+          padding: const EdgeInsets.all(20),
+          children: [
           // Document Type Selection
           const Text(
             'Document Type',
@@ -323,68 +323,68 @@ class _UploadRecordScreenState extends State<UploadRecordScreen> {
           ),
           const SizedBox(height: 24),
           
-          // File picker with modern design
-          Container(
-            decoration: BoxDecoration(
-              color: AppTheme.card,
-              border: Border.all(
-                color: AppTheme.border,
-                width: 2,
-                style: BorderStyle.solid,
+            // File picker with modern design
+            Container(
+              decoration: BoxDecoration(
+                color: AppTheme.card,
+                border: Border.all(
+                  color: AppTheme.border,
+                  width: 2,
+                  style: BorderStyle.solid,
+                ),
+                borderRadius: BorderRadius.circular(16),
               ),
-              borderRadius: BorderRadius.circular(16),
-            ),
             child: Column(
               children: [
                 Padding(
-                  padding: const EdgeInsets.symmetric(vertical: 32, horizontal: 20),
-                  child: Column(
-                    children: [
-                      Container(
-                        width: 64,
-                        height: 64,
-                        decoration: BoxDecoration(
-                          color: _selectedFile != null 
-                              ? const Color.fromRGBO(10, 155, 143, 0.1)
-                              : AppTheme.muted,
-                          borderRadius: BorderRadius.circular(32),
+                    padding: const EdgeInsets.symmetric(vertical: 32, horizontal: 20),
+                    child: Column(
+                      children: [
+                        Container(
+                          width: 64,
+                          height: 64,
+                          decoration: BoxDecoration(
+                            color: _selectedFile != null 
+                                ? const Color.fromRGBO(10, 155, 143, 0.1)
+                                : AppTheme.muted,
+                            borderRadius: BorderRadius.circular(32),
+                          ),
+                          child: Icon(
+                            _selectedFile != null 
+                                ? Icons.check_circle 
+                                : Icons.upload_file,
+                            size: 28,
+                            color: _selectedFile != null
+                                ? AppTheme.primary
+                                : AppTheme.mutedForeground,
+                          ),
                         ),
-                        child: Icon(
-                          _selectedFile != null 
-                              ? Icons.check_circle 
-                              : Icons.upload_file,
-                          size: 28,
-                          color: _selectedFile != null
-                              ? AppTheme.primary
-                              : AppTheme.mutedForeground,
-                        ),
-                      ),
-                      const SizedBox(height: 16),
-                      Text(
-                        _selectedFile != null
-                            ? _selectedFile!.name
-                            : 'Tap to upload or take a photo',
-                        style: TextStyle(
-                          fontSize: 15,
-                          fontWeight: FontWeight.w500,
+                        const SizedBox(height: 16),
+                        Text(
+                          _selectedFile != null
+                              ? _selectedFile!.name
+                              : 'Tap to upload or take a photo',
+                          style: TextStyle(
+                            fontSize: 15,
+                            fontWeight: FontWeight.w500,
                           color: AppTheme.foreground,
+                          ),
+                          textAlign: TextAlign.center,
                         ),
-                        textAlign: TextAlign.center,
-                      ),
-                      const SizedBox(height: 4),
-                      Text(
-                        _selectedFile != null
-                            ? _formatFileSize(_selectedFile!.size)
-                            : 'Supports PDF, JPG, PNG (max 10MB)',
-                        style: const TextStyle(
-                          fontSize: 13,
-                          color: AppTheme.mutedForeground,
+                        const SizedBox(height: 4),
+                        Text(
+                          _selectedFile != null
+                              ? _formatFileSize(_selectedFile!.size)
+                              : 'Supports PDF, JPG, PNG (max 10MB)',
+                          style: const TextStyle(
+                            fontSize: 13,
+                            color: AppTheme.mutedForeground,
+                          ),
+                          textAlign: TextAlign.center,
                         ),
-                        textAlign: TextAlign.center,
-                      ),
-                    ],
+                      ],
+                    ),
                   ),
-                ),
                 // Buttons row
                 Padding(
                   padding: const EdgeInsets.fromLTRB(20, 0, 20, 20),
@@ -429,196 +429,196 @@ class _UploadRecordScreenState extends State<UploadRecordScreen> {
                   ),
                 ),
               ],
+              ),
             ),
-          ),
-          const SizedBox(height: 24),
-          
-          // Title field
-          TextFormField(
-            controller: _titleController,
-            decoration: InputDecoration(
-              labelText: 'Title',
-              labelStyle: const TextStyle(
+            const SizedBox(height: 24),
+            
+            // Title field
+            TextFormField(
+              controller: _titleController,
+              decoration: InputDecoration(
+                labelText: 'Title',
+                labelStyle: const TextStyle(
+                  fontSize: 14,
+                  fontWeight: FontWeight.w500,
+                  color: AppTheme.foreground,
+                ),
+                hintText: 'e.g., Annual Checkup Blood Test',
+                hintStyle: const TextStyle(
+                  fontSize: 14,
+                  color: AppTheme.mutedForeground,
+                ),
+                filled: true,
+                fillColor: AppTheme.muted,
+                border: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(12),
+                  borderSide: BorderSide.none,
+                ),
+                enabledBorder: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(12),
+                  borderSide: BorderSide.none,
+                ),
+                focusedBorder: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(12),
+                  borderSide: const BorderSide(
+                    color: AppTheme.primary,
+                    width: 2,
+                  ),
+                ),
+                errorBorder: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(12),
+                  borderSide: const BorderSide(
+                    color: AppTheme.destructive,
+                    width: 1,
+                  ),
+                ),
+                focusedErrorBorder: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(12),
+                  borderSide: const BorderSide(
+                    color: AppTheme.destructive,
+                    width: 2,
+                  ),
+                ),
+              ),
+              style: const TextStyle(
                 fontSize: 14,
-                fontWeight: FontWeight.w500,
                 color: AppTheme.foreground,
               ),
-              hintText: 'e.g., Annual Checkup Blood Test',
-              hintStyle: const TextStyle(
-                fontSize: 14,
-                color: AppTheme.mutedForeground,
-              ),
-              filled: true,
-              fillColor: AppTheme.muted,
-              border: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(12),
-                borderSide: BorderSide.none,
-              ),
-              enabledBorder: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(12),
-                borderSide: BorderSide.none,
-              ),
-              focusedBorder: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(12),
-                borderSide: const BorderSide(
-                  color: AppTheme.primary,
-                  width: 2,
-                ),
-              ),
-              errorBorder: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(12),
-                borderSide: const BorderSide(
-                  color: AppTheme.destructive,
-                  width: 1,
-                ),
-              ),
-              focusedErrorBorder: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(12),
-                borderSide: const BorderSide(
-                  color: AppTheme.destructive,
-                  width: 2,
-                ),
-              ),
+              enabled: !_isUploading,
+              validator: (value) {
+                if (value == null || value.trim().isEmpty) {
+                  return 'Please enter a title';
+                }
+                return null;
+                    },
             ),
-            style: const TextStyle(
-              fontSize: 14,
-              color: AppTheme.foreground,
-            ),
-            enabled: !_isUploading,
-            validator: (value) {
-              if (value == null || value.trim().isEmpty) {
-                return 'Please enter a title';
-              }
-              return null;
-            },
-          ),
-          const SizedBox(height: 16),
-          
-          // Date picker
-          InkWell(
-            onTap: _isUploading ? null : _selectDate,
-            borderRadius: BorderRadius.circular(12),
-            child: Container(
-              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 16),
-              decoration: BoxDecoration(
-                color: AppTheme.muted,
-                borderRadius: BorderRadius.circular(12),
-              ),
-              child: Row(
-                children: [
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        const Text(
-                          'Record Date',
-                          style: TextStyle(
-                            fontSize: 12,
-                            fontWeight: FontWeight.w500,
-                            color: AppTheme.mutedForeground,
+            const SizedBox(height: 16),
+            
+            // Date picker
+            InkWell(
+              onTap: _isUploading ? null : _selectDate,
+              borderRadius: BorderRadius.circular(12),
+              child: Container(
+                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 16),
+                decoration: BoxDecoration(
+                  color: AppTheme.muted,
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: Row(
+                  children: [
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          const Text(
+                            'Record Date',
+                            style: TextStyle(
+                              fontSize: 12,
+                              fontWeight: FontWeight.w500,
+                              color: AppTheme.mutedForeground,
+                            ),
                           ),
-                        ),
-                        const SizedBox(height: 4),
-                        Text(
-                          dateFormat.format(_recordDate),
-                          style: const TextStyle(
-                            fontSize: 14,
-                            color: AppTheme.foreground,
+                          const SizedBox(height: 4),
+                          Text(
+                            dateFormat.format(_recordDate),
+                            style: const TextStyle(
+                              fontSize: 14,
+                              color: AppTheme.foreground,
+                            ),
                           ),
-                        ),
-                      ],
+                        ],
+                      ),
                     ),
-                  ),
-                  const Icon(
-                    Icons.calendar_today,
-                    size: 18,
-                    color: AppTheme.mutedForeground,
-                  ),
-                ],
-              ),
-            ),
-          ),
-          const SizedBox(height: 16),
-          
-          // Notes field
-          TextFormField(
-            controller: _notesController,
-            decoration: InputDecoration(
-              labelText: 'Notes (optional)',
-              labelStyle: const TextStyle(
-                fontSize: 14,
-                fontWeight: FontWeight.w500,
-                color: AppTheme.foreground,
-              ),
-              hintText: 'Add any additional notes...',
-              hintStyle: const TextStyle(
-                fontSize: 14,
-                color: AppTheme.mutedForeground,
-              ),
-              filled: true,
-              fillColor: AppTheme.muted,
-              border: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(12),
-                borderSide: BorderSide.none,
-              ),
-              enabledBorder: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(12),
-                borderSide: BorderSide.none,
-              ),
-              focusedBorder: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(12),
-                borderSide: const BorderSide(
-                  color: AppTheme.primary,
-                  width: 2,
+                    const Icon(
+                      Icons.calendar_today,
+                      size: 18,
+                      color: AppTheme.mutedForeground,
+                    ),
+                  ],
                 ),
               ),
-              alignLabelWithHint: true,
             ),
-            style: const TextStyle(
-              fontSize: 14,
-              color: AppTheme.foreground,
+            const SizedBox(height: 16),
+            
+            // Notes field
+            TextFormField(
+              controller: _notesController,
+              decoration: InputDecoration(
+                labelText: 'Notes (optional)',
+                labelStyle: const TextStyle(
+                  fontSize: 14,
+                  fontWeight: FontWeight.w500,
+                  color: AppTheme.foreground,
+                ),
+                hintText: 'Add any additional notes...',
+                hintStyle: const TextStyle(
+                  fontSize: 14,
+                  color: AppTheme.mutedForeground,
+                ),
+                filled: true,
+                fillColor: AppTheme.muted,
+                border: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(12),
+                  borderSide: BorderSide.none,
+                ),
+                enabledBorder: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(12),
+                  borderSide: BorderSide.none,
+                ),
+                focusedBorder: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(12),
+                  borderSide: const BorderSide(
+                    color: AppTheme.primary,
+                    width: 2,
+                  ),
+                ),
+                alignLabelWithHint: true,
+              ),
+              style: const TextStyle(
+                fontSize: 14,
+                color: AppTheme.foreground,
+              ),
+              maxLines: 4,
+              enabled: !_isUploading,
             ),
-            maxLines: 4,
-            enabled: !_isUploading,
-          ),
-          const SizedBox(height: 32),
-          
-          // Upload button
-          SizedBox(
-            height: 48,
-            child: ElevatedButton(
-              onPressed: _isUploading ? null : _uploadRecord,
-              style: ElevatedButton.styleFrom(
-                backgroundColor: AppTheme.primary,
-                foregroundColor: AppTheme.primaryForeground,
-                disabledBackgroundColor: AppTheme.muted,
-                disabledForegroundColor: AppTheme.mutedForeground,
-                elevation: 0,
-                shape: RoundedRectangleBorder(
+            const SizedBox(height: 32),
+            
+            // Upload button
+            SizedBox(
+              height: 48,
+              child: ElevatedButton(
+                onPressed: _isUploading ? null : _uploadRecord,
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: AppTheme.primary,
+                  foregroundColor: AppTheme.primaryForeground,
+                  disabledBackgroundColor: AppTheme.muted,
+                  disabledForegroundColor: AppTheme.mutedForeground,
+                  elevation: 0,
+                  shape: RoundedRectangleBorder(
                   borderRadius: BorderRadius.circular(16),
+                  ),
                 ),
-              ),
-              child: _isUploading
-                  ? const SizedBox(
-                      height: 20,
-                      width: 20,
-                      child: CircularProgressIndicator(
-                        strokeWidth: 2,
-                        valueColor: AlwaysStoppedAnimation<Color>(
-                          AppTheme.primaryForeground,
+                child: _isUploading
+                    ? const SizedBox(
+                        height: 20,
+                        width: 20,
+                        child: CircularProgressIndicator(
+                          strokeWidth: 2,
+                          valueColor: AlwaysStoppedAnimation<Color>(
+                            AppTheme.primaryForeground,
+                          ),
+                        ),
+                      )
+                    : const Text(
+                        'Upload Record',
+                        style: TextStyle(
+                          fontSize: 14,
+                          fontWeight: FontWeight.w600,
                         ),
                       ),
-                    )
-                  : const Text(
-                      'Upload Record',
-                      style: TextStyle(
-                        fontSize: 14,
-                        fontWeight: FontWeight.w600,
-                      ),
-                    ),
+              ),
             ),
-          ),
-        ],
+          ],
       ),
     );
   }

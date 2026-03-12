@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import '../models/health_record.dart';
 import '../theme/app_theme.dart';
+import '../utils/file_utils.dart';
 
 class RecordCard extends StatelessWidget {
   final HealthRecord record;
@@ -159,7 +160,7 @@ class RecordCard extends StatelessWidget {
                               ),
                             ),
                             Text(
-                              _formatFileSize(record.fileSize!),
+                              FileUtils.formatFileSize(record.fileSize!),
                               style: const TextStyle(
                                 fontSize: 11,
                                 color: AppTheme.mutedForeground,
@@ -177,16 +178,5 @@ class RecordCard extends StatelessWidget {
         ),
       ),
     );
-  }
-
-
-  String _formatFileSize(int bytes) {
-    if (bytes < 1024) {
-      return '$bytes B';
-    } else if (bytes < 1024 * 1024) {
-      return '${(bytes / 1024).toStringAsFixed(1)} KB';
-    } else {
-      return '${(bytes / (1024 * 1024)).toStringAsFixed(1)} MB';
-    }
   }
 }

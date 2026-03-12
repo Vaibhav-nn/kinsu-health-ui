@@ -37,13 +37,11 @@ class HomeContent extends StatelessWidget {
                 // 2. Recent opened prescriptions
                 RecentPrescriptions(
                   prescriptions: MockData.recentPrescriptions,
-                  onSeeAll: () {},
                 ),
                 const SizedBox(height: 28),
                 // 3. Next doses
                 NextDoses(
                   doses: MockData.nextDoses,
-                  onSeeAll: () {},
                 ),
                 const SizedBox(height: 24),
               ],
