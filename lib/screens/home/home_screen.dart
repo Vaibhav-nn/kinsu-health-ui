@@ -4,7 +4,11 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
 import '../../core/theme.dart';
+import '../../models/medication.dart';
+import '../../models/vital.dart';
+import '../../providers/medications_provider.dart';
 import '../../providers/theme_provider.dart';
+import '../../providers/vitals_provider.dart';
 import '../ai/ai_screen.dart';
 import '../track/medications/medications_list_screen.dart';
 import '../track/vitals/vitals_trends_screen.dart';
@@ -23,12 +27,8 @@ class _HomeScreenState extends State<HomeScreen>
     with SingleTickerProviderStateMixin {
   late final AnimationController _heroController;
   final TextEditingController _searchController = TextEditingController();
-  final Map<String, bool> _todayMeds = {
-    'Metformin 500mg': true,
-    'Ecosprin 75mg': false,
-    'Amlodipine 5mg': false,
-    'Atorvastatin 10mg': false,
-  };
+  final Map<String, bool> _todayMeds = <String, bool>{};
+  late final List<_AppointmentData> _appointments;
 
   @override
   void initState() {
@@ -37,6 +37,29 @@ class _HomeScreenState extends State<HomeScreen>
       vsync: this,
       duration: const Duration(seconds: 6),
     )..repeat();
+
+    final now = DateTime.now();
+    _appointments = [
+      _AppointmentData(
+        doctor: 'Dr. R. Kapoor',
+        specialty: 'Cardiologist',
+        at: DateTime(now.year, now.month, now.day + 2, 10, 30),
+        place: 'Apollo Hospital',
+        notes: 'Bring latest BP logs and medication list.',
+      ),
+      _AppointmentData(
+        doctor: 'Dr. A. Mehta',
+        specialty: 'Endocrinologist',
+        at: DateTime(now.year, now.month, now.day + 5, 14, 0),
+        place: 'Max Hospital',
+        notes: 'Follow-up on blood sugar trends and diet plan.',
+      ),
+    ];
+
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      context.read<MedicationsProvider>().loadMedications(isActive: true);
+      context.read<VitalsProvider>().loadVitals();
+    });
   }
 
   @override
@@ -46,11 +69,139 @@ class _HomeScreenState extends State<HomeScreen>
     super.dispose();
   }
 
+  String _medicationKey(Medication medication) {
+    if (medication.id != null) {
+      return 'id:${medication.id}';
+    }
+    return 'name:${medication.name.toLowerCase()}';
+  }
+
+  void _syncTodayMedicationMap(List<Medication> medications) {
+    final keys = medications.map(_medicationKey).toSet();
+    _todayMeds.removeWhere((key, _) => !keys.contains(key));
+    for (final key in keys) {
+      _todayMeds.putIfAbsent(key, () => false);
+    }
+  }
+
+  int _computeStreakDay({
+    required List<Medication> medications,
+    required List<VitalLog> vitals,
+  }) {
+    final now = DateTime.now();
+    final today = DateTime(now.year, now.month, now.day);
+
+    DateTime? start;
+
+    for (final medication in medications) {
+      final candidate = DateTime(
+        medication.startDate.year,
+        medication.startDate.month,
+        medication.startDate.day,
+      );
+      if (start == null || candidate.isBefore(start)) {
+        start = candidate;
+      }
+    }
+
+    for (final vital in vitals) {
+      final candidate = DateTime(
+        vital.recordedAt.year,
+        vital.recordedAt.month,
+        vital.recordedAt.day,
+      );
+      if (start == null || candidate.isBefore(start)) {
+        start = candidate;
+      }
+    }
+
+    if (start == null) {
+      final startOfYear = DateTime(now.year, 1, 1);
+      return today.difference(startOfYear).inDays + 1;
+    }
+
+    final normalizedStart = start.isAfter(today) ? today : start;
+    return today.difference(normalizedStart).inDays + 1;
+  }
+
+  String _formatAppointmentDateTime(DateTime dateTime) {
+    final localizations = MaterialLocalizations.of(context);
+    final dateLabel = localizations.formatMediumDate(dateTime);
+    final timeLabel = localizations.formatTimeOfDay(
+      TimeOfDay.fromDateTime(dateTime),
+    );
+    return '$dateLabel · $timeLabel';
+  }
+
+  Future<void> _showAppointmentOverview(_AppointmentData appointment) async {
+    await showModalBottomSheet<void>(
+      context: context,
+      isScrollControlled: true,
+      showDragHandle: true,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      ),
+      builder: (context) {
+        return SafeArea(
+          child: Padding(
+            padding: const EdgeInsets.fromLTRB(16, 8, 16, 20),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  appointment.doctor,
+                  style: const TextStyle(
+                    fontSize: 20,
+                    fontWeight: FontWeight.w700,
+                  ),
+                ),
+                const SizedBox(height: 4),
+                Text(
+                  appointment.specialty,
+                  style: const TextStyle(
+                    fontSize: 14,
+                    color: KinsuTheme.textSecondary,
+                  ),
+                ),
+                const SizedBox(height: 14),
+                _AppointmentDetailRow(
+                  label: 'When',
+                  value: _formatAppointmentDateTime(appointment.at),
+                ),
+                _AppointmentDetailRow(label: 'Where', value: appointment.place),
+                if (appointment.notes != null &&
+                    appointment.notes!.trim().isNotEmpty)
+                  _AppointmentDetailRow(
+                      label: 'Notes', value: appointment.notes!),
+              ],
+            ),
+          ),
+        );
+      },
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final themeMode = context.watch<AppThemeProvider>().themeMode;
-    final taken = _todayMeds.values.where((v) => v).length;
-    final total = _todayMeds.length;
+    final medicationsProvider = context.watch<MedicationsProvider>();
+    final vitalsProvider = context.watch<VitalsProvider>();
+
+    final activeMedications = medicationsProvider.medications
+        .where((medication) => medication.isActive)
+        .toList();
+    _syncTodayMedicationMap(activeMedications);
+
+    final taken = activeMedications
+        .where((medication) => _todayMeds[_medicationKey(medication)] ?? false)
+        .length;
+    final total = activeMedications.length;
+    final progress = total == 0 ? 0.0 : taken / total;
+    final streakDay = _computeStreakDay(
+      medications: activeMedications,
+      vitals: vitalsProvider.vitals,
+    );
 
     return Scaffold(
       body: SafeArea(
@@ -78,7 +229,9 @@ class _HomeScreenState extends State<HomeScreen>
                       Text(
                         'Priya Sharma',
                         style: TextStyle(
-                            fontSize: 17, fontWeight: FontWeight.w700),
+                          fontSize: 17,
+                          fontWeight: FontWeight.w700,
+                        ),
                       ),
                     ],
                   ),
@@ -116,7 +269,10 @@ class _HomeScreenState extends State<HomeScreen>
             const SizedBox(height: 10),
             _ThemeModeSelector(currentMode: themeMode),
             const SizedBox(height: 12),
-            _AnimatedHeroCard(controller: _heroController),
+            _AnimatedHeroCard(
+              controller: _heroController,
+              dayNumber: streakDay,
+            ),
             const SizedBox(height: 14),
             const _SectionTitle(title: 'Quick Actions'),
             const SizedBox(height: 8),
@@ -209,23 +365,18 @@ class _HomeScreenState extends State<HomeScreen>
             const SizedBox(height: 8),
             SizedBox(
               height: 130,
-              child: ListView(
+              child: ListView.separated(
                 scrollDirection: Axis.horizontal,
-                children: const [
-                  _AppointmentCard(
-                    doctor: 'Dr. R. Kapoor',
-                    specialty: 'Cardiologist',
-                    dateTime: 'Thu, 5 Mar · 10:30 AM',
-                    place: 'Apollo Hospital',
-                  ),
-                  SizedBox(width: 10),
-                  _AppointmentCard(
-                    doctor: 'Dr. A. Mehta',
-                    specialty: 'Endocrinologist',
-                    dateTime: 'Mon, 8 Mar · 2:00 PM',
-                    place: 'Max Hospital',
-                  ),
-                ],
+                itemCount: _appointments.length,
+                separatorBuilder: (_, __) => const SizedBox(width: 10),
+                itemBuilder: (context, index) {
+                  final appointment = _appointments[index];
+                  return _AppointmentCard(
+                    appointment: appointment,
+                    dateTimeLabel: _formatAppointmentDateTime(appointment.at),
+                    onTap: () => _showAppointmentOverview(appointment),
+                  );
+                },
               ),
             ),
             const SizedBox(height: 14),
@@ -241,7 +392,7 @@ class _HomeScreenState extends State<HomeScreen>
                       Text('$taken/$total medicines taken'),
                       const Spacer(),
                       Text(
-                        '${((taken / total) * 100).round()}%',
+                        '${(progress * 100).round()}%',
                         style: const TextStyle(
                           color: KinsuTheme.primary,
                           fontWeight: FontWeight.w700,
@@ -251,7 +402,7 @@ class _HomeScreenState extends State<HomeScreen>
                   ),
                   const SizedBox(height: 8),
                   LinearProgressIndicator(
-                    value: taken / total,
+                    value: progress,
                     minHeight: 8,
                     borderRadius: BorderRadius.circular(8),
                     backgroundColor: KinsuTheme.divider,
@@ -260,36 +411,76 @@ class _HomeScreenState extends State<HomeScreen>
               ),
             ),
             const SizedBox(height: 8),
-            ..._todayMeds.entries.map(
-              (entry) => Padding(
-                padding: const EdgeInsets.only(bottom: 8),
-                child: Container(
-                  padding: const EdgeInsets.all(12),
-                  decoration: KinsuTheme.cardDecoration,
-                  child: Row(
-                    children: [
-                      Icon(
-                        entry.value
-                            ? Icons.check_circle
-                            : Icons.radio_button_unchecked,
-                        color: entry.value
-                            ? KinsuTheme.statusActive
-                            : KinsuTheme.textSecondary,
-                      ),
-                      const SizedBox(width: 10),
-                      Expanded(child: Text(entry.key)),
-                      if (!entry.value)
+            if (medicationsProvider.isLoading && activeMedications.isEmpty)
+              const Padding(
+                padding: EdgeInsets.symmetric(vertical: 12),
+                child: Center(child: CircularProgressIndicator()),
+              )
+            else if (activeMedications.isEmpty)
+              Container(
+                padding: const EdgeInsets.all(12),
+                decoration: KinsuTheme.cardDecoration,
+                child: const Text(
+                  'No active medications yet. Add medications in Track to show them here.',
+                  style: TextStyle(color: KinsuTheme.textSecondary),
+                ),
+              )
+            else
+              ...activeMedications.map((medication) {
+                final key = _medicationKey(medication);
+                final isTaken = _todayMeds[key] ?? false;
+
+                return Padding(
+                  padding: const EdgeInsets.only(bottom: 8),
+                  child: Container(
+                    padding: const EdgeInsets.all(12),
+                    decoration: KinsuTheme.cardDecoration,
+                    child: Row(
+                      children: [
+                        Checkbox.adaptive(
+                          value: isTaken,
+                          onChanged: (value) {
+                            setState(() {
+                              _todayMeds[key] = value ?? false;
+                            });
+                          },
+                          activeColor: KinsuTheme.statusActive,
+                        ),
+                        const SizedBox(width: 6),
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                medication.name,
+                                style: const TextStyle(
+                                  fontSize: 16,
+                                  fontWeight: FontWeight.w500,
+                                ),
+                              ),
+                              Text(
+                                '${medication.dosage} · ${medication.frequency.replaceAll('_', ' ')}',
+                                style: const TextStyle(
+                                  fontSize: 12,
+                                  color: KinsuTheme.textSecondary,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
                         TextButton(
                           onPressed: () {
-                            setState(() => _todayMeds[entry.key] = true);
+                            setState(() {
+                              _todayMeds[key] = !isTaken;
+                            });
                           },
-                          child: const Text('Take'),
+                          child: Text(isTaken ? 'Undo' : 'Take'),
                         ),
-                    ],
+                      ],
+                    ),
                   ),
-                ),
-              ),
-            ),
+                );
+              }),
             const SizedBox(height: 8),
             Row(
               children: [
@@ -381,8 +572,12 @@ class _ThemeModeSelector extends StatelessWidget {
 
 class _AnimatedHeroCard extends StatelessWidget {
   final AnimationController controller;
+  final int dayNumber;
 
-  const _AnimatedHeroCard({required this.controller});
+  const _AnimatedHeroCard({
+    required this.controller,
+    required this.dayNumber,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -403,28 +598,28 @@ class _AnimatedHeroCard extends StatelessWidget {
               Positioned(
                 right: 16 + (math.sin(t) * 8),
                 top: 16 + (math.cos(t) * 6),
-                child: _bubble(40, Colors.white.withOpacity(0.16)),
+                child: _bubble(40, Colors.white.withValues(alpha: 0.16)),
               ),
               Positioned(
                 left: 30 + (math.cos(t * 1.1) * 9),
                 bottom: 12 + (math.sin(t * 1.2) * 6),
-                child: _bubble(28, Colors.white.withOpacity(0.15)),
+                child: _bubble(28, Colors.white.withValues(alpha: 0.15)),
               ),
-              const Padding(
-                padding: EdgeInsets.all(14),
+              Padding(
+                padding: const EdgeInsets.all(14),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
-                      'Day 15 — Keep it up!',
-                      style: TextStyle(
+                      'Day $dayNumber — Keep it up!',
+                      style: const TextStyle(
                         color: Colors.white,
                         fontSize: 18,
                         fontWeight: FontWeight.w700,
                       ),
                     ),
-                    SizedBox(height: 4),
-                    Text(
+                    const SizedBox(height: 4),
+                    const Text(
                       'Your health habit streak is active. Log vitals today to continue.',
                       style: TextStyle(color: Colors.white70),
                     ),
@@ -506,47 +701,57 @@ class _ActionTile extends StatelessWidget {
 }
 
 class _AppointmentCard extends StatelessWidget {
-  final String doctor;
-  final String specialty;
-  final String dateTime;
-  final String place;
+  final _AppointmentData appointment;
+  final String dateTimeLabel;
+  final VoidCallback onTap;
 
   const _AppointmentCard({
-    required this.doctor,
-    required this.specialty,
-    required this.dateTime,
-    required this.place,
+    required this.appointment,
+    required this.dateTimeLabel,
+    required this.onTap,
   });
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      width: 240,
-      padding: const EdgeInsets.all(12),
-      decoration: KinsuTheme.cardDecoration,
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text(
-            doctor,
-            style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w700),
+    return Material(
+      color: Colors.transparent,
+      child: InkWell(
+        borderRadius: BorderRadius.circular(12),
+        onTap: onTap,
+        child: Container(
+          width: 240,
+          padding: const EdgeInsets.all(12),
+          decoration: KinsuTheme.cardDecoration,
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                appointment.doctor,
+                style:
+                    const TextStyle(fontSize: 15, fontWeight: FontWeight.w700),
+              ),
+              Text(
+                appointment.specialty,
+                style: const TextStyle(
+                  color: KinsuTheme.textSecondary,
+                  fontSize: 12,
+                ),
+              ),
+              const SizedBox(height: 8),
+              Text(
+                dateTimeLabel,
+                style: const TextStyle(color: KinsuTheme.primary, fontSize: 12),
+              ),
+              Text(
+                appointment.place,
+                style: const TextStyle(
+                  color: KinsuTheme.textSecondary,
+                  fontSize: 11,
+                ),
+              ),
+            ],
           ),
-          Text(
-            specialty,
-            style:
-                const TextStyle(color: KinsuTheme.textSecondary, fontSize: 12),
-          ),
-          const SizedBox(height: 8),
-          Text(
-            dateTime,
-            style: const TextStyle(color: KinsuTheme.primary, fontSize: 12),
-          ),
-          Text(
-            place,
-            style:
-                const TextStyle(color: KinsuTheme.textSecondary, fontSize: 11),
-          ),
-        ],
+        ),
       ),
     );
   }
@@ -612,6 +817,63 @@ class _InsightCard extends StatelessWidget {
             style: const TextStyle(
               fontSize: 11,
               color: KinsuTheme.textSecondary,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _AppointmentData {
+  final String doctor;
+  final String specialty;
+  final DateTime at;
+  final String place;
+  final String? notes;
+
+  const _AppointmentData({
+    required this.doctor,
+    required this.specialty,
+    required this.at,
+    required this.place,
+    this.notes,
+  });
+}
+
+class _AppointmentDetailRow extends StatelessWidget {
+  final String label;
+  final String value;
+
+  const _AppointmentDetailRow({
+    required this.label,
+    required this.value,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 10),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          SizedBox(
+            width: 84,
+            child: Text(
+              label,
+              style: const TextStyle(
+                fontSize: 13,
+                color: KinsuTheme.textSecondary,
+              ),
+            ),
+          ),
+          Expanded(
+            child: Text(
+              value,
+              style: const TextStyle(
+                fontSize: 14,
+                fontWeight: FontWeight.w600,
+              ),
             ),
           ),
         ],

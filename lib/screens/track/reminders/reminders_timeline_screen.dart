@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+
 import '../../../core/theme.dart';
+import '../../../models/reminder.dart';
 import '../../../providers/reminders_provider.dart';
 import 'add_reminder_screen.dart';
 
@@ -52,6 +54,108 @@ class _RemindersTimelineScreenState extends State<RemindersTimelineScreen> {
     }
   }
 
+  String _formatRecurrence(String recurrence) {
+    if (recurrence.isEmpty) {
+      return 'Daily';
+    }
+    return recurrence[0].toUpperCase() + recurrence.substring(1);
+  }
+
+  Future<void> _showReminderOverview(Reminder reminder) async {
+    await showModalBottomSheet<void>(
+      context: context,
+      isScrollControlled: true,
+      showDragHandle: true,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      ),
+      builder: (context) {
+        return SafeArea(
+          child: Padding(
+            padding: const EdgeInsets.fromLTRB(16, 8, 16, 20),
+            child: SingleChildScrollView(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    children: [
+                      Container(
+                        width: 44,
+                        height: 44,
+                        decoration: BoxDecoration(
+                          color: _typeColor(reminder.reminderType)
+                              .withValues(alpha: 0.12),
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                        child: Icon(
+                          _typeIcon(reminder.reminderType),
+                          color: _typeColor(reminder.reminderType),
+                        ),
+                      ),
+                      const SizedBox(width: 12),
+                      Expanded(
+                        child: Text(
+                          reminder.title,
+                          style: const TextStyle(
+                            fontSize: 20,
+                            fontWeight: FontWeight.w700,
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 14),
+                  _ReminderDetailRow(
+                    label: 'Type',
+                    value: reminder.reminderType[0].toUpperCase() +
+                        reminder.reminderType.substring(1),
+                  ),
+                  _ReminderDetailRow(
+                    label: 'Scheduled Time',
+                    value: reminder.displayTime,
+                  ),
+                  _ReminderDetailRow(
+                    label: 'Repeat',
+                    value: _formatRecurrence(reminder.recurrence),
+                  ),
+                  _ReminderDetailRow(
+                    label: 'Status',
+                    value: reminder.isEnabled ? 'Enabled' : 'Disabled',
+                  ),
+                  if (reminder.linkedMedicationId != null)
+                    _ReminderDetailRow(
+                      label: 'Linked Medication ID',
+                      value: reminder.linkedMedicationId.toString(),
+                    ),
+                  if (reminder.notes != null &&
+                      reminder.notes!.trim().isNotEmpty) ...[
+                    const SizedBox(height: 10),
+                    const Text(
+                      'Notes',
+                      style: TextStyle(
+                        fontSize: 14,
+                        fontWeight: FontWeight.w700,
+                      ),
+                    ),
+                    const SizedBox(height: 6),
+                    Text(
+                      reminder.notes!,
+                      style: const TextStyle(
+                        fontSize: 14,
+                        color: KinsuTheme.textSecondary,
+                        height: 1.4,
+                      ),
+                    ),
+                  ],
+                ],
+              ),
+            ),
+          ),
+        );
+      },
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -77,7 +181,7 @@ class _RemindersTimelineScreenState extends State<RemindersTimelineScreen> {
             context,
             MaterialPageRoute(builder: (_) => const AddReminderScreen()),
           );
-          if (result == true) {
+          if (result == true && context.mounted) {
             context.read<RemindersProvider>().loadTimeline();
           }
         },
@@ -101,8 +205,11 @@ class _RemindersTimelineScreenState extends State<RemindersTimelineScreen> {
               child: Column(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
-                  Icon(Icons.alarm_outlined,
-                      size: 64, color: Colors.grey.shade400),
+                  Icon(
+                    Icons.alarm_outlined,
+                    size: 64,
+                    color: Colors.grey.shade400,
+                  ),
                   const SizedBox(height: 16),
                   Text(
                     'No reminders set',
@@ -121,12 +228,11 @@ class _RemindersTimelineScreenState extends State<RemindersTimelineScreen> {
           return ListView(
             padding: const EdgeInsets.all(16),
             children: [
-              // Day header
               Container(
                 padding:
                     const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
                 decoration: BoxDecoration(
-                  color: KinsuTheme.primaryLight.withOpacity(0.3),
+                  color: KinsuTheme.primaryLight.withValues(alpha: 0.3),
                   borderRadius: BorderRadius.circular(8),
                 ),
                 child: Row(
@@ -134,9 +240,9 @@ class _RemindersTimelineScreenState extends State<RemindersTimelineScreen> {
                     const Icon(Icons.today,
                         size: 16, color: KinsuTheme.primary),
                     const SizedBox(width: 6),
-                    Text(
+                    const Text(
                       "Today's Schedule",
-                      style: const TextStyle(
+                      style: TextStyle(
                         fontSize: 13,
                         fontWeight: FontWeight.w600,
                         color: KinsuTheme.primaryDark,
@@ -154,8 +260,6 @@ class _RemindersTimelineScreenState extends State<RemindersTimelineScreen> {
                 ),
               ),
               const SizedBox(height: 16),
-
-              // Timeline items
               ...items.asMap().entries.map((entry) {
                 final idx = entry.key;
                 final reminder = entry.value;
@@ -164,7 +268,6 @@ class _RemindersTimelineScreenState extends State<RemindersTimelineScreen> {
                 return Row(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    // Time column
                     SizedBox(
                       width: 60,
                       child: Text(
@@ -176,8 +279,6 @@ class _RemindersTimelineScreenState extends State<RemindersTimelineScreen> {
                         ),
                       ),
                     ),
-
-                    // Timeline connector
                     Column(
                       children: [
                         Container(
@@ -197,65 +298,73 @@ class _RemindersTimelineScreenState extends State<RemindersTimelineScreen> {
                       ],
                     ),
                     const SizedBox(width: 12),
-
-                    // Reminder card
                     Expanded(
-                      child: Container(
-                        margin: const EdgeInsets.only(bottom: 12),
-                        padding: const EdgeInsets.all(14),
-                        decoration: KinsuTheme.cardDecoration,
-                        child: Row(
-                          children: [
-                            Container(
-                              width: 40,
-                              height: 40,
-                              decoration: BoxDecoration(
-                                color: _typeColor(reminder.reminderType)
-                                    .withOpacity(0.1),
-                                borderRadius: BorderRadius.circular(10),
-                              ),
-                              child: Icon(
-                                _typeIcon(reminder.reminderType),
-                                size: 20,
-                                color: _typeColor(reminder.reminderType),
-                              ),
-                            ),
-                            const SizedBox(width: 12),
-                            Expanded(
-                              child: Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  Text(
-                                    reminder.title,
-                                    style: const TextStyle(
-                                      fontSize: 15,
-                                      fontWeight: FontWeight.w600,
-                                    ),
+                      child: Material(
+                        color: Colors.transparent,
+                        child: InkWell(
+                          borderRadius: BorderRadius.circular(12),
+                          onTap: () => _showReminderOverview(reminder),
+                          child: Container(
+                            margin: const EdgeInsets.only(bottom: 12),
+                            padding: const EdgeInsets.all(14),
+                            decoration: KinsuTheme.cardDecoration,
+                            child: Row(
+                              children: [
+                                Container(
+                                  width: 40,
+                                  height: 40,
+                                  decoration: BoxDecoration(
+                                    color: _typeColor(reminder.reminderType)
+                                        .withValues(alpha: 0.1),
+                                    borderRadius: BorderRadius.circular(10),
                                   ),
-                                  Text(
-                                    reminder.reminderType[0].toUpperCase() +
-                                        reminder.reminderType.substring(1),
-                                    style: const TextStyle(
-                                      fontSize: 12,
-                                      color: KinsuTheme.textSecondary,
-                                    ),
+                                  child: Icon(
+                                    _typeIcon(reminder.reminderType),
+                                    size: 20,
+                                    color: _typeColor(reminder.reminderType),
                                   ),
-                                ],
-                              ),
+                                ),
+                                const SizedBox(width: 12),
+                                Expanded(
+                                  child: Column(
+                                    crossAxisAlignment:
+                                        CrossAxisAlignment.start,
+                                    children: [
+                                      Text(
+                                        reminder.title,
+                                        style: const TextStyle(
+                                          fontSize: 15,
+                                          fontWeight: FontWeight.w600,
+                                        ),
+                                      ),
+                                      Text(
+                                        reminder.reminderType[0].toUpperCase() +
+                                            reminder.reminderType.substring(1),
+                                        style: const TextStyle(
+                                          fontSize: 12,
+                                          color: KinsuTheme.textSecondary,
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                                Switch(
+                                  value: reminder.isEnabled,
+                                  activeThumbColor: KinsuTheme.primary,
+                                  activeTrackColor:
+                                      KinsuTheme.primary.withValues(alpha: 0.3),
+                                  onChanged: (value) {
+                                    context
+                                        .read<RemindersProvider>()
+                                        .updateReminder(
+                                      reminder.id!,
+                                      {'is_enabled': value},
+                                    );
+                                  },
+                                ),
+                              ],
                             ),
-                            Switch(
-                              value: reminder.isEnabled,
-                              activeColor: KinsuTheme.primary,
-                              onChanged: (value) {
-                                context
-                                    .read<RemindersProvider>()
-                                    .updateReminder(
-                                  reminder.id!,
-                                  {'is_enabled': value},
-                                );
-                              },
-                            ),
-                          ],
+                          ),
                         ),
                       ),
                     ),
@@ -265,6 +374,47 @@ class _RemindersTimelineScreenState extends State<RemindersTimelineScreen> {
             ],
           );
         },
+      ),
+    );
+  }
+}
+
+class _ReminderDetailRow extends StatelessWidget {
+  final String label;
+  final String value;
+
+  const _ReminderDetailRow({
+    required this.label,
+    required this.value,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 10),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          SizedBox(
+            width: 140,
+            child: Text(
+              label,
+              style: const TextStyle(
+                fontSize: 13,
+                color: KinsuTheme.textSecondary,
+              ),
+            ),
+          ),
+          Expanded(
+            child: Text(
+              value,
+              style: const TextStyle(
+                fontSize: 14,
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+          ),
+        ],
       ),
     );
   }
