@@ -3,10 +3,8 @@ import 'dart:math' as math;
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
-import '../../core/constants.dart';
 import '../../core/theme.dart';
 import '../../providers/theme_provider.dart';
-import '../../services/api_service.dart';
 import '../ai/ai_screen.dart';
 import '../track/medications/medications_list_screen.dart';
 import '../track/vitals/vitals_trends_screen.dart';
@@ -24,7 +22,6 @@ class HomeScreen extends StatefulWidget {
 class _HomeScreenState extends State<HomeScreen>
     with SingleTickerProviderStateMixin {
   late final AnimationController _heroController;
-  late final ApiService _apiService;
   final TextEditingController _searchController = TextEditingController();
   final Map<String, bool> _todayMeds = {
     'Metformin 500mg': true,
@@ -40,7 +37,6 @@ class _HomeScreenState extends State<HomeScreen>
       vsync: this,
       duration: const Duration(seconds: 6),
     )..repeat();
-    _apiService = ApiService(baseUrl: ApiConstants.baseUrl);
   }
 
   @override
@@ -138,9 +134,7 @@ class _HomeScreenState extends State<HomeScreen>
                     Navigator.push(
                       context,
                       MaterialPageRoute(
-                        builder: (_) => UploadRecordScreen(
-                          apiService: _apiService,
-                        ),
+                        builder: (_) => const UploadRecordScreen(),
                       ),
                     );
                   },

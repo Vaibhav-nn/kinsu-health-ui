@@ -27,4 +27,9 @@ class ApiConstants {
   // Reminders
   static const String reminders = '$apiV1/reminders';
   static const String reminderTimeline = '$apiV1/reminders/timeline';
+
+  // Vault
+  static const String vaultRecords = '$apiV1/vault/records';
+  static const String vaultUploadUrl = '$apiV1/vault/records/upload-url';
+  static const String vaultConfirmUpload = '$apiV1/vault/records/confirm-upload';
 }

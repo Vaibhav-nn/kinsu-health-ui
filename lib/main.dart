@@ -12,12 +12,14 @@ import 'services/symptoms_service.dart';
 import 'services/illness_service.dart';
 import 'services/medications_service.dart';
 import 'services/reminders_service.dart';
+import 'services/vault_service.dart';
 
 import 'providers/vitals_provider.dart';
 import 'providers/symptoms_provider.dart';
 import 'providers/illness_provider.dart';
 import 'providers/medications_provider.dart';
 import 'providers/reminders_provider.dart';
+import 'providers/vault_provider.dart';
 import 'providers/theme_provider.dart';
 import 'firebase_options.dart';
 
@@ -58,6 +60,9 @@ class KinsuHealthApp extends StatelessWidget {
         ),
         ChangeNotifierProvider(
           create: (_) => RemindersProvider(RemindersService(dio)),
+        ),
+        ChangeNotifierProvider(
+          create: (_) => VaultProvider(VaultService(dio)),
         ),
         ChangeNotifierProvider(
           create: (_) => AppThemeProvider(),
