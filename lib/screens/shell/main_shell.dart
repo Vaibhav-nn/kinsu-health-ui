@@ -1,9 +1,11 @@
 import 'package:flutter/material.dart';
+import '../../core/constants.dart';
+import '../../services/api_service.dart';
 import '../ai/ai_screen.dart';
 import '../family/family_screen.dart';
 import '../home/home_screen.dart';
 import '../track/track_home.dart';
-import '../vault/vault_screen.dart';
+import '../vault_screen.dart';
 
 /// Main app shell with bottom navigation bar.
 /// Only the Track tab is functional; others show placeholders.
@@ -16,14 +18,21 @@ class MainShell extends StatefulWidget {
 
 class _MainShellState extends State<MainShell> {
   int _currentIndex = 0; // Start on Home tab
+  late final ApiService _apiService;
 
-  final List<Widget> _pages = [
-    const HomeScreen(),
-    const VaultScreen(),
-    const TrackHome(),
-    const FamilyScreen(),
-    const AiScreen(),
-  ];
+  @override
+  void initState() {
+    super.initState();
+    _apiService = ApiService(baseUrl: ApiConstants.baseUrl);
+  }
+
+  List<Widget> get _pages => [
+        const HomeScreen(),
+        VaultScreen(apiService: _apiService),
+        const TrackHome(),
+        const FamilyScreen(),
+        const AiScreen(),
+      ];
 
   @override
   Widget build(BuildContext context) {

@@ -1,3 +1,28 @@
+# Flutter
+.dart_tool/
+.packages
+build/
+*.iml
+pubspec.lock
+
+# IDE
+.idea/
+*.iml
+
+# iOS
+ios/Pods/
+ios/.symlinks/
+ios/Flutter/Flutter.framework
+ios/Flutter/Flutter.podspec
+ios/Flutter/Generated.xcconfig
+ios/Flutter/ephemeral/
+ios/ServiceDefinitions.json
+
+# macOS
+macos/Flutter/ephemeral/
+
+# Coverage
+coverage/
 # Miscellaneous
 *.class
 *.log
