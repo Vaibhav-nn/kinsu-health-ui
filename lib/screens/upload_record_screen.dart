@@ -76,7 +76,7 @@ class _UploadRecordScreenState extends State<UploadRecordScreen> {
     {
       'label': 'Other',
       'icon': Icons.insert_drive_file_outlined,
-      'color': KinsuTheme.mutedForeground,
+      'color': KinsuTheme.textSecondary,
     },
   ];
 
@@ -198,7 +198,7 @@ class _UploadRecordScreenState extends State<UploadRecordScreen> {
               style: TextStyle(
                 fontSize: 14,
                 fontWeight: FontWeight.w600,
-                color: KinsuTheme.foreground,
+                color: KinsuTheme.textPrimary,
               ),
             ),
             const SizedBox(height: 12),
@@ -221,12 +221,12 @@ class _UploadRecordScreenState extends State<UploadRecordScreen> {
                     decoration: BoxDecoration(
                       color: isSelected
                           ? (type['color'] as Color).withOpacity(0.1)
-                          : KinsuTheme.muted,
+                          : KinsuTheme.background,
                       borderRadius: BorderRadius.circular(12),
                       border: Border.all(
                         color: isSelected
                             ? (type['color'] as Color)
-                            : KinsuTheme.border,
+                            : KinsuTheme.divider,
                         width: isSelected ? 2 : 1,
                       ),
                     ),
@@ -238,7 +238,7 @@ class _UploadRecordScreenState extends State<UploadRecordScreen> {
                           size: 18,
                           color: isSelected
                               ? (type['color'] as Color)
-                              : KinsuTheme.mutedForeground,
+                              : KinsuTheme.textSecondary,
                         ),
                         const SizedBox(width: 8),
                         Text(
@@ -248,7 +248,7 @@ class _UploadRecordScreenState extends State<UploadRecordScreen> {
                             fontWeight: isSelected ? FontWeight.w600 : FontWeight.w500,
                             color: isSelected
                                 ? (type['color'] as Color)
-                                : KinsuTheme.foreground,
+                                : KinsuTheme.textPrimary,
                           ),
                         ),
                       ],
@@ -266,7 +266,7 @@ class _UploadRecordScreenState extends State<UploadRecordScreen> {
               style: TextStyle(
                 fontSize: 14,
                 fontWeight: FontWeight.w600,
-                color: KinsuTheme.foreground,
+                color: KinsuTheme.textPrimary,
               ),
             ),
             const SizedBox(height: 12),
@@ -276,9 +276,9 @@ class _UploadRecordScreenState extends State<UploadRecordScreen> {
               child: Container(
                 padding: const EdgeInsets.all(16),
                 decoration: BoxDecoration(
-                  color: KinsuTheme.muted,
+                  color: KinsuTheme.background,
                   borderRadius: BorderRadius.circular(12),
-                  border: Border.all(color: KinsuTheme.border),
+                  border: Border.all(color: KinsuTheme.divider),
                 ),
                 child: Row(
                   children: [
@@ -292,7 +292,7 @@ class _UploadRecordScreenState extends State<UploadRecordScreen> {
                       DateFormat('MMMM d, y').format(_recordDate),
                       style: const TextStyle(
                         fontSize: 14,
-                        color: KinsuTheme.foreground,
+                        color: KinsuTheme.textPrimary,
                       ),
                     ),
                   ],
@@ -308,7 +308,7 @@ class _UploadRecordScreenState extends State<UploadRecordScreen> {
               style: TextStyle(
                 fontSize: 14,
                 fontWeight: FontWeight.w600,
-                color: KinsuTheme.foreground,
+                color: KinsuTheme.textPrimary,
               ),
             ),
             const SizedBox(height: 12),
@@ -317,14 +317,14 @@ class _UploadRecordScreenState extends State<UploadRecordScreen> {
               decoration: InputDecoration(
                 hintText: 'Enter record title',
                 filled: true,
-                fillColor: KinsuTheme.muted,
+                fillColor: KinsuTheme.background,
                 border: OutlineInputBorder(
                   borderRadius: BorderRadius.circular(12),
-                  borderSide: BorderSide(color: KinsuTheme.border),
+                  borderSide: BorderSide(color: KinsuTheme.divider),
                 ),
                 enabledBorder: OutlineInputBorder(
                   borderRadius: BorderRadius.circular(12),
-                  borderSide: BorderSide(color: KinsuTheme.border),
+                  borderSide: BorderSide(color: KinsuTheme.divider),
                 ),
               ),
               validator: (value) {
@@ -343,7 +343,7 @@ class _UploadRecordScreenState extends State<UploadRecordScreen> {
               style: TextStyle(
                 fontSize: 14,
                 fontWeight: FontWeight.w600,
-                color: KinsuTheme.foreground,
+                color: KinsuTheme.textPrimary,
               ),
             ),
             const SizedBox(height: 12),
@@ -353,14 +353,14 @@ class _UploadRecordScreenState extends State<UploadRecordScreen> {
               decoration: InputDecoration(
                 hintText: 'Add any additional notes...',
                 filled: true,
-                fillColor: KinsuTheme.muted,
+                fillColor: KinsuTheme.background,
                 border: OutlineInputBorder(
                   borderRadius: BorderRadius.circular(12),
-                  borderSide: BorderSide(color: KinsuTheme.border),
+                  borderSide: BorderSide(color: KinsuTheme.divider),
                 ),
                 enabledBorder: OutlineInputBorder(
                   borderRadius: BorderRadius.circular(12),
-                  borderSide: BorderSide(color: KinsuTheme.border),
+                  borderSide: BorderSide(color: KinsuTheme.divider),
                 ),
               ),
             ),
@@ -373,7 +373,7 @@ class _UploadRecordScreenState extends State<UploadRecordScreen> {
               style: TextStyle(
                 fontSize: 14,
                 fontWeight: FontWeight.w600,
-                color: KinsuTheme.foreground,
+                color: KinsuTheme.textPrimary,
               ),
             ),
             const SizedBox(height: 12),
@@ -384,10 +384,10 @@ class _UploadRecordScreenState extends State<UploadRecordScreen> {
                 child: Container(
                   padding: const EdgeInsets.all(24),
                   decoration: BoxDecoration(
-                    color: KinsuTheme.muted,
+                    color: KinsuTheme.background,
                     borderRadius: BorderRadius.circular(12),
                     border: Border.all(
-                      color: KinsuTheme.border,
+                      color: KinsuTheme.divider,
                       width: 2,
                       strokeAlign: BorderSide.strokeAlignInside,
                     ),
@@ -405,7 +405,7 @@ class _UploadRecordScreenState extends State<UploadRecordScreen> {
                         style: TextStyle(
                           fontSize: 16,
                           fontWeight: FontWeight.w600,
-                          color: KinsuTheme.foreground,
+                          color: KinsuTheme.textPrimary,
                         ),
                       ),
                       SizedBox(height: 4),
@@ -413,7 +413,7 @@ class _UploadRecordScreenState extends State<UploadRecordScreen> {
                         'PDF, JPG, PNG (max 10MB)',
                         style: TextStyle(
                           fontSize: 13,
-                          color: KinsuTheme.mutedForeground,
+                          color: KinsuTheme.textSecondary,
                         ),
                       ),
                     ],
@@ -424,9 +424,9 @@ class _UploadRecordScreenState extends State<UploadRecordScreen> {
               Container(
                 padding: const EdgeInsets.all(16),
                 decoration: BoxDecoration(
-                  color: KinsuTheme.muted,
+                  color: KinsuTheme.background,
                   borderRadius: BorderRadius.circular(12),
-                  border: Border.all(color: KinsuTheme.border),
+                  border: Border.all(color: KinsuTheme.divider),
                 ),
                 child: Row(
                   children: [
@@ -452,7 +452,7 @@ class _UploadRecordScreenState extends State<UploadRecordScreen> {
                             style: const TextStyle(
                               fontSize: 14,
                               fontWeight: FontWeight.w500,
-                              color: KinsuTheme.foreground,
+                              color: KinsuTheme.textPrimary,
                             ),
                             maxLines: 1,
                             overflow: TextOverflow.ellipsis,
@@ -462,7 +462,7 @@ class _UploadRecordScreenState extends State<UploadRecordScreen> {
                             _formatFileSize(_selectedFile!.size),
                             style: const TextStyle(
                               fontSize: 12,
-                              color: KinsuTheme.mutedForeground,
+                              color: KinsuTheme.textSecondary,
                             ),
                           ),
                         ],
@@ -475,7 +475,7 @@ class _UploadRecordScreenState extends State<UploadRecordScreen> {
                           _selectedFile = null;
                         });
                       },
-                      color: KinsuTheme.mutedForeground,
+                      color: KinsuTheme.textSecondary,
                     ),
                   ],
                 ),

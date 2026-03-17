@@ -82,7 +82,7 @@ class _VaultScreenState extends State<VaultScreen> {
             width: 40,
             height: 4,
             decoration: BoxDecoration(
-              color: KinsuTheme.border,
+              color: KinsuTheme.divider,
               borderRadius: BorderRadius.circular(2),
             ),
           ),
@@ -92,7 +92,7 @@ class _VaultScreenState extends State<VaultScreen> {
             padding: const EdgeInsets.fromLTRB(20, 16, 20, 16),
             decoration: BoxDecoration(
               border: Border(
-                bottom: BorderSide(color: KinsuTheme.border, width: 1),
+                bottom: BorderSide(color: KinsuTheme.divider, width: 1),
               ),
             ),
             child: Row(
@@ -116,7 +116,7 @@ class _VaultScreenState extends State<VaultScreen> {
                         style: const TextStyle(
                           fontSize: 16,
                           fontWeight: FontWeight.w600,
-                          color: KinsuTheme.foreground,
+                          color: KinsuTheme.textPrimary,
                         ),
                       ),
                       const SizedBox(height: 2),
@@ -124,7 +124,7 @@ class _VaultScreenState extends State<VaultScreen> {
                         record.recordType,
                         style: const TextStyle(
                           fontSize: 13,
-                          color: KinsuTheme.mutedForeground,
+                          color: KinsuTheme.textSecondary,
                         ),
                       ),
                     ],
@@ -133,7 +133,7 @@ class _VaultScreenState extends State<VaultScreen> {
                 IconButton(
                   icon: const Icon(Icons.close, size: 20),
                   onPressed: () => Navigator.pop(context),
-                  color: KinsuTheme.mutedForeground,
+                  color: KinsuTheme.textSecondary,
                 ),
               ],
             ),
@@ -152,7 +152,7 @@ class _VaultScreenState extends State<VaultScreen> {
                       style: TextStyle(
                         fontSize: 13,
                         fontWeight: FontWeight.w600,
-                        color: KinsuTheme.foreground,
+                        color: KinsuTheme.textPrimary,
                       ),
                     ),
                     const SizedBox(height: 8),
@@ -160,7 +160,7 @@ class _VaultScreenState extends State<VaultScreen> {
                       record.notes!,
                       style: const TextStyle(
                         fontSize: 14,
-                        color: KinsuTheme.mutedForeground,
+                        color: KinsuTheme.textSecondary,
                       ),
                     ),
                     const SizedBox(height: 20),
@@ -173,7 +173,7 @@ class _VaultScreenState extends State<VaultScreen> {
                       style: TextStyle(
                         fontSize: 13,
                         fontWeight: FontWeight.w600,
-                        color: KinsuTheme.foreground,
+                        color: KinsuTheme.textPrimary,
                       ),
                     ),
                     const SizedBox(height: 12),
@@ -189,7 +189,7 @@ class _VaultScreenState extends State<VaultScreen> {
             padding: const EdgeInsets.all(20),
             decoration: BoxDecoration(
               border: Border(
-                top: BorderSide(color: KinsuTheme.border, width: 1),
+                top: BorderSide(color: KinsuTheme.divider, width: 1),
               ),
             ),
             child: Row(
@@ -240,9 +240,9 @@ class _VaultScreenState extends State<VaultScreen> {
       return Container(
         height: 400,
         decoration: BoxDecoration(
-          color: KinsuTheme.muted,
+          color: KinsuTheme.background,
           borderRadius: BorderRadius.circular(12),
-          border: Border.all(color: KinsuTheme.border),
+          border: Border.all(color: KinsuTheme.divider),
         ),
         child: ClipRRect(
           borderRadius: BorderRadius.circular(12),
@@ -257,9 +257,9 @@ class _VaultScreenState extends State<VaultScreen> {
       return Container(
         height: 300,
         decoration: BoxDecoration(
-          color: KinsuTheme.muted,
+          color: KinsuTheme.background,
           borderRadius: BorderRadius.circular(12),
-          border: Border.all(color: KinsuTheme.border),
+          border: Border.all(color: KinsuTheme.divider),
         ),
         child: ClipRRect(
           borderRadius: BorderRadius.circular(12),
@@ -271,11 +271,11 @@ class _VaultScreenState extends State<VaultScreen> {
                 child: Column(
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: [
-                    Icon(Icons.error_outline, size: 48, color: KinsuTheme.mutedForeground),
+                    Icon(Icons.error_outline, size: 48, color: KinsuTheme.textSecondary),
                     SizedBox(height: 8),
                     Text(
                       'Failed to load image',
-                      style: TextStyle(color: KinsuTheme.mutedForeground),
+                      style: TextStyle(color: KinsuTheme.textSecondary),
                     ),
                   ],
                 ),
@@ -353,7 +353,7 @@ class _VaultScreenState extends State<VaultScreen> {
               decoration: BoxDecoration(
                 color: Theme.of(context).scaffoldBackgroundColor,
                 border: Border(
-                  bottom: BorderSide(color: KinsuTheme.border, width: 1),
+                  bottom: BorderSide(color: KinsuTheme.divider, width: 1),
                 ),
               ),
               child: Column(
@@ -366,7 +366,7 @@ class _VaultScreenState extends State<VaultScreen> {
                         style: TextStyle(
                           fontSize: 24,
                           fontWeight: FontWeight.w700,
-                          color: KinsuTheme.foreground,
+                          color: KinsuTheme.textPrimary,
                         ),
                       ),
                       const Spacer(),
@@ -386,7 +386,7 @@ class _VaultScreenState extends State<VaultScreen> {
                       hintText: 'Search records...',
                       prefixIcon: const Icon(Icons.search, size: 20),
                       filled: true,
-                      fillColor: KinsuTheme.muted,
+                      fillColor: KinsuTheme.background,
                       border: OutlineInputBorder(
                         borderRadius: BorderRadius.circular(12),
                         borderSide: BorderSide.none,
@@ -420,13 +420,13 @@ class _VaultScreenState extends State<VaultScreen> {
                                 _selectedFilter = selected ? filter : 'All';
                               });
                             },
-                            backgroundColor: KinsuTheme.muted,
+                            backgroundColor: KinsuTheme.background,
                             selectedColor: KinsuTheme.primary.withOpacity(0.1),
                             checkmarkColor: KinsuTheme.primary,
                             labelStyle: TextStyle(
                               color: isSelected
                                   ? KinsuTheme.primary
-                                  : KinsuTheme.foreground,
+                                  : KinsuTheme.textPrimary,
                               fontSize: 13,
                             ),
                             padding: const EdgeInsets.symmetric(
@@ -462,14 +462,14 @@ class _VaultScreenState extends State<VaultScreen> {
                             Icon(
                               Icons.error_outline,
                               size: 64,
-                              color: KinsuTheme.mutedForeground,
+                              color: KinsuTheme.textSecondary,
                             ),
                             const SizedBox(height: 16),
                             Text(
                               provider.error!,
                               textAlign: TextAlign.center,
                               style: const TextStyle(
-                                color: KinsuTheme.mutedForeground,
+                                color: KinsuTheme.textSecondary,
                               ),
                             ),
                             const SizedBox(height: 16),
@@ -494,7 +494,7 @@ class _VaultScreenState extends State<VaultScreen> {
                             Icon(
                               Icons.folder_outlined,
                               size: 64,
-                              color: KinsuTheme.mutedForeground,
+                              color: KinsuTheme.textSecondary,
                             ),
                             const SizedBox(height: 16),
                             const Text(
@@ -502,7 +502,7 @@ class _VaultScreenState extends State<VaultScreen> {
                               style: TextStyle(
                                 fontSize: 18,
                                 fontWeight: FontWeight.w600,
-                                color: KinsuTheme.foreground,
+                                color: KinsuTheme.textPrimary,
                               ),
                             ),
                             const SizedBox(height: 8),
@@ -510,7 +510,7 @@ class _VaultScreenState extends State<VaultScreen> {
                               'Upload your first health record to get started',
                               textAlign: TextAlign.center,
                               style: TextStyle(
-                                color: KinsuTheme.mutedForeground,
+                                color: KinsuTheme.textSecondary,
                               ),
                             ),
                             const SizedBox(height: 24),
@@ -550,7 +550,7 @@ class _VaultScreenState extends State<VaultScreen> {
                         child: Text(
                           'No matching records found',
                           style: TextStyle(
-                            color: KinsuTheme.mutedForeground,
+                            color: KinsuTheme.textSecondary,
                           ),
                         ),
                       ),
@@ -588,7 +588,7 @@ class _VaultScreenState extends State<VaultScreen> {
       decoration: BoxDecoration(
         color: Theme.of(context).cardColor,
         borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: KinsuTheme.border),
+        border: Border.all(color: KinsuTheme.divider),
       ),
       child: Material(
         color: Colors.transparent,
@@ -618,7 +618,7 @@ class _VaultScreenState extends State<VaultScreen> {
                         style: const TextStyle(
                           fontSize: 14,
                           fontWeight: FontWeight.w500,
-                          color: KinsuTheme.foreground,
+                          color: KinsuTheme.textPrimary,
                         ),
                         maxLines: 2,
                         overflow: TextOverflow.ellipsis,
@@ -629,7 +629,7 @@ class _VaultScreenState extends State<VaultScreen> {
                           record.notes!,
                           style: const TextStyle(
                             fontSize: 12,
-                            color: KinsuTheme.mutedForeground,
+                            color: KinsuTheme.textSecondary,
                           ),
                           maxLines: 1,
                           overflow: TextOverflow.ellipsis,
@@ -642,7 +642,7 @@ class _VaultScreenState extends State<VaultScreen> {
                             _formatDate(record.recordDate),
                             style: const TextStyle(
                               fontSize: 11,
-                              color: KinsuTheme.mutedForeground,
+                              color: KinsuTheme.textSecondary,
                             ),
                           ),
                           const Padding(
@@ -651,7 +651,7 @@ class _VaultScreenState extends State<VaultScreen> {
                               '•',
                               style: TextStyle(
                                 fontSize: 11,
-                                color: KinsuTheme.mutedForeground,
+                                color: KinsuTheme.textSecondary,
                               ),
                             ),
                           ),
@@ -661,14 +661,14 @@ class _VaultScreenState extends State<VaultScreen> {
                               vertical: 2,
                             ),
                             decoration: BoxDecoration(
-                              color: KinsuTheme.muted,
+                              color: KinsuTheme.background,
                               borderRadius: BorderRadius.circular(4),
                             ),
                             child: Text(
                               record.recordType,
                               style: const TextStyle(
                                 fontSize: 10,
-                                color: KinsuTheme.mutedForeground,
+                                color: KinsuTheme.textSecondary,
                               ),
                             ),
                           ),
@@ -679,7 +679,7 @@ class _VaultScreenState extends State<VaultScreen> {
                                 '•',
                                 style: TextStyle(
                                   fontSize: 11,
-                                  color: KinsuTheme.mutedForeground,
+                                  color: KinsuTheme.textSecondary,
                                 ),
                               ),
                             ),
@@ -687,7 +687,7 @@ class _VaultScreenState extends State<VaultScreen> {
                               FileUtils.formatFileSize(record.fileSize!),
                               style: const TextStyle(
                                 fontSize: 11,
-                                color: KinsuTheme.mutedForeground,
+                                color: KinsuTheme.textSecondary,
                               ),
                             ),
                           ],
@@ -699,7 +699,7 @@ class _VaultScreenState extends State<VaultScreen> {
                 const Icon(
                   Icons.chevron_right,
                   size: 16,
-                  color: KinsuTheme.mutedForeground,
+                  color: KinsuTheme.textSecondary,
                 ),
               ],
             ),
