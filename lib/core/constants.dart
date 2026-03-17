@@ -3,7 +3,7 @@ class ApiConstants {
   ApiConstants._();
 
   /// Backend base URL — change for production.
-  static const String baseUrl = 'http://127.0.0.1:8000';
+  static const String baseUrl = 'http://127.0.0.1:8501';
 
   /// API version prefix.
   static const String apiV1 = '/api/v1';
