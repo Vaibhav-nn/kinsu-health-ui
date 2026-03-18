@@ -54,7 +54,7 @@ class VaultService {
       },
     );
 
-    return response.data['record_ids'][0] as String;
+    return response.data['record_ids'][0].toString();
   }
 
   /// Upload file directly (for mobile/desktop with multipart)
