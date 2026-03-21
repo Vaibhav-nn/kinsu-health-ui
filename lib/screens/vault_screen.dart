@@ -1,11 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/foundation.dart' show kIsWeb;
+import 'package:provider/provider.dart';
 import 'package:url_launcher/url_launcher.dart';
 import 'package:syncfusion_flutter_pdfviewer/pdfviewer.dart';
+import '../core/theme.dart';
 import '../models/health_record.dart';
-import '../services/api_service.dart';
-import '../widgets/record_card.dart';
-import '../theme/app_theme.dart';
+import '../providers/vault_provider.dart';
 import '../utils/file_utils.dart';
 import 'upload_record_screen.dart';
 
@@ -14,27 +14,22 @@ import 'vault_screen_web_helper_stub.dart'
     if (dart.library.html) 'vault_screen_web_helper.dart';
 
 class VaultScreen extends StatefulWidget {
-  final ApiService apiService;
-
-  const VaultScreen({
-    super.key,
-    required this.apiService,
-  });
+  const VaultScreen({super.key});
 
   @override
   State<VaultScreen> createState() => _VaultScreenState();
 }
 
 class _VaultScreenState extends State<VaultScreen> {
-  List<HealthRecord> _records = [];
-  bool _isLoading = false;
-  String? _errorMessage;
   final _searchController = TextEditingController();
+  String _selectedFilter = 'All';
 
   @override
   void initState() {
     super.initState();
-    _loadRecords();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      context.read<VaultProvider>().loadRecords();
+    });
   }
 
   @override
@@ -43,42 +38,16 @@ class _VaultScreenState extends State<VaultScreen> {
     super.dispose();
   }
 
-  Future<void> _loadRecords() async {
-    setState(() {
-      _isLoading = true;
-      _errorMessage = null;
-    });
-
-    try {
-      final records = await widget.apiService.fetchRecords();
-      if (mounted) {
-        setState(() {
-          _records = records;
-          _isLoading = false;
-        });
-      }
-    } catch (e) {
-      if (mounted) {
-        setState(() {
-          _errorMessage = 'Failed to load records: $e';
-          _isLoading = false;
-        });
-      }
-    }
-  }
-
   Future<void> _navigateToUpload() async {
     final result = await Navigator.of(context).push<bool>(
       MaterialPageRoute(
-        builder: (context) => UploadRecordScreen(
-          apiService: widget.apiService,
-        ),
+        builder: (context) => const UploadRecordScreen(),
       ),
     );
 
     // Refresh list if upload was successful
-    if (result == true) {
-      _loadRecords();
+    if (result == true && mounted) {
+      context.read<VaultProvider>().loadRecords();
     }
   }
 
@@ -93,104 +62,83 @@ class _VaultScreenState extends State<VaultScreen> {
   }
 
   Widget _buildRecordPreview(HealthRecord record) {
-    final color = AppTheme.getDocumentTypeColor(record.recordType);
-    final icon = AppTheme.getDocumentTypeIcon(record.recordType);
+    final color = _getDocumentTypeColor(record.recordType);
+    final icon = _getDocumentTypeIcon(record.recordType);
 
     return Container(
       constraints: BoxConstraints(
-        maxHeight: MediaQuery.of(context).size.height * 0.9,
+        maxHeight: MediaQuery.of(context).size.height * 0.85,
       ),
-      decoration: const BoxDecoration(
-        color: AppTheme.background,
-        borderRadius: BorderRadius.vertical(top: Radius.circular(28)),
+      decoration: BoxDecoration(
+        color: Theme.of(context).scaffoldBackgroundColor,
+        borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
       ),
       child: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
+          // Handle bar
+          Container(
+            margin: const EdgeInsets.only(top: 12),
+            width: 40,
+            height: 4,
+            decoration: BoxDecoration(
+              color: KinsuTheme.divider,
+              borderRadius: BorderRadius.circular(2),
+            ),
+          ),
+
           // Header
           Container(
-            padding: const EdgeInsets.fromLTRB(20, 20, 20, 16),
+            padding: const EdgeInsets.fromLTRB(20, 16, 20, 16),
             decoration: BoxDecoration(
-              color: AppTheme.card,
-              borderRadius: const BorderRadius.vertical(top: Radius.circular(28)),
               border: Border(
-                bottom: BorderSide(color: AppTheme.border, width: 1),
+                bottom: BorderSide(color: KinsuTheme.divider, width: 1),
               ),
             ),
-            child: Column(
+            child: Row(
               children: [
-                // Drag handle
                 Container(
-                  width: 32,
-                  height: 4,
+                  width: 48,
+                  height: 48,
                   decoration: BoxDecoration(
-                    color: AppTheme.border,
-                    borderRadius: BorderRadius.circular(2),
+                    color: color.withOpacity(0.1),
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  child: Icon(icon, color: color, size: 24),
+                ),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        record.title,
+                        style: const TextStyle(
+                          fontSize: 16,
+                          fontWeight: FontWeight.w600,
+                          color: KinsuTheme.textPrimary,
+                        ),
+                      ),
+                      const SizedBox(height: 2),
+                      Text(
+                        record.recordType,
+                        style: const TextStyle(
+                          fontSize: 13,
+                          color: KinsuTheme.textSecondary,
+                        ),
+                      ),
+                    ],
                   ),
                 ),
-                const SizedBox(height: 16),
-                Row(
-                  children: [
-                    Container(
-                      width: 48,
-                      height: 48,
-                      decoration: BoxDecoration(
-                        color: Color.alphaBlend(
-                          color.withOpacity(0.1),
-                          AppTheme.card,
-                        ),
-                        borderRadius: BorderRadius.circular(12),
-                      ),
-                      child: Icon(icon, color: color, size: 24),
-                    ),
-                    const SizedBox(width: 12),
-                    Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Container(
-                            padding: const EdgeInsets.symmetric(
-                              horizontal: 8,
-                              vertical: 2,
-                            ),
-                            decoration: BoxDecoration(
-                              color: AppTheme.muted,
-                              borderRadius: BorderRadius.circular(8),
-                            ),
-                            child: Text(
-                              record.recordType,
-                              style: const TextStyle(
-                                fontSize: 11,
-                                fontWeight: FontWeight.w500,
-                                color: AppTheme.mutedForeground,
-                              ),
-                            ),
-                          ),
-                          const SizedBox(height: 4),
-                          Text(
-                            record.title,
-                            style: const TextStyle(
-                              fontSize: 16,
-                              fontWeight: FontWeight.w600,
-                              color: AppTheme.foreground,
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                    IconButton(
-                      icon: const Icon(Icons.close, size: 20),
-                      onPressed: () => Navigator.pop(context),
-                      style: IconButton.styleFrom(
-                        backgroundColor: AppTheme.muted,
-                        foregroundColor: AppTheme.foreground,
-                      ),
-                    ),
-                  ],
+                IconButton(
+                  icon: const Icon(Icons.close, size: 20),
+                  onPressed: () => Navigator.pop(context),
+                  color: KinsuTheme.textSecondary,
                 ),
               ],
             ),
           ),
+
           // Content
           Flexible(
             child: SingleChildScrollView(
@@ -198,564 +146,622 @@ class _VaultScreenState extends State<VaultScreen> {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  // Document Preview
-                  if (record.fileUrl != null) ...[
-                    Container(
-                      width: double.infinity,
-                      constraints: const BoxConstraints(
-                        minHeight: 400,
-                        maxHeight: 500,
-                      ),
-                      decoration: BoxDecoration(
-                        color: AppTheme.card,
-                        border: Border.all(color: AppTheme.border),
-                        borderRadius: BorderRadius.circular(16),
-                      ),
-                      child: ClipRRect(
-                        borderRadius: BorderRadius.circular(16),
-                        child: _buildDocumentViewer(record),
+                  if (record.notes != null && record.notes!.isNotEmpty) ...[
+                    const Text(
+                      'Notes',
+                      style: TextStyle(
+                        fontSize: 13,
+                        fontWeight: FontWeight.w600,
+                        color: KinsuTheme.textPrimary,
                       ),
                     ),
-                    const SizedBox(height: 16),
+                    const SizedBox(height: 8),
+                    Text(
+                      record.notes!,
+                      style: const TextStyle(
+                        fontSize: 14,
+                        color: KinsuTheme.textSecondary,
+                      ),
+                    ),
+                    const SizedBox(height: 20),
                   ],
-                  // Details card
-                  Container(
-                    padding: const EdgeInsets.all(16),
-                    decoration: BoxDecoration(
-                      color: AppTheme.card,
-                      border: Border.all(color: AppTheme.border),
-                      borderRadius: BorderRadius.circular(16),
+
+                  // File preview
+                  if (record.fileUrl != null) ...[
+                    const Text(
+                      'Document',
+                      style: TextStyle(
+                        fontSize: 13,
+                        fontWeight: FontWeight.w600,
+                        color: KinsuTheme.textPrimary,
+                      ),
                     ),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Row(
-                          children: [
-                            const Text(
-                              'Details',
-                              style: TextStyle(
-                                fontSize: 14,
-                                fontWeight: FontWeight.w600,
-                                color: AppTheme.foreground,
-                              ),
-                            ),
-                            const Spacer(),
-                            if (record.fileSize != null)
-                              Text(
-                                FileUtils.formatFileSize(record.fileSize!),
-                                style: const TextStyle(
-                                  fontSize: 12,
-                                  color: AppTheme.mutedForeground,
-                                ),
-                              ),
-                          ],
-                        ),
-                        const SizedBox(height: 12),
-                        _buildDetailRow(
-                          Icons.calendar_today,
-                          'Date',
-                          record.recordDate.toString().split(' ')[0],
-                        ),
-                        if (record.fileUploadedAt != null) ...[
-                          const SizedBox(height: 8),
-                          _buildDetailRow(
-                            Icons.upload,
-                            'Uploaded',
-                            record.fileUploadedAt!.toString().split(' ')[0],
-                          ),
-                        ],
-                        if (record.fileName != null) ...[
-                const SizedBox(height: 8),
-                          _buildDetailRow(
-                            Icons.insert_drive_file,
-                            'File',
-                            record.fileName!,
-                          ),
-                        ],
-                if (record.notes != null && record.notes!.isNotEmpty) ...[
-                          const SizedBox(height: 12),
-                          const Text(
-                            'Notes',
-                            style: TextStyle(
-                              fontSize: 13,
-                              fontWeight: FontWeight.w600,
-                              color: AppTheme.foreground,
-                            ),
-                          ),
-                          const SizedBox(height: 6),
-                          Text(
-                            record.notes!,
-                            style: const TextStyle(
-                              fontSize: 13,
-                              color: AppTheme.mutedForeground,
-                              height: 1.5,
-                            ),
-                          ),
-                ],
-              ],
-            ),
-                  ),
-                  const SizedBox(height: 16),
-                  // Action buttons
-                  Row(
-                    children: [
-                      Expanded(
-                        child: OutlinedButton.icon(
-                          onPressed: () {
-                            Navigator.pop(context);
-                          },
-                          icon: const Icon(Icons.close, size: 16),
-                          label: const Text('Close'),
-                          style: OutlinedButton.styleFrom(
-                            foregroundColor: AppTheme.foreground,
-                            side: const BorderSide(color: AppTheme.border),
-                            padding: const EdgeInsets.symmetric(vertical: 14),
-                            shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(12),
-                            ),
-                          ),
-                        ),
-                      ),
-                      const SizedBox(width: 12),
-                      Expanded(
-                        child: ElevatedButton.icon(
-                          onPressed: () => _downloadFile(record),
-                          icon: const Icon(Icons.download, size: 16),
-                          label: const Text('Download'),
-                          style: ElevatedButton.styleFrom(
-                            backgroundColor: AppTheme.primary,
-                            foregroundColor: AppTheme.primaryForeground,
-                            padding: const EdgeInsets.symmetric(vertical: 14),
-                            shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(12),
-                            ),
-                          ),
-                        ),
-                      ),
-                    ],
-                  ),
+                    const SizedBox(height: 12),
+                    _buildFilePreview(record),
+                  ],
                 ],
               ),
             ),
           ),
+
+          // Actions
+          Container(
+            padding: const EdgeInsets.all(20),
+            decoration: BoxDecoration(
+              border: Border(
+                top: BorderSide(color: KinsuTheme.divider, width: 1),
+              ),
+            ),
+            child: Row(
+              children: [
+                Expanded(
+                  child: OutlinedButton.icon(
+                    onPressed: () {
+                      Navigator.pop(context);
+                      _downloadFile(record);
+                    },
+                    icon: const Icon(Icons.download_outlined, size: 18),
+                    label: const Text('Download'),
+                    style: OutlinedButton.styleFrom(
+                      padding: const EdgeInsets.symmetric(vertical: 14),
+                    ),
+                  ),
+                ),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: ElevatedButton.icon(
+                    onPressed: () {
+                      Navigator.pop(context);
+                      _viewFullScreen(record);
+                    },
+                    icon: const Icon(Icons.open_in_full, size: 18),
+                    label: const Text('View Full'),
+                    style: ElevatedButton.styleFrom(
+                      padding: const EdgeInsets.symmetric(vertical: 14),
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
         ],
       ),
     );
   }
 
-  Widget _buildDocumentViewer(HealthRecord record) {
+  Widget _buildFilePreview(HealthRecord record) {
     if (record.fileUrl == null) {
-      return _buildPlaceholder('No file attached', Icons.insert_drive_file);
+      return const SizedBox.shrink();
     }
 
-    // For images, show the actual image
-    if (record.isImage) {
-      return Image.network(
-        record.fileUrl!,
-        fit: BoxFit.contain,
-        loadingBuilder: (context, child, loadingProgress) {
-          if (loadingProgress == null) return child;
-          return Center(
-            child: CircularProgressIndicator(
-              value: loadingProgress.expectedTotalBytes != null
-                  ? loadingProgress.cumulativeBytesLoaded /
-                      loadingProgress.expectedTotalBytes!
-                  : null,
-              color: AppTheme.primary,
-            ),
-          );
-        },
-        errorBuilder: (context, error, stackTrace) {
-          return _buildPlaceholder('Failed to load image', Icons.error_outline);
-        },
-      );
-    }
+    final isPdf = record.fileName?.toLowerCase().endsWith('.pdf') ?? false;
 
-    // For PDFs
-    if (record.isPdf) {
-      if (kIsWeb) {
-        // Web: Use iframe which is more reliable
-        final viewId = 'pdf-${record.id}';
-        WebPdfViewerHelper.registerPdfViewer(viewId, record.fileUrl!);
-        
-        return HtmlElementView(
-          viewType: viewId,
-        );
-      } else {
-        // iOS/Android: Use Syncfusion PDF Viewer
-        return Container(
-          color: AppTheme.background,
+    if (isPdf) {
+      return Container(
+        height: 400,
+        decoration: BoxDecoration(
+          color: KinsuTheme.background,
+          borderRadius: BorderRadius.circular(12),
+          border: Border.all(color: KinsuTheme.divider),
+        ),
+        child: ClipRRect(
+          borderRadius: BorderRadius.circular(12),
           child: SfPdfViewer.network(
             record.fileUrl!,
-            canShowScrollHead: true,
-            canShowScrollStatus: true,
-            enableDoubleTapZooming: true,
-            enableTextSelection: true,
-            onDocumentLoadFailed: (details) {
-              print('PDF load failed: ${details.error}');
+            enableDoubleTapZooming: false,
+            enableTextSelection: false,
+          ),
+        ),
+      );
+    } else {
+      return Container(
+        height: 300,
+        decoration: BoxDecoration(
+          color: KinsuTheme.background,
+          borderRadius: BorderRadius.circular(12),
+          border: Border.all(color: KinsuTheme.divider),
+        ),
+        child: ClipRRect(
+          borderRadius: BorderRadius.circular(12),
+          child: Image.network(
+            record.fileUrl!,
+            fit: BoxFit.contain,
+            errorBuilder: (context, error, stackTrace) {
+              return const Center(
+                child: Column(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    Icon(Icons.error_outline, size: 48, color: KinsuTheme.textSecondary),
+                    SizedBox(height: 8),
+                    Text(
+                      'Failed to load image',
+                      style: TextStyle(color: KinsuTheme.textSecondary),
+                    ),
+                  ],
+                ),
+              );
             },
           ),
-        );
-      }
+        ),
+      );
     }
-
-    // For other file types
-    return _buildPlaceholder(
-      'Preview not available for this file type',
-      Icons.insert_drive_file,
-    );
-  }
-
-  Widget _buildPlaceholder(String message, IconData icon) {
-    return Container(
-      color: AppTheme.background,
-      child: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          Icon(
-            icon,
-            size: 64,
-            color: AppTheme.mutedForeground.withOpacity(0.5),
-          ),
-          const SizedBox(height: 16),
-          Text(
-            message,
-            style: const TextStyle(
-              fontSize: 14,
-              color: AppTheme.mutedForeground,
-            ),
-            textAlign: TextAlign.center,
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildDetailRow(IconData icon, String label, String value) {
-    return Row(
-      children: [
-        Icon(icon, size: 14, color: AppTheme.mutedForeground),
-        const SizedBox(width: 8),
-        Text(
-          '$label:',
-          style: const TextStyle(
-            fontSize: 13,
-            color: AppTheme.mutedForeground,
-          ),
-        ),
-        const SizedBox(width: 8),
-        Expanded(
-          child: Text(
-            value,
-            style: const TextStyle(
-              fontSize: 13,
-              fontWeight: FontWeight.w500,
-              color: AppTheme.foreground,
-            ),
-          ),
-        ),
-      ],
-    );
   }
 
   Future<void> _downloadFile(HealthRecord record) async {
     if (record.fileUrl == null) return;
 
-    final url = Uri.parse(record.fileUrl!);
-    try {
-      // Use externalApplication mode to force download/open in external app
-      await launchUrl(url, mode: LaunchMode.externalApplication);
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('Downloading ${record.fileName ?? "file"}...'),
-            backgroundColor: AppTheme.primary,
-            duration: const Duration(seconds: 2),
-          ),
-        );
+    if (kIsWeb) {
+      downloadFileOnWeb(record.fileUrl!, record.fileName ?? 'download');
+    } else {
+      final uri = Uri.parse(record.fileUrl!);
+      if (await canLaunchUrl(uri)) {
+        await launchUrl(uri, mode: LaunchMode.externalApplication);
       }
-    } catch (e) {
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('Could not download file: ${record.fileName ?? "unknown"}'),
-            backgroundColor: AppTheme.destructive,
-            action: SnackBarAction(
-              label: 'OK',
-              textColor: AppTheme.destructiveForeground,
-              onPressed: () {},
-            ),
-          ),
-        );
-      }
+    }
+  }
+
+  Future<void> _viewFullScreen(HealthRecord record) async {
+    if (record.fileUrl == null) return;
+
+    Navigator.of(context).push(
+      MaterialPageRoute(
+        builder: (context) => _FullScreenViewer(record: record),
+      ),
+    );
+  }
+
+  Color _getDocumentTypeColor(String type) {
+    switch (type.toLowerCase()) {
+      case 'lab report':
+        return const Color(0xFF3B82F6);
+      case 'prescription':
+        return const Color(0xFF10B981);
+      case 'imaging':
+        return const Color(0xFF8B5CF6);
+      case 'discharge summary':
+        return const Color(0xFFF59E0B);
+      default:
+        return KinsuTheme.primary;
+    }
+  }
+
+  IconData _getDocumentTypeIcon(String type) {
+    switch (type.toLowerCase()) {
+      case 'lab report':
+        return Icons.science_outlined;
+      case 'prescription':
+        return Icons.medication_outlined;
+      case 'imaging':
+        return Icons.medical_services_outlined;
+      case 'discharge summary':
+        return Icons.description_outlined;
+      default:
+        return Icons.file_present_outlined;
     }
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: AppTheme.background,
+      backgroundColor: KinsuTheme.background,
       body: SafeArea(
-        child: CustomScrollView(
-          slivers: [
-            // Header with modern design
-            SliverToBoxAdapter(
-              child: Container(
-                decoration: BoxDecoration(
-                  color: AppTheme.card,
-                  border: Border(
-                    bottom: BorderSide(
-                      color: AppTheme.border,
-                      width: 1,
-                    ),
-                  ),
-                ),
-                padding: const EdgeInsets.fromLTRB(20, 48, 20, 16),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    // Title and action buttons
-                    Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                      children: [
-                        Row(
-                      children: [
-                        const Text(
-                          'Health Vault',
-                          style: TextStyle(
-                            fontSize: 22,
-                            fontWeight: FontWeight.w700,
-                            color: AppTheme.foreground,
-                          ),
-                        ),
-                            if (!_isLoading && _errorMessage == null) ...[
-                              const SizedBox(width: 8),
-                        Container(
-                                padding: const EdgeInsets.symmetric(
-                                  horizontal: 8,
-                                  vertical: 2,
-                                ),
-                                decoration: BoxDecoration(
-                                  color: AppTheme.muted,
-                                  borderRadius: BorderRadius.circular(12),
-                                ),
-                                child: Text(
-                                  '${_records.length}',
-                                  style: const TextStyle(
-                                    fontSize: 14,
-                                    fontWeight: FontWeight.w600,
-                                    color: AppTheme.mutedForeground,
-                                  ),
-                                ),
-                              ),
-                            ],
-                          ],
-                        ),
-                        SizedBox(
-                          width: 36,
-                          height: 36,
-                          child: IconButton(
-                            onPressed: _navigateToUpload,
-                            icon: const Icon(Icons.add, size: 16),
-                            padding: EdgeInsets.zero,
-                            style: IconButton.styleFrom(
-                              backgroundColor: AppTheme.primary,
-                              foregroundColor: AppTheme.primaryForeground,
-                              shape: RoundedRectangleBorder(
-                                borderRadius: BorderRadius.circular(100),
-                              ),
-                            ),
-                          ),
-                        ),
-                      ],
-                    ),
-                    const SizedBox(height: 16),
-                    
-                    // Search bar
-                    Container(
-                      height: 40,
-                      decoration: BoxDecoration(
-                        color: AppTheme.muted,
-                        borderRadius: BorderRadius.circular(12),
-                      ),
-                      child: TextField(
-                        controller: _searchController,
-                        enabled: false, // Non-functional in this iteration
-                        decoration: InputDecoration(
-                          hintText: 'Search records...',
-                          hintStyle: const TextStyle(
-                            fontSize: 14,
-                            color: AppTheme.mutedForeground,
-                          ),
-                          prefixIcon: const Icon(
-                            Icons.search,
-                            size: 15,
-                            color: AppTheme.mutedForeground,
-                          ),
-                          border: InputBorder.none,
-                          contentPadding: const EdgeInsets.symmetric(
-                            horizontal: 12,
-                            vertical: 10,
-                          ),
-                        ),
-                        style: const TextStyle(
-                          fontSize: 14,
-                          color: AppTheme.foreground,
-                        ),
-                      ),
-                    ),
-                  ],
+        child: Column(
+          children: [
+            // Header
+            Container(
+              padding: const EdgeInsets.fromLTRB(20, 16, 20, 16),
+              decoration: BoxDecoration(
+                color: Theme.of(context).scaffoldBackgroundColor,
+                border: Border(
+                  bottom: BorderSide(color: KinsuTheme.divider, width: 1),
                 ),
               ),
-            ),
-            
-            
-            // Content
-            if (_isLoading)
-              const SliverFillRemaining(
-                child: Center(
-                  child: CircularProgressIndicator(
-                    color: AppTheme.primary,
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    children: [
+                      const Text(
+                        'Health Vault',
+                        style: TextStyle(
+                          fontSize: 24,
+                          fontWeight: FontWeight.w700,
+                          color: KinsuTheme.textPrimary,
+                        ),
+                      ),
+                      const Spacer(),
+                      IconButton(
+                        icon: const Icon(Icons.add_circle_outline),
+                        onPressed: _navigateToUpload,
+                        color: KinsuTheme.primary,
+                      ),
+                    ],
                   ),
-                ),
-              )
-            else if (_errorMessage != null)
-              SliverFillRemaining(
-                child: Center(
-                  child: Padding(
-                    padding: const EdgeInsets.all(20),
-                    child: Column(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        Container(
-                          width: 64,
-                          height: 64,
-                          decoration: BoxDecoration(
-                            color: const Color.fromRGBO(220, 38, 38, 0.1),
-                            borderRadius: BorderRadius.circular(32),
-                          ),
-                          child: const Icon(
-                            Icons.error_outline,
-                            size: 32,
-                            color: AppTheme.destructive,
-                          ),
-                        ),
-                        const SizedBox(height: 16),
-                        Text(
-                          _errorMessage!,
-                          style: const TextStyle(
-                            fontSize: 14,
-                            color: AppTheme.mutedForeground,
-                          ),
-                          textAlign: TextAlign.center,
-                        ),
-                        const SizedBox(height: 16),
-                        ElevatedButton.icon(
-                          onPressed: _loadRecords,
-                          icon: const Icon(Icons.refresh, size: 16),
-                          label: const Text('Retry'),
-                          style: ElevatedButton.styleFrom(
-                            backgroundColor: AppTheme.primary,
-                            foregroundColor: AppTheme.primaryForeground,
-                            padding: const EdgeInsets.symmetric(
-                              horizontal: 24,
-                              vertical: 12,
-                            ),
-                            shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(12),
-                            ),
-                          ),
-                        ),
-                      ],
+                  const SizedBox(height: 12),
+                  // Search bar
+                  TextField(
+                    controller: _searchController,
+                    onChanged: (value) => setState(() {}),
+                    decoration: InputDecoration(
+                      hintText: 'Search records...',
+                      prefixIcon: const Icon(Icons.search, size: 20),
+                      filled: true,
+                      fillColor: KinsuTheme.background,
+                      border: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(12),
+                        borderSide: BorderSide.none,
+                      ),
+                      contentPadding: const EdgeInsets.symmetric(
+                        horizontal: 16,
+                        vertical: 12,
+                      ),
                     ),
                   ),
-                ),
-              )
-            else if (_records.isEmpty)
-              SliverFillRemaining(
-                child: Center(
-                  child: Padding(
-                    padding: const EdgeInsets.all(40),
-                    child: Column(
-                      mainAxisAlignment: MainAxisAlignment.center,
+                  const SizedBox(height: 12),
+                  // Filter chips
+                  SingleChildScrollView(
+                    scrollDirection: Axis.horizontal,
+                    child: Row(
                       children: [
-                        Container(
-                          width: 80,
-                          height: 80,
-                          decoration: BoxDecoration(
-                            color: AppTheme.muted,
-                            borderRadius: BorderRadius.circular(40),
-                          ),
-                          child: const Icon(
-                            Icons.folder_open_outlined,
-                            size: 40,
-                            color: AppTheme.mutedForeground,
-                          ),
-                        ),
-                        const SizedBox(height: 24),
-                        const Text(
-                          'No Records Yet',
-                          style: TextStyle(
-                            fontSize: 18,
-                            fontWeight: FontWeight.w600,
-                            color: AppTheme.foreground,
-                          ),
-                        ),
-                        const SizedBox(height: 8),
-                        const Text(
-                          'Upload your first health record to get started',
-                          style: TextStyle(
-                            fontSize: 14,
-                            color: AppTheme.mutedForeground,
-                          ),
-                          textAlign: TextAlign.center,
-                        ),
-                        const SizedBox(height: 24),
-                        ElevatedButton.icon(
-                          onPressed: _navigateToUpload,
-                          icon: const Icon(Icons.add, size: 16),
-                          label: const Text('Upload Record'),
-                          style: ElevatedButton.styleFrom(
-                            backgroundColor: AppTheme.primary,
-                            foregroundColor: AppTheme.primaryForeground,
-                            padding: const EdgeInsets.symmetric(
-                              horizontal: 24,
-                              vertical: 12,
-                            ),
-                            shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(12),
-                            ),
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                ),
-              )
-            else
-              SliverPadding(
-                padding: const EdgeInsets.fromLTRB(20, 0, 20, 20),
-                sliver: SliverList(
-                  delegate: SliverChildBuilderDelegate(
-                    (context, index) {
-                      if (index < _records.length) {
+                        'All',
+                        'Lab Report',
+                        'Prescription',
+                        'Imaging',
+                        'Discharge Summary'
+                      ].map((filter) {
+                        final isSelected = _selectedFilter == filter;
                         return Padding(
-                          padding: const EdgeInsets.only(bottom: 8),
-                          child: RecordCard(
-                            record: _records[index],
-                            onTap: () => _openRecord(_records[index]),
+                          padding: const EdgeInsets.only(right: 8),
+                          child: FilterChip(
+                            label: Text(filter),
+                            selected: isSelected,
+                            onSelected: (selected) {
+                              setState(() {
+                                _selectedFilter = selected ? filter : 'All';
+                              });
+                            },
+                            backgroundColor: KinsuTheme.background,
+                            selectedColor: KinsuTheme.primary.withOpacity(0.1),
+                            checkmarkColor: KinsuTheme.primary,
+                            labelStyle: TextStyle(
+                              color: isSelected
+                                  ? KinsuTheme.primary
+                                  : KinsuTheme.textPrimary,
+                              fontSize: 13,
+                            ),
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 12,
+                              vertical: 8,
+                            ),
                           ),
                         );
-                      }
-                      return null;
-                    },
-                    childCount: _records.length,
+                      }).toList(),
+                    ),
                   ),
-                ),
+                ],
               ),
+            ),
+
+            // Records list
+            Expanded(
+              child: Consumer<VaultProvider>(
+                builder: (context, provider, child) {
+                  if (provider.isLoading) {
+                    return const Center(
+                      child: CircularProgressIndicator(),
+                    );
+                  }
+
+                  if (provider.error != null) {
+                    return Center(
+                      child: Padding(
+                        padding: const EdgeInsets.all(24),
+                        child: Column(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            Icon(
+                              Icons.error_outline,
+                              size: 64,
+                              color: KinsuTheme.textSecondary,
+                            ),
+                            const SizedBox(height: 16),
+                            Text(
+                              provider.error!,
+                              textAlign: TextAlign.center,
+                              style: const TextStyle(
+                                color: KinsuTheme.textSecondary,
+                              ),
+                            ),
+                            const SizedBox(height: 16),
+                            ElevatedButton.icon(
+                              onPressed: () => provider.loadRecords(),
+                              icon: const Icon(Icons.refresh),
+                              label: const Text('Retry'),
+                            ),
+                          ],
+                        ),
+                      ),
+                    );
+                  }
+
+                  if (provider.records.isEmpty) {
+                    return Center(
+                      child: Padding(
+                        padding: const EdgeInsets.all(24),
+                        child: Column(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            Icon(
+                              Icons.folder_outlined,
+                              size: 64,
+                              color: KinsuTheme.textSecondary,
+                            ),
+                            const SizedBox(height: 16),
+                            const Text(
+                              'No records yet',
+                              style: TextStyle(
+                                fontSize: 18,
+                                fontWeight: FontWeight.w600,
+                                color: KinsuTheme.textPrimary,
+                              ),
+                            ),
+                            const SizedBox(height: 8),
+                            const Text(
+                              'Upload your first health record to get started',
+                              textAlign: TextAlign.center,
+                              style: TextStyle(
+                                color: KinsuTheme.textSecondary,
+                              ),
+                            ),
+                            const SizedBox(height: 24),
+                            ElevatedButton.icon(
+                              onPressed: _navigateToUpload,
+                              icon: const Icon(Icons.add),
+                              label: const Text('Upload Record'),
+                            ),
+                          ],
+                        ),
+                      ),
+                    );
+                  }
+
+                  // Filter records
+                  var filteredRecords = provider.records;
+                  final searchQuery = _searchController.text.toLowerCase();
+
+                  if (searchQuery.isNotEmpty) {
+                    filteredRecords = filteredRecords.where((record) {
+                      return record.title.toLowerCase().contains(searchQuery) ||
+                          record.recordType.toLowerCase().contains(searchQuery) ||
+                          (record.notes?.toLowerCase().contains(searchQuery) ?? false);
+                    }).toList();
+                  }
+
+                  if (_selectedFilter != 'All') {
+                    filteredRecords = filteredRecords
+                        .where((record) => record.recordType == _selectedFilter)
+                        .toList();
+                  }
+
+                  if (filteredRecords.isEmpty) {
+                    return const Center(
+                      child: Padding(
+                        padding: EdgeInsets.all(24),
+                        child: Text(
+                          'No matching records found',
+                          style: TextStyle(
+                            color: KinsuTheme.textSecondary,
+                          ),
+                        ),
+                      ),
+                    );
+                  }
+
+                  return RefreshIndicator(
+                    onRefresh: () => provider.loadRecords(),
+                    child: ListView.builder(
+                      padding: const EdgeInsets.all(16),
+                      itemCount: filteredRecords.length,
+                      itemBuilder: (context, index) {
+                        final record = filteredRecords[index];
+                        return Padding(
+                          padding: const EdgeInsets.only(bottom: 12),
+                          child: _buildRecordCard(record),
+                        );
+                      },
+                    ),
+                  );
+                },
+              ),
+            ),
           ],
         ),
       ),
+    );
+  }
+
+  Widget _buildRecordCard(HealthRecord record) {
+    final color = _getDocumentTypeColor(record.recordType);
+    final icon = _getDocumentTypeIcon(record.recordType);
+
+    return Container(
+      decoration: BoxDecoration(
+        color: Theme.of(context).cardColor,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: KinsuTheme.divider),
+      ),
+      child: Material(
+        color: Colors.transparent,
+        child: InkWell(
+          onTap: () => _openRecord(record),
+          borderRadius: BorderRadius.circular(16),
+          child: Padding(
+            padding: const EdgeInsets.all(14),
+            child: Row(
+              children: [
+                Container(
+                  width: 40,
+                  height: 40,
+                  decoration: BoxDecoration(
+                    color: color.withOpacity(0.1),
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  child: Icon(icon, color: color, size: 18),
+                ),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        record.title,
+                        style: const TextStyle(
+                          fontSize: 14,
+                          fontWeight: FontWeight.w500,
+                          color: KinsuTheme.textPrimary,
+                        ),
+                        maxLines: 2,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                      if (record.notes != null && record.notes!.isNotEmpty) ...[
+                        const SizedBox(height: 4),
+                        Text(
+                          record.notes!,
+                          style: const TextStyle(
+                            fontSize: 12,
+                            color: KinsuTheme.textSecondary,
+                          ),
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                      ],
+                      const SizedBox(height: 8),
+                      Row(
+                        children: [
+                          Text(
+                            _formatDate(record.recordDate),
+                            style: const TextStyle(
+                              fontSize: 11,
+                              color: KinsuTheme.textSecondary,
+                            ),
+                          ),
+                          const Padding(
+                            padding: EdgeInsets.symmetric(horizontal: 6),
+                            child: Text(
+                              '•',
+                              style: TextStyle(
+                                fontSize: 11,
+                                color: KinsuTheme.textSecondary,
+                              ),
+                            ),
+                          ),
+                          Container(
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 6,
+                              vertical: 2,
+                            ),
+                            decoration: BoxDecoration(
+                              color: KinsuTheme.background,
+                              borderRadius: BorderRadius.circular(4),
+                            ),
+                            child: Text(
+                              record.recordType,
+                              style: const TextStyle(
+                                fontSize: 10,
+                                color: KinsuTheme.textSecondary,
+                              ),
+                            ),
+                          ),
+                          if (record.fileSize != null) ...[
+                            const Padding(
+                              padding: EdgeInsets.symmetric(horizontal: 6),
+                              child: Text(
+                                '•',
+                                style: TextStyle(
+                                  fontSize: 11,
+                                  color: KinsuTheme.textSecondary,
+                                ),
+                              ),
+                            ),
+                            Text(
+                              FileUtils.formatFileSize(record.fileSize!),
+                              style: const TextStyle(
+                                fontSize: 11,
+                                color: KinsuTheme.textSecondary,
+                              ),
+                            ),
+                          ],
+                        ],
+                      ),
+                    ],
+                  ),
+                ),
+                const Icon(
+                  Icons.chevron_right,
+                  size: 16,
+                  color: KinsuTheme.textSecondary,
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
+  String _formatDate(DateTime date) {
+    final now = DateTime.now();
+    final difference = now.difference(date);
+
+    if (difference.inDays == 0) {
+      return 'Today';
+    } else if (difference.inDays == 1) {
+      return 'Yesterday';
+    } else if (difference.inDays < 7) {
+      return '${difference.inDays} days ago';
+    } else {
+      return '${date.day}/${date.month}/${date.year}';
+    }
+  }
+}
+
+class _FullScreenViewer extends StatelessWidget {
+  final HealthRecord record;
+
+  const _FullScreenViewer({required this.record});
+
+  @override
+  Widget build(BuildContext context) {
+    final isPdf = record.fileName?.toLowerCase().endsWith('.pdf') ?? false;
+
+    return Scaffold(
+      appBar: AppBar(
+        title: Text(record.title),
+        actions: [
+          IconButton(
+            icon: const Icon(Icons.download),
+            onPressed: () async {
+              if (record.fileUrl == null) return;
+
+              if (kIsWeb) {
+                downloadFileOnWeb(record.fileUrl!, record.fileName ?? 'download');
+              } else {
+                final uri = Uri.parse(record.fileUrl!);
+                if (await canLaunchUrl(uri)) {
+                  await launchUrl(uri, mode: LaunchMode.externalApplication);
+                }
+              }
+            },
+          ),
+        ],
+      ),
+      body: isPdf
+          ? SfPdfViewer.network(record.fileUrl!)
+          : InteractiveViewer(
+              child: Center(
+                child: Image.network(record.fileUrl!),
+              ),
+            ),
     );
   }
 }

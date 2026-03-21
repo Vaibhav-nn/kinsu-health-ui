@@ -23,7 +23,7 @@ class HealthRecord {
 
   factory HealthRecord.fromJson(Map<String, dynamic> json) {
     return HealthRecord(
-      id: json['id'] as String,
+      id: json['id'].toString(),
       recordType: json['record_type'] as String,
       recordDate: DateTime.parse(json['record_date'] as String),
       title: json['title'] as String,

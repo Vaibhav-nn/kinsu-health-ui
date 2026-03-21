@@ -89,13 +89,13 @@ BEGIN
     BEGIN
         BLOCK "040904e4"
         BEGIN
-            VALUE "CompanyName", "com.example" "\0"
-            VALUE "FileDescription", "kinsu_health" "\0"
+            VALUE "CompanyName", "com.kinsu.health" "\0"
+            VALUE "FileDescription", "kinsu_health_app" "\0"
             VALUE "FileVersion", VERSION_AS_STRING "\0"
-            VALUE "InternalName", "kinsu_health" "\0"
-            VALUE "LegalCopyright", "Copyright (C) 2026 com.example. All rights reserved." "\0"
-            VALUE "OriginalFilename", "kinsu_health.exe" "\0"
-            VALUE "ProductName", "kinsu_health" "\0"
+            VALUE "InternalName", "kinsu_health_app" "\0"
+            VALUE "LegalCopyright", "Copyright (C) 2026 com.kinsu.health. All rights reserved." "\0"
+            VALUE "OriginalFilename", "kinsu_health_app.exe" "\0"
+            VALUE "ProductName", "kinsu_health_app" "\0"
             VALUE "ProductVersion", VERSION_AS_STRING "\0"
         END
     END
