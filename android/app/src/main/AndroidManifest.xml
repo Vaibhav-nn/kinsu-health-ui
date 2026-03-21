@@ -1,6 +1,6 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android">
     <application
-        android:label="kinsu_health"
+        android:label="kinsu_health_app"
         android:name="${applicationName}"
         android:icon="@mipmap/ic_launcher">
         <activity

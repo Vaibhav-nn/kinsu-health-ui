@@ -30,3 +30,13 @@ class WebPdfViewerHelper {
     }
   }
 }
+
+/// Downloads a file in the browser
+void downloadFileOnWeb(String url, String filename) {
+  final anchor = html.AnchorElement(href: url)
+    ..target = 'blank'
+    ..download = filename;
+  html.document.body?.append(anchor);
+  anchor.click();
+  anchor.remove();
+}
