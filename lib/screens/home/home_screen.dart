@@ -501,7 +501,7 @@ class _HomeScreenState extends State<HomeScreen>
             ),
             const SizedBox(height: 8),
             SizedBox(
-              height: 130,
+              height: 160,
               child: ListView(
                 scrollDirection: Axis.horizontal,
                 children: const [
@@ -784,16 +784,20 @@ class _InsightCard extends StatelessWidget {
           Text(
             title,
             style: const TextStyle(
-              fontSize: 13,
+              fontSize: 12,
               color: KinsuTheme.textSecondary,
             ),
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
           ),
-          const SizedBox(height: 4),
+          const SizedBox(height: 2),
           Text(
             value,
-            style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w700),
+            style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w700),
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
           ),
-          const SizedBox(height: 4),
+          const SizedBox(height: 2),
           Container(
             padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 3),
             decoration: BoxDecoration(
@@ -806,18 +810,20 @@ class _InsightCard extends StatelessWidget {
               style: TextStyle(
                 color:
                     warning ? const Color(0xFF92400E) : const Color(0xFF047857),
-                fontSize: 11,
+                fontSize: 10,
                 fontWeight: FontWeight.w700,
               ),
             ),
           ),
-          const SizedBox(height: 6),
+          const SizedBox(height: 4),
           Text(
             note,
             style: const TextStyle(
-              fontSize: 11,
+              fontSize: 10,
               color: KinsuTheme.textSecondary,
             ),
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
           ),
         ],
       ),
