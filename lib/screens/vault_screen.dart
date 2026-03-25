@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:provider/provider.dart';
@@ -22,20 +24,89 @@ class VaultScreen extends StatefulWidget {
 
 class _VaultScreenState extends State<VaultScreen> {
   final _searchController = TextEditingController();
+  Timer? _searchDebounce;
   String _selectedFilter = 'All';
+  bool? _hasFileFilter;
+  DateTimeRange? _dateRange;
+  String _sortBy = 'record_date';
+  String _sortOrder = 'desc';
 
   @override
   void initState() {
     super.initState();
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      context.read<VaultProvider>().loadRecords();
+      _loadRecords();
     });
   }
 
   @override
   void dispose() {
+    _searchDebounce?.cancel();
     _searchController.dispose();
     super.dispose();
+  }
+
+  Future<void> _loadRecords() async {
+    await context.read<VaultProvider>().loadRecords(
+          recordType: _selectedFilter == 'All' ? null : _selectedFilter,
+          query: _searchController.text.trim().isEmpty
+              ? null
+              : _searchController.text.trim(),
+          startDate: _dateRange?.start,
+          endDate: _dateRange?.end,
+          hasFile: _hasFileFilter,
+          sortBy: _sortBy,
+          sortOrder: _sortOrder,
+        );
+  }
+
+  void _onSearchChanged(String _) {
+    _searchDebounce?.cancel();
+    _searchDebounce = Timer(const Duration(milliseconds: 300), () {
+      if (!mounted) {
+        return;
+      }
+      _loadRecords();
+    });
+  }
+
+  Future<void> _pickDateRange() async {
+    final picked = await showDateRangePicker(
+      context: context,
+      firstDate: DateTime(2000),
+      lastDate: DateTime.now(),
+      initialDateRange: _dateRange,
+    );
+    if (picked == null) {
+      return;
+    }
+    setState(() => _dateRange = picked);
+    await _loadRecords();
+  }
+
+  String _dateLabel(DateTime date) {
+    return '${date.day.toString().padLeft(2, '0')}/'
+        '${date.month.toString().padLeft(2, '0')}/${date.year}';
+  }
+
+  String _dateRangeLabel() {
+    if (_dateRange == null) {
+      return 'Any date';
+    }
+    return '${_dateLabel(_dateRange!.start)} - ${_dateLabel(_dateRange!.end)}';
+  }
+
+  String _sortLabel() {
+    if (_sortBy == 'title' && _sortOrder == 'asc') {
+      return 'Title A-Z';
+    }
+    if (_sortBy == 'file_uploaded_at') {
+      return 'Recent Uploads';
+    }
+    if (_sortBy == 'record_date' && _sortOrder == 'asc') {
+      return 'Oldest First';
+    }
+    return 'Latest First';
   }
 
   Future<void> _navigateToUpload() async {
@@ -47,7 +118,7 @@ class _VaultScreenState extends State<VaultScreen> {
 
     // Refresh list if upload was successful
     if (result == true && mounted) {
-      context.read<VaultProvider>().loadRecords();
+      await _loadRecords();
     }
   }
 
@@ -271,7 +342,8 @@ class _VaultScreenState extends State<VaultScreen> {
                 child: Column(
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: [
-                    Icon(Icons.error_outline, size: 48, color: KinsuTheme.textSecondary),
+                    Icon(Icons.error_outline,
+                        size: 48, color: KinsuTheme.textSecondary),
                     SizedBox(height: 8),
                     Text(
                       'Failed to load image',
@@ -381,7 +453,7 @@ class _VaultScreenState extends State<VaultScreen> {
                   // Search bar
                   TextField(
                     controller: _searchController,
-                    onChanged: (value) => setState(() {}),
+                    onChanged: _onSearchChanged,
                     decoration: InputDecoration(
                       hintText: 'Search records...',
                       prefixIcon: const Icon(Icons.search, size: 20),
@@ -407,7 +479,7 @@ class _VaultScreenState extends State<VaultScreen> {
                         'Lab Report',
                         'Prescription',
                         'Imaging',
-                        'Discharge Summary'
+                        'Discharge Summary',
                       ].map((filter) {
                         final isSelected = _selectedFilter == filter;
                         return Padding(
@@ -415,13 +487,15 @@ class _VaultScreenState extends State<VaultScreen> {
                           child: FilterChip(
                             label: Text(filter),
                             selected: isSelected,
-                            onSelected: (selected) {
+                            onSelected: (_) async {
                               setState(() {
-                                _selectedFilter = selected ? filter : 'All';
+                                _selectedFilter = filter;
                               });
+                              await _loadRecords();
                             },
                             backgroundColor: KinsuTheme.background,
-                            selectedColor: KinsuTheme.primary.withOpacity(0.1),
+                            selectedColor:
+                                KinsuTheme.primary.withValues(alpha: 0.1),
                             checkmarkColor: KinsuTheme.primary,
                             labelStyle: TextStyle(
                               color: isSelected
@@ -437,6 +511,94 @@ class _VaultScreenState extends State<VaultScreen> {
                         );
                       }).toList(),
                     ),
+                  ),
+                  const SizedBox(height: 8),
+                  Wrap(
+                    spacing: 8,
+                    runSpacing: 8,
+                    children: [
+                      ChoiceChip(
+                        label: const Text('All files'),
+                        selected: _hasFileFilter == null,
+                        onSelected: (_) async {
+                          setState(() => _hasFileFilter = null);
+                          await _loadRecords();
+                        },
+                      ),
+                      ChoiceChip(
+                        label: const Text('With file'),
+                        selected: _hasFileFilter == true,
+                        onSelected: (_) async {
+                          setState(() => _hasFileFilter = true);
+                          await _loadRecords();
+                        },
+                      ),
+                      ChoiceChip(
+                        label: const Text('No file'),
+                        selected: _hasFileFilter == false,
+                        onSelected: (_) async {
+                          setState(() => _hasFileFilter = false);
+                          await _loadRecords();
+                        },
+                      ),
+                      OutlinedButton.icon(
+                        onPressed: _pickDateRange,
+                        icon:
+                            const Icon(Icons.calendar_today_outlined, size: 16),
+                        label: Text(_dateRangeLabel()),
+                      ),
+                      if (_dateRange != null)
+                        TextButton(
+                          onPressed: () async {
+                            setState(() => _dateRange = null);
+                            await _loadRecords();
+                          },
+                          child: const Text('Clear Date'),
+                        ),
+                      PopupMenuButton<String>(
+                        tooltip: 'Sort',
+                        onSelected: (value) async {
+                          setState(() {
+                            if (value == 'latest') {
+                              _sortBy = 'record_date';
+                              _sortOrder = 'desc';
+                            } else if (value == 'oldest') {
+                              _sortBy = 'record_date';
+                              _sortOrder = 'asc';
+                            } else if (value == 'title_az') {
+                              _sortBy = 'title';
+                              _sortOrder = 'asc';
+                            } else if (value == 'recent_uploads') {
+                              _sortBy = 'file_uploaded_at';
+                              _sortOrder = 'desc';
+                            }
+                          });
+                          await _loadRecords();
+                        },
+                        itemBuilder: (_) => const [
+                          PopupMenuItem(
+                            value: 'latest',
+                            child: Text('Latest First'),
+                          ),
+                          PopupMenuItem(
+                            value: 'oldest',
+                            child: Text('Oldest First'),
+                          ),
+                          PopupMenuItem(
+                            value: 'title_az',
+                            child: Text('Title A-Z'),
+                          ),
+                          PopupMenuItem(
+                            value: 'recent_uploads',
+                            child: Text('Recent Uploads'),
+                          ),
+                        ],
+                        child: Chip(
+                          avatar: const Icon(Icons.sort, size: 16),
+                          label: Text(_sortLabel()),
+                        ),
+                      ),
+                    ],
                   ),
                 ],
               ),
@@ -474,7 +636,7 @@ class _VaultScreenState extends State<VaultScreen> {
                             ),
                             const SizedBox(height: 16),
                             ElevatedButton.icon(
-                              onPressed: () => provider.loadRecords(),
+                              onPressed: _loadRecords,
                               icon: const Icon(Icons.refresh),
                               label: const Text('Retry'),
                             ),
@@ -525,45 +687,13 @@ class _VaultScreenState extends State<VaultScreen> {
                     );
                   }
 
-                  // Filter records
-                  var filteredRecords = provider.records;
-                  final searchQuery = _searchController.text.toLowerCase();
-
-                  if (searchQuery.isNotEmpty) {
-                    filteredRecords = filteredRecords.where((record) {
-                      return record.title.toLowerCase().contains(searchQuery) ||
-                          record.recordType.toLowerCase().contains(searchQuery) ||
-                          (record.notes?.toLowerCase().contains(searchQuery) ?? false);
-                    }).toList();
-                  }
-
-                  if (_selectedFilter != 'All') {
-                    filteredRecords = filteredRecords
-                        .where((record) => record.recordType == _selectedFilter)
-                        .toList();
-                  }
-
-                  if (filteredRecords.isEmpty) {
-                    return const Center(
-                      child: Padding(
-                        padding: EdgeInsets.all(24),
-                        child: Text(
-                          'No matching records found',
-                          style: TextStyle(
-                            color: KinsuTheme.textSecondary,
-                          ),
-                        ),
-                      ),
-                    );
-                  }
-
                   return RefreshIndicator(
-                    onRefresh: () => provider.loadRecords(),
+                    onRefresh: _loadRecords,
                     child: ListView.builder(
                       padding: const EdgeInsets.all(16),
-                      itemCount: filteredRecords.length,
+                      itemCount: provider.records.length,
                       itemBuilder: (context, index) {
-                        final record = filteredRecords[index];
+                        final record = provider.records[index];
                         return Padding(
                           padding: const EdgeInsets.only(bottom: 12),
                           child: _buildRecordCard(record),
@@ -744,7 +874,8 @@ class _FullScreenViewer extends StatelessWidget {
               if (record.fileUrl == null) return;
 
               if (kIsWeb) {
-                downloadFileOnWeb(record.fileUrl!, record.fileName ?? 'download');
+                downloadFileOnWeb(
+                    record.fileUrl!, record.fileName ?? 'download');
               } else {
                 final uri = Uri.parse(record.fileUrl!);
                 if (await canLaunchUrl(uri)) {

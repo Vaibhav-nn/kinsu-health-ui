@@ -21,12 +21,24 @@ class _LogVitalScreenState extends State<LogVitalScreen> {
   DateTime _recordedAt = DateTime.now();
 
   static const _vitalTypes = {
-    'blood_pressure': {'label': 'Blood Pressure', 'unit': 'mmHg', 'hasSecondary': true},
-    'blood_sugar': {'label': 'Blood Sugar', 'unit': 'mg/dL', 'hasSecondary': false},
+    'blood_pressure': {
+      'label': 'Blood Pressure',
+      'unit': 'mmHg',
+      'hasSecondary': true
+    },
+    'blood_sugar': {
+      'label': 'Blood Sugar',
+      'unit': 'mg/dL',
+      'hasSecondary': false
+    },
     'heart_rate': {'label': 'Heart Rate', 'unit': 'bpm', 'hasSecondary': false},
     'spo2': {'label': 'SpO2', 'unit': '%', 'hasSecondary': false},
     'weight': {'label': 'Weight', 'unit': 'kg', 'hasSecondary': false},
-    'temperature': {'label': 'Temperature', 'unit': '°F', 'hasSecondary': false},
+    'temperature': {
+      'label': 'Temperature',
+      'unit': '°F',
+      'hasSecondary': false
+    },
   };
 
   Map<String, dynamic> get _currentConfig => _vitalTypes[_selectedType]!;
@@ -55,7 +67,11 @@ class _LogVitalScreenState extends State<LogVitalScreen> {
 
     final success = await context.read<VitalsProvider>().logVital(vital);
 
-    if (success && mounted) {
+    if (!mounted) {
+      return;
+    }
+
+    if (success) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
           content: Text('Vital logged successfully!'),
@@ -63,7 +79,14 @@ class _LogVitalScreenState extends State<LogVitalScreen> {
         ),
       );
       Navigator.pop(context);
+      return;
     }
+
+    final error = context.read<VitalsProvider>().error ??
+        'Could not save vital. Check backend connection and try again.';
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text(error)),
+    );
   }
 
   @override
@@ -153,7 +176,9 @@ class _LogVitalScreenState extends State<LogVitalScreen> {
                         if (hasSecondary && (v == null || v.isEmpty)) {
                           return 'Required';
                         }
-                        if (v != null && v.isNotEmpty && double.tryParse(v) == null) {
+                        if (v != null &&
+                            v.isNotEmpty &&
+                            double.tryParse(v) == null) {
                           return 'Invalid';
                         }
                         return null;
@@ -182,8 +207,11 @@ class _LogVitalScreenState extends State<LogVitalScreen> {
                   if (time != null) {
                     setState(() {
                       _recordedAt = DateTime(
-                        date.year, date.month, date.day,
-                        time.hour, time.minute,
+                        date.year,
+                        date.month,
+                        date.day,
+                        time.hour,
+                        time.minute,
                       );
                     });
                   }
@@ -194,7 +222,8 @@ class _LogVitalScreenState extends State<LogVitalScreen> {
                 decoration: KinsuTheme.cardDecoration,
                 child: Row(
                   children: [
-                    const Icon(Icons.calendar_today, size: 20, color: KinsuTheme.primary),
+                    const Icon(Icons.calendar_today,
+                        size: 20, color: KinsuTheme.primary),
                     const SizedBox(width: 12),
                     Text(
                       '${_recordedAt.day}/${_recordedAt.month}/${_recordedAt.year}  '

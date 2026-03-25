@@ -1,5 +1,7 @@
-import 'package:flutter/foundation.dart';
 import 'package:file_picker/file_picker.dart';
+import 'package:flutter/foundation.dart';
+
+import '../core/constants.dart';
 import '../models/health_record.dart';
 import '../services/vault_service.dart';
 
@@ -17,14 +19,30 @@ class VaultProvider extends ChangeNotifier {
   String? _error;
   String? get error => _error;
 
-  /// Load health records with optional filter
-  Future<void> loadRecords({String? recordType}) async {
+  /// Load health records with optional server-side filters.
+  Future<void> loadRecords({
+    String? recordType,
+    String? query,
+    DateTime? startDate,
+    DateTime? endDate,
+    bool? hasFile,
+    String sortBy = 'record_date',
+    String sortOrder = 'desc',
+  }) async {
     _isLoading = true;
     _error = null;
     notifyListeners();
 
     try {
-      _records = await _service.fetchRecords(recordType: recordType);
+      _records = await _service.fetchRecords(
+        recordType: recordType,
+        query: query,
+        startDate: startDate,
+        endDate: endDate,
+        hasFile: hasFile,
+        sortBy: sortBy,
+        sortOrder: sortOrder,
+      );
     } catch (e) {
       _error = _parseError(e);
     }
@@ -33,7 +51,7 @@ class VaultProvider extends ChangeNotifier {
     notifyListeners();
   }
 
-  /// Create a new record with file upload
+  /// Create a new record with file upload.
   Future<bool> createRecordWithFile({
     required String recordType,
     required DateTime recordDate,
@@ -57,9 +75,8 @@ class VaultProvider extends ChangeNotifier {
       // Upload file
       await _service.uploadFile(recordId: recordId, file: file);
 
-      // Refresh records list
-      await loadRecords();
-
+      _isLoading = false;
+      notifyListeners();
       return true;
     } catch (e) {
       _error = _parseError(e);
@@ -69,7 +86,7 @@ class VaultProvider extends ChangeNotifier {
     }
   }
 
-  /// Create a new record with S3 presigned URL upload
+  /// Create a new record with S3 presigned URL upload.
   Future<bool> createRecordWithS3Upload({
     required String recordType,
     required DateTime recordDate,
@@ -112,9 +129,8 @@ class VaultProvider extends ChangeNotifier {
         fileName: file.name,
       );
 
-      // Refresh records list
-      await loadRecords();
-
+      _isLoading = false;
+      notifyListeners();
       return true;
     } catch (e) {
       _error = _parseError(e);
@@ -124,7 +140,7 @@ class VaultProvider extends ChangeNotifier {
     }
   }
 
-  /// Delete a record
+  /// Delete a record.
   Future<bool> deleteRecord(String id) async {
     try {
       await _service.deleteRecord(id);
@@ -138,20 +154,25 @@ class VaultProvider extends ChangeNotifier {
     }
   }
 
-  /// Clear error message
+  /// Clear error message.
   void clearError() {
     _error = null;
     notifyListeners();
   }
 
   String _parseError(dynamic error) {
+    final message = error.toString();
+
+    if (message.contains('connection error') ||
+        message.contains('XMLHttpRequest onError') ||
+        message.contains('Connection refused') ||
+        message.contains('Failed host lookup')) {
+      return 'Cannot reach backend at ${ApiConstants.baseUrl}. '
+          'Please ensure API server is running and reachable.';
+    }
     if (error.toString().contains('404')) {
       return 'Records not found. Please create your first record.';
     }
-    if (error.toString().contains('Connection refused') ||
-        error.toString().contains('Failed host lookup')) {
-      return 'Cannot reach server. Make sure backend is running.';
-    }
-    return 'An error occurred: ${error.toString()}';
+    return 'An error occurred: $message';
   }
 }

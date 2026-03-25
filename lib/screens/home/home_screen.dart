@@ -7,6 +7,8 @@ import '../../core/theme.dart';
 import '../../models/medication.dart';
 import '../../models/vital.dart';
 import '../../providers/medications_provider.dart';
+import '../../models/family_member_profile.dart';
+import '../../providers/family_provider.dart';
 import '../../providers/theme_provider.dart';
 import '../../providers/vitals_provider.dart';
 import '../ai/ai_screen.dart';
@@ -59,6 +61,7 @@ class _HomeScreenState extends State<HomeScreen>
     WidgetsBinding.instance.addPostFrameCallback((_) {
       context.read<MedicationsProvider>().loadMedications(isActive: true);
       context.read<VitalsProvider>().loadVitals();
+      context.read<FamilyProvider>().loadFamilyData();
     });
   }
 
@@ -182,11 +185,144 @@ class _HomeScreenState extends State<HomeScreen>
     );
   }
 
+  Future<void> _showHomeVitalOverview({
+    required String title,
+    required String vitalType,
+  }) async {
+    final items = context
+        .read<VitalsProvider>()
+        .vitals
+        .where((v) => v.vitalType == vitalType)
+        .toList()
+      ..sort((a, b) => b.recordedAt.compareTo(a.recordedAt));
+
+    await showModalBottomSheet<void>(
+      context: context,
+      isScrollControlled: true,
+      showDragHandle: true,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      ),
+      builder: (context) {
+        return SafeArea(
+          child: Padding(
+            padding: const EdgeInsets.fromLTRB(16, 8, 16, 20),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  title,
+                  style: const TextStyle(
+                    fontSize: 20,
+                    fontWeight: FontWeight.w700,
+                  ),
+                ),
+                const SizedBox(height: 8),
+                if (items.isEmpty)
+                  const Text(
+                    'No readings available yet for this trend.',
+                    style: TextStyle(color: KinsuTheme.textSecondary),
+                  )
+                else
+                  ...items.take(6).map(
+                        (entry) => Padding(
+                          padding: const EdgeInsets.symmetric(vertical: 6),
+                          child: Row(
+                            children: [
+                              Expanded(
+                                child: Text(
+                                  '${entry.value}${entry.valueSecondary != null ? '/${entry.valueSecondary!.toStringAsFixed(0)}' : ''} ${entry.unit}',
+                                  style: const TextStyle(
+                                    fontWeight: FontWeight.w700,
+                                    fontSize: 15,
+                                  ),
+                                ),
+                              ),
+                              Text(
+                                '${entry.recordedAt.day}/${entry.recordedAt.month} ${entry.recordedAt.hour.toString().padLeft(2, '0')}:${entry.recordedAt.minute.toString().padLeft(2, '0')}',
+                                style: const TextStyle(
+                                  color: KinsuTheme.textSecondary,
+                                  fontSize: 12,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ),
+              ],
+            ),
+          ),
+        );
+      },
+    );
+  }
+
+  AccountProfileOption? _activeProfileOption(FamilyProvider familyProvider) {
+    final profiles = familyProvider.profiles;
+    if (profiles.isEmpty) {
+      return null;
+    }
+
+    final activeId = familyProvider.activeFamilyProfileId;
+    for (final option in profiles) {
+      if (option.profileId == activeId) {
+        return option;
+      }
+    }
+
+    for (final option in profiles) {
+      if (option.isSelf) {
+        return option;
+      }
+    }
+    return profiles.first;
+  }
+
+  String _initialsFromName(String name) {
+    final parts = name
+        .trim()
+        .split(RegExp(r'\s+'))
+        .where((segment) => segment.isNotEmpty)
+        .toList();
+    if (parts.isEmpty) {
+      return 'U';
+    }
+    if (parts.length == 1) {
+      return parts.first[0].toUpperCase();
+    }
+    return (parts[0][0] + parts[1][0]).toUpperCase();
+  }
+
+  Future<void> _switchProfile(int? profileId) async {
+    final familyProvider = context.read<FamilyProvider>();
+    final medicationsProvider = context.read<MedicationsProvider>();
+    final vitalsProvider = context.read<VitalsProvider>();
+    familyProvider.setActiveProfileId(profileId);
+
+    await medicationsProvider.loadMedications(isActive: true);
+    await vitalsProvider.loadVitals();
+
+    if (!mounted) {
+      return;
+    }
+
+    final label =
+        profileId == null ? 'Self profile active' : 'Family profile switched';
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text(label)),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final themeMode = context.watch<AppThemeProvider>().themeMode;
     final medicationsProvider = context.watch<MedicationsProvider>();
     final vitalsProvider = context.watch<VitalsProvider>();
+    final familyProvider = context.watch<FamilyProvider>();
+    final activeProfile = _activeProfileOption(familyProvider);
+    final profileDisplayName = activeProfile?.displayName ?? 'Priya Sharma';
+    final avatarInitials = _initialsFromName(profileDisplayName);
 
     final activeMedications = medicationsProvider.medications
         .where((medication) => medication.isActive)
@@ -210,16 +346,65 @@ class _HomeScreenState extends State<HomeScreen>
           children: [
             Row(
               children: [
-                const CircleAvatar(
-                  radius: 20,
-                  child: Text('PS'),
+                PopupMenuButton<int?>(
+                  tooltip: 'Switch account',
+                  padding: EdgeInsets.zero,
+                  onSelected: _switchProfile,
+                  itemBuilder: (context) {
+                    final profiles = familyProvider.profiles;
+                    if (profiles.isEmpty) {
+                      return const [
+                        PopupMenuItem<int>(
+                          value: -1,
+                          enabled: false,
+                          child: Text('No linked accounts'),
+                        ),
+                      ];
+                    }
+
+                    return profiles.map((profile) {
+                      final isActive = profile.profileId ==
+                          familyProvider.activeFamilyProfileId;
+                      final label = profile.subtitle == null ||
+                              profile.subtitle!.trim().isEmpty
+                          ? profile.displayName
+                          : '${profile.displayName} (${profile.subtitle})';
+                      return PopupMenuItem<int?>(
+                        value: profile.profileId,
+                        child: Row(
+                          children: [
+                            Icon(
+                              isActive
+                                  ? Icons.check_circle
+                                  : Icons.radio_button_unchecked,
+                              size: 16,
+                              color: isActive
+                                  ? KinsuTheme.primary
+                                  : KinsuTheme.textSecondary,
+                            ),
+                            const SizedBox(width: 8),
+                            Expanded(
+                              child: Text(
+                                label,
+                                overflow: TextOverflow.ellipsis,
+                              ),
+                            ),
+                          ],
+                        ),
+                      );
+                    }).toList();
+                  },
+                  child: CircleAvatar(
+                    radius: 20,
+                    child: Text(avatarInitials),
+                  ),
                 ),
                 const SizedBox(width: 10),
-                const Expanded(
+                Expanded(
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Text(
+                      const Text(
                         'Good Morning',
                         style: TextStyle(
                           color: KinsuTheme.textSecondary,
@@ -227,7 +412,7 @@ class _HomeScreenState extends State<HomeScreen>
                         ),
                       ),
                       Text(
-                        'Priya Sharma',
+                        profileDisplayName,
                         style: TextStyle(
                           fontSize: 17,
                           fontWeight: FontWeight.w700,
@@ -504,29 +689,41 @@ class _HomeScreenState extends State<HomeScreen>
               height: 160,
               child: ListView(
                 scrollDirection: Axis.horizontal,
-                children: const [
+                children: [
                   _InsightCard(
                     title: 'Blood Sugar',
                     value: '142 mg/dL',
                     trend: '↑ 8%',
                     warning: true,
                     note: 'A bit high this week',
+                    onTap: () => _showHomeVitalOverview(
+                      title: 'Blood Sugar Trend',
+                      vitalType: 'blood_sugar',
+                    ),
                   ),
-                  SizedBox(width: 10),
+                  const SizedBox(width: 10),
                   _InsightCard(
                     title: 'Blood Pressure',
                     value: '128/84',
                     trend: '↓ 3%',
                     warning: false,
                     note: 'Meds are working',
+                    onTap: () => _showHomeVitalOverview(
+                      title: 'Blood Pressure Trend',
+                      vitalType: 'blood_pressure',
+                    ),
                   ),
-                  SizedBox(width: 10),
+                  const SizedBox(width: 10),
                   _InsightCard(
-                    title: 'HbA1c',
-                    value: '6.8%',
+                    title: 'Heart Rate',
+                    value: '72 bpm',
                     trend: '↓ 0.4',
                     warning: false,
-                    note: 'Down from last cycle',
+                    note: 'Stable this week',
+                    onTap: () => _showHomeVitalOverview(
+                      title: 'Heart Rate Trend',
+                      vitalType: 'heart_rate',
+                    ),
                   ),
                 ],
               ),
@@ -763,6 +960,7 @@ class _InsightCard extends StatelessWidget {
   final String trend;
   final bool warning;
   final String note;
+  final VoidCallback? onTap;
 
   const _InsightCard({
     required this.title,
@@ -770,62 +968,67 @@ class _InsightCard extends StatelessWidget {
     required this.trend,
     required this.warning,
     required this.note,
+    this.onTap,
   });
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      width: 170,
-      padding: const EdgeInsets.all(12),
-      decoration: KinsuTheme.cardDecoration,
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text(
-            title,
-            style: const TextStyle(
-              fontSize: 12,
-              color: KinsuTheme.textSecondary,
+    return GestureDetector(
+      onTap: onTap,
+      child: Container(
+        width: 170,
+        padding: const EdgeInsets.all(12),
+        decoration: KinsuTheme.cardDecoration,
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              title,
+              style: const TextStyle(
+                fontSize: 12,
+                color: KinsuTheme.textSecondary,
+              ),
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
             ),
-            maxLines: 1,
-            overflow: TextOverflow.ellipsis,
-          ),
-          const SizedBox(height: 2),
-          Text(
-            value,
-            style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w700),
-            maxLines: 1,
-            overflow: TextOverflow.ellipsis,
-          ),
-          const SizedBox(height: 2),
-          Container(
-            padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 3),
-            decoration: BoxDecoration(
-              color:
-                  warning ? const Color(0xFFFFFBEB) : const Color(0xFFECFDF5),
-              borderRadius: BorderRadius.circular(10),
+            const SizedBox(height: 2),
+            Text(
+              value,
+              style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w700),
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
             ),
-            child: Text(
-              trend,
-              style: TextStyle(
+            const SizedBox(height: 2),
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 3),
+              decoration: BoxDecoration(
                 color:
-                    warning ? const Color(0xFF92400E) : const Color(0xFF047857),
-                fontSize: 10,
-                fontWeight: FontWeight.w700,
+                    warning ? const Color(0xFFFFFBEB) : const Color(0xFFECFDF5),
+                borderRadius: BorderRadius.circular(10),
+              ),
+              child: Text(
+                trend,
+                style: TextStyle(
+                  color: warning
+                      ? const Color(0xFF92400E)
+                      : const Color(0xFF047857),
+                  fontSize: 10,
+                  fontWeight: FontWeight.w700,
+                ),
               ),
             ),
-          ),
-          const SizedBox(height: 4),
-          Text(
-            note,
-            style: const TextStyle(
-              fontSize: 10,
-              color: KinsuTheme.textSecondary,
+            const SizedBox(height: 4),
+            Text(
+              note,
+              style: const TextStyle(
+                fontSize: 10,
+                color: KinsuTheme.textSecondary,
+              ),
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
             ),
-            maxLines: 1,
-            overflow: TextOverflow.ellipsis,
-          ),
-        ],
+          ],
+        ),
       ),
     );
   }

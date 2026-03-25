@@ -2,8 +2,15 @@
 class ApiConstants {
   ApiConstants._();
 
-  /// Backend base URL — change for production.
-  static const String baseUrl = 'http://127.0.0.1:8501';
+  /// Backend base URL.
+  ///
+  /// Local default targets FastAPI on port 8000.
+  /// Override at run time using:
+  /// `flutter run --dart-define=API_BASE_URL=http://127.0.0.1:8000`
+  static const String baseUrl = String.fromEnvironment(
+    'API_BASE_URL',
+    defaultValue: 'http://127.0.0.1:8000',
+  );
 
   /// API version prefix.
   static const String apiV1 = '/api/v1';
@@ -28,8 +35,13 @@ class ApiConstants {
   static const String reminders = '$apiV1/reminders';
   static const String reminderTimeline = '$apiV1/reminders/timeline';
 
+  // Family
+  static const String familyMembers = '$apiV1/family/members';
+  static const String familyProfiles = '$apiV1/family/profiles';
+
   // Vault
   static const String vaultRecords = '$apiV1/vault/records';
   static const String vaultUploadUrl = '$apiV1/vault/records/upload-url';
-  static const String vaultConfirmUpload = '$apiV1/vault/records/confirm-upload';
+  static const String vaultConfirmUpload =
+      '$apiV1/vault/records/confirm-upload';
 }

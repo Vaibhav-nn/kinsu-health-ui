@@ -1,0 +1,30 @@
+sequenceDiagram
+  autonumber
+  participant U as User
+  participant S as AddSymptomScreen
+  participant P as SymptomsProvider
+  participant D as Dio + AuthInterceptor
+  participant F as FirebaseAuth
+  participant B as Backend (/api/v1/symptoms)
+  participant DB as Database
+
+  U->>S: Tap "Save Symptom"
+  S->>P: addSymptom(symptom)
+  P->>D: POST /api/v1/symptoms
+  D->>F: getIdToken()
+  F-->>D: JWT token
+  D->>B: Request with Authorization: Bearer <JWT>
+  B->>B: Verify token + validate payload
+  B->>DB: Insert symptom
+  DB-->>B: Created row
+  B-->>D: 201 Created + symptom JSON
+  D-->>P: ChronicSymptom
+  P-->>S: success = true
+  S-->>U: Show success and navigate back
+
+  alt Backend unavailable or auth fails
+    B-->>D: 401 / 5xx or network error
+    D-->>P: throws error
+    P-->>S: success = false
+    S-->>U: Show failure state (recommended)
+  end

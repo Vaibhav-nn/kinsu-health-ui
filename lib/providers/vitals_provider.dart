@@ -1,4 +1,6 @@
 import 'package:flutter/foundation.dart';
+
+import '../core/constants.dart';
 import '../models/vital.dart';
 import '../services/vitals_service.dart';
 
@@ -27,7 +29,7 @@ class VitalsProvider extends ChangeNotifier {
     try {
       _vitals = await _service.listVitals(vitalType: vitalType);
     } catch (e) {
-      _error = e.toString();
+      _error = _parseError(e);
     }
 
     _isLoading = false;
@@ -42,7 +44,7 @@ class VitalsProvider extends ChangeNotifier {
     try {
       _trendData = await _service.getVitalTrends(vitalType: vitalType);
     } catch (e) {
-      _error = e.toString();
+      _error = _parseError(e);
     }
 
     _isLoading = false;
@@ -56,7 +58,7 @@ class VitalsProvider extends ChangeNotifier {
       notifyListeners();
       return true;
     } catch (e) {
-      _error = e.toString();
+      _error = _parseError(e);
       notifyListeners();
       return false;
     }
@@ -69,9 +71,21 @@ class VitalsProvider extends ChangeNotifier {
       notifyListeners();
       return true;
     } catch (e) {
-      _error = e.toString();
+      _error = _parseError(e);
       notifyListeners();
       return false;
     }
+  }
+
+  String _parseError(dynamic error) {
+    final message = error.toString();
+    if (message.contains('connection error') ||
+        message.contains('XMLHttpRequest onError') ||
+        message.contains('Connection refused') ||
+        message.contains('Failed host lookup')) {
+      return 'Cannot reach backend at ${ApiConstants.baseUrl}. '
+          'Please ensure API server is running and reachable.';
+    }
+    return message;
   }
 }

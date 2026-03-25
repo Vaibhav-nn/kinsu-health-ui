@@ -1,0 +1,5 @@
+Source PDF: /Users/deovratsingh/Downloads/5_6178943632259686024.pdf
+Total pages: 1
+Requirement lines found: 0
+Extracted unique mockup images: 1
+Output PDF: /Users/deovratsingh/Code/kinsu_health_app/docs/pdf_exports/mockups_screenshots_export.pdf

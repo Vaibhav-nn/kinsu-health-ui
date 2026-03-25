@@ -1,6 +1,8 @@
 import 'dart:io';
+
 import 'package:dio/dio.dart';
 import 'package:file_picker/file_picker.dart';
+
 import '../core/constants.dart';
 import '../models/health_record.dart';
 
@@ -10,17 +12,39 @@ class VaultService {
 
   VaultService(this._dio);
 
-  /// Fetch health records with optional filters
+  /// Fetch health records with optional filters.
   Future<List<HealthRecord>> fetchRecords({
     String? recordType,
+    String? query,
+    DateTime? startDate,
+    DateTime? endDate,
+    bool? hasFile,
+    String sortBy = 'record_date',
+    String sortOrder = 'desc',
     int page = 1,
     int limit = 50,
   }) async {
     final params = <String, dynamic>{
       'page': page,
       'limit': limit,
+      'sort_by': sortBy,
+      'sort_order': sortOrder,
     };
-    if (recordType != null) params['record_type'] = recordType;
+    if (recordType != null) {
+      params['record_type'] = recordType;
+    }
+    if (query != null && query.trim().isNotEmpty) {
+      params['q'] = query.trim();
+    }
+    if (startDate != null) {
+      params['start_date'] = _dateOnly(startDate);
+    }
+    if (endDate != null) {
+      params['end_date'] = _dateOnly(endDate);
+    }
+    if (hasFile != null) {
+      params['has_file'] = hasFile;
+    }
 
     final response = await _dio.get(
       ApiConstants.vaultRecords,
@@ -159,5 +183,12 @@ class VaultService {
   /// Delete a record
   Future<void> deleteRecord(String id) async {
     await _dio.delete('${ApiConstants.vaultRecords}/$id');
+  }
+
+  String _dateOnly(DateTime value) {
+    final yyyy = value.year.toString().padLeft(4, '0');
+    final mm = value.month.toString().padLeft(2, '0');
+    final dd = value.day.toString().padLeft(2, '0');
+    return '$yyyy-$mm-$dd';
   }
 }

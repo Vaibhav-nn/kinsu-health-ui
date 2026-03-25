@@ -1,5 +1,6 @@
 import 'package:dio/dio.dart';
 import 'firebase_auth_interceptor.dart';
+import 'profile_context_interceptor.dart';
 
 /// Factory class that creates and configures the [Dio] HTTP client
 /// for communicating with the Kinsu Health backend.
@@ -27,7 +28,10 @@ class DioClient {
     // 1. Firebase Auth — attaches Bearer token when a user is signed in
     dio.interceptors.add(FirebaseAuthInterceptor());
 
-    // 2. Logging — useful during development
+    // 2. Profile context — attaches X-Profile-Id for family profile scope
+    dio.interceptors.add(ProfileContextInterceptor());
+
+    // 3. Logging — useful during development
     dio.interceptors.add(
       LogInterceptor(
         requestBody: true,

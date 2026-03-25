@@ -1,12 +1,15 @@
+import 'dart:math' as math;
+
 import 'package:fl_chart/fl_chart.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
 import '../../../core/theme.dart';
+import '../../../models/vital.dart';
 import '../../../providers/vitals_provider.dart';
 import 'log_vital_screen.dart';
 
-/// Vitals Trends screen — matches the mockup with 2×3 grid cards + 7-day chart.
+/// Vitals Trends screen — cards and chart are derived from live logged data.
 class VitalsTrendsScreen extends StatefulWidget {
   const VitalsTrendsScreen({super.key});
 
@@ -24,6 +27,9 @@ class _VitalsTrendsScreenState extends State<VitalsTrendsScreen> {
   }
 
   Future<void> _showVitalOverview(_VitalMetric metric) async {
+    final currentValue =
+        metric.value == '--' ? '--' : '${metric.value} ${metric.unit}';
+
     await showModalBottomSheet<void>(
       context: context,
       isScrollControlled: true,
@@ -63,8 +69,7 @@ class _VitalsTrendsScreenState extends State<VitalsTrendsScreen> {
                   ],
                 ),
                 const SizedBox(height: 16),
-                _VitalOverviewRow(
-                    label: 'Current', value: '${metric.value} ${metric.unit}'),
+                _VitalOverviewRow(label: 'Current', value: currentValue),
                 _VitalOverviewRow(label: 'Trend', value: metric.change),
                 if (metric.contextNote != null)
                   _VitalOverviewRow(label: 'Note', value: metric.contextNote!),
@@ -77,71 +82,162 @@ class _VitalsTrendsScreenState extends State<VitalsTrendsScreen> {
     );
   }
 
+  List<VitalLog> _entriesForType(List<VitalLog> vitals, String vitalType) {
+    final entries = vitals.where((item) => item.vitalType == vitalType).toList()
+      ..sort((a, b) => b.recordedAt.compareTo(a.recordedAt));
+    return entries;
+  }
+
+  String _formatNumber(double value) {
+    if ((value - value.roundToDouble()).abs() < 0.05) {
+      return value.round().toString();
+    }
+    return value.toStringAsFixed(1);
+  }
+
+  String _formatDateTime(DateTime value) {
+    final hh = value.hour.toString().padLeft(2, '0');
+    final mm = value.minute.toString().padLeft(2, '0');
+    return '${value.day}/${value.month} $hh:$mm';
+  }
+
+  _TrendSnapshot _buildTrend(List<VitalLog> entries) {
+    if (entries.length < 2) {
+      return const _TrendSnapshot(
+        label: 'No trend yet',
+        color: KinsuTheme.textSecondary,
+      );
+    }
+
+    final current = entries[0].value;
+    final previous = entries[1].value;
+
+    if (previous.abs() < 0.0001) {
+      return const _TrendSnapshot(
+        label: '→ 0%',
+        color: KinsuTheme.textSecondary,
+      );
+    }
+
+    final deltaPct = ((current - previous) / previous) * 100;
+    if (deltaPct.abs() < 0.1) {
+      return const _TrendSnapshot(
+        label: '→ 0%',
+        color: KinsuTheme.textSecondary,
+      );
+    }
+
+    final arrow = deltaPct > 0 ? '↑' : '↓';
+    final pctValue = deltaPct.abs();
+    final pctLabel = (pctValue - pctValue.roundToDouble()).abs() < 0.05
+        ? pctValue.round().toString()
+        : pctValue.toStringAsFixed(1);
+
+    return _TrendSnapshot(
+      label: '$arrow $pctLabel%',
+      color: deltaPct > 0 ? KinsuTheme.statusWarning : KinsuTheme.statusActive,
+    );
+  }
+
+  _VitalMetric _buildMetric({
+    required List<VitalLog> vitals,
+    required String vitalType,
+    required IconData icon,
+    required Color iconColor,
+    required String label,
+    required String defaultUnit,
+  }) {
+    final entries = _entriesForType(vitals, vitalType);
+
+    if (entries.isEmpty) {
+      return _VitalMetric(
+        vitalType: vitalType,
+        icon: icon,
+        iconColor: iconColor,
+        label: label,
+        value: '--',
+        unit: defaultUnit,
+        change: 'No data',
+        changeColor: KinsuTheme.textSecondary,
+        contextNote: 'No readings logged yet.',
+      );
+    }
+
+    final latest = entries.first;
+    final trend = _buildTrend(entries);
+
+    final valueLabel = vitalType == 'blood_pressure' &&
+            latest.valueSecondary != null
+        ? '${_formatNumber(latest.value)}/${_formatNumber(latest.valueSecondary!)}'
+        : _formatNumber(latest.value);
+
+    final unitLabel = latest.unit.trim().isEmpty ? defaultUnit : latest.unit;
+
+    return _VitalMetric(
+      vitalType: vitalType,
+      icon: icon,
+      iconColor: iconColor,
+      label: label,
+      value: valueLabel,
+      unit: unitLabel,
+      change: trend.label,
+      changeColor: trend.color,
+      contextNote: 'Last logged ${_formatDateTime(latest.recordedAt)}',
+    );
+  }
+
+  _BloodPressureChartData _buildBloodPressureChartData(List<VitalLog> vitals) {
+    final entries = _entriesForType(vitals, 'blood_pressure')
+        .where((item) => item.valueSecondary != null)
+        .toList()
+        .reversed
+        .toList();
+
+    final recent =
+        entries.length > 7 ? entries.sublist(entries.length - 7) : entries;
+
+    if (recent.isEmpty) {
+      return const _BloodPressureChartData.empty();
+    }
+
+    final systolicSpots = <FlSpot>[];
+    final diastolicSpots = <FlSpot>[];
+    final labels = <String>[];
+
+    for (var i = 0; i < recent.length; i++) {
+      final item = recent[i];
+      systolicSpots.add(FlSpot(i.toDouble(), item.value));
+      diastolicSpots.add(FlSpot(i.toDouble(), item.valueSecondary!));
+      labels.add('${item.recordedAt.day}/${item.recordedAt.month}');
+    }
+
+    final allValues = <double>[
+      ...systolicSpots.map((e) => e.y),
+      ...diastolicSpots.map((e) => e.y),
+    ];
+    final rawMin = allValues.reduce(math.min);
+    final rawMax = allValues.reduce(math.max);
+
+    var minY = (rawMin - 10).floorToDouble();
+    var maxY = (rawMax + 10).ceilToDouble();
+    if (minY < 0) {
+      minY = 0;
+    }
+    if ((maxY - minY) < 20) {
+      maxY = minY + 20;
+    }
+
+    return _BloodPressureChartData(
+      labels: labels,
+      systolicSpots: systolicSpots,
+      diastolicSpots: diastolicSpots,
+      minY: minY,
+      maxY: maxY,
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
-    final metrics = <_VitalMetric>[
-      const _VitalMetric(
-        icon: Icons.favorite,
-        iconColor: Color(0xFFE53935),
-        label: 'Blood Pressure',
-        value: '128/84',
-        unit: 'mmHg',
-        change: '↓ 3%',
-        changeColor: KinsuTheme.statusActive,
-        contextNote: 'Stable in the last week.',
-      ),
-      const _VitalMetric(
-        icon: Icons.local_fire_department,
-        iconColor: Color(0xFFFF9800),
-        label: 'Blood Sugar',
-        value: '142',
-        unit: 'mg/dL',
-        change: '↑ 8%',
-        changeColor: KinsuTheme.statusWarning,
-        contextNote: 'Slightly above your weekly average.',
-      ),
-      const _VitalMetric(
-        icon: Icons.show_chart,
-        iconColor: KinsuTheme.primary,
-        label: 'Heart Rate',
-        value: '72',
-        unit: 'bpm',
-        change: '→ 0%',
-        changeColor: KinsuTheme.statusActive,
-        contextNote: 'No major fluctuation today.',
-      ),
-      const _VitalMetric(
-        icon: Icons.air,
-        iconColor: Color(0xFF2196F3),
-        label: 'SpO2',
-        value: '98',
-        unit: '%',
-        change: '→',
-        changeColor: KinsuTheme.statusActive,
-        contextNote: 'Within healthy range.',
-      ),
-      const _VitalMetric(
-        icon: Icons.monitor_weight_outlined,
-        iconColor: Color(0xFF9C27B0),
-        label: 'Weight',
-        value: '68.5',
-        unit: 'kg',
-        change: '↓ 0.5',
-        changeColor: KinsuTheme.statusActive,
-        contextNote: 'Gradual decline over the week.',
-      ),
-      const _VitalMetric(
-        icon: Icons.thermostat,
-        iconColor: Color(0xFFFF5722),
-        label: 'Temperature',
-        value: '98.4',
-        unit: '°F',
-        change: '→',
-        changeColor: KinsuTheme.statusActive,
-        contextNote: 'No fever trend detected.',
-      ),
-    ];
-
     return Scaffold(
       appBar: AppBar(
         title: const Text('Vitals Trends'),
@@ -151,10 +247,16 @@ class _VitalsTrendsScreenState extends State<VitalsTrendsScreen> {
         ),
       ),
       floatingActionButton: FloatingActionButton.extended(
-        onPressed: () => Navigator.push(
-          context,
-          MaterialPageRoute(builder: (_) => const LogVitalScreen()),
-        ),
+        onPressed: () async {
+          await Navigator.push(
+            context,
+            MaterialPageRoute(builder: (_) => const LogVitalScreen()),
+          );
+          if (!context.mounted) {
+            return;
+          }
+          await context.read<VitalsProvider>().loadVitals();
+        },
         backgroundColor: KinsuTheme.primary,
         foregroundColor: Colors.white,
         icon: const Icon(Icons.add),
@@ -162,6 +264,65 @@ class _VitalsTrendsScreenState extends State<VitalsTrendsScreen> {
       ),
       body: Consumer<VitalsProvider>(
         builder: (context, provider, _) {
+          final metrics = <_VitalMetric>[
+            _buildMetric(
+              vitals: provider.vitals,
+              vitalType: 'blood_pressure',
+              icon: Icons.favorite,
+              iconColor: const Color(0xFFE53935),
+              label: 'Blood Pressure',
+              defaultUnit: 'mmHg',
+            ),
+            _buildMetric(
+              vitals: provider.vitals,
+              vitalType: 'blood_sugar',
+              icon: Icons.local_fire_department,
+              iconColor: const Color(0xFFFF9800),
+              label: 'Blood Sugar',
+              defaultUnit: 'mg/dL',
+            ),
+            _buildMetric(
+              vitals: provider.vitals,
+              vitalType: 'heart_rate',
+              icon: Icons.show_chart,
+              iconColor: KinsuTheme.primary,
+              label: 'Heart Rate',
+              defaultUnit: 'bpm',
+            ),
+            _buildMetric(
+              vitals: provider.vitals,
+              vitalType: 'spo2',
+              icon: Icons.air,
+              iconColor: const Color(0xFF2196F3),
+              label: 'SpO2',
+              defaultUnit: '%',
+            ),
+            _buildMetric(
+              vitals: provider.vitals,
+              vitalType: 'weight',
+              icon: Icons.monitor_weight_outlined,
+              iconColor: const Color(0xFF9C27B0),
+              label: 'Weight',
+              defaultUnit: 'kg',
+            ),
+            _buildMetric(
+              vitals: provider.vitals,
+              vitalType: 'temperature',
+              icon: Icons.thermostat,
+              iconColor: const Color(0xFFFF5722),
+              label: 'Temperature',
+              defaultUnit: '°F',
+            ),
+          ];
+
+          final bpChart = _buildBloodPressureChartData(provider.vitals);
+          final interval =
+              ((bpChart.maxY - bpChart.minY) / 4).clamp(5, 40).toDouble();
+
+          if (provider.isLoading && provider.vitals.isEmpty) {
+            return const Center(child: CircularProgressIndicator());
+          }
+
           return ListView(
             padding: const EdgeInsets.all(16),
             children: [
@@ -189,7 +350,7 @@ class _VitalsTrendsScreenState extends State<VitalsTrendsScreen> {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     const Text(
-                      'Blood Pressure (7 days)',
+                      'Blood Pressure (recent)',
                       style: TextStyle(
                         fontSize: 16,
                         fontWeight: FontWeight.w600,
@@ -197,115 +358,107 @@ class _VitalsTrendsScreenState extends State<VitalsTrendsScreen> {
                       ),
                     ),
                     const SizedBox(height: 20),
-                    SizedBox(
-                      height: 200,
-                      child: LineChart(
-                        LineChartData(
-                          gridData: FlGridData(
-                            show: true,
-                            drawVerticalLine: false,
-                            horizontalInterval: 20,
-                            getDrawingHorizontalLine: (value) => const FlLine(
-                              color: KinsuTheme.divider,
-                              strokeWidth: 1,
-                            ),
+                    if (bpChart.isEmpty)
+                      const SizedBox(
+                        height: 200,
+                        child: Center(
+                          child: Text(
+                            'No blood pressure readings logged yet.',
+                            style: TextStyle(color: KinsuTheme.textSecondary),
                           ),
-                          titlesData: FlTitlesData(
-                            topTitles: const AxisTitles(
-                              sideTitles: SideTitles(showTitles: false),
-                            ),
-                            rightTitles: const AxisTitles(
-                              sideTitles: SideTitles(showTitles: false),
-                            ),
-                            leftTitles: const AxisTitles(
-                              sideTitles: SideTitles(showTitles: false),
-                            ),
-                            bottomTitles: AxisTitles(
-                              sideTitles: SideTitles(
-                                showTitles: true,
-                                getTitlesWidget: (value, meta) {
-                                  final days = [
-                                    '14 Feb',
-                                    '15 Feb',
-                                    '16 Feb',
-                                    '17 Feb',
-                                    '18 Feb',
-                                    '19 Feb',
-                                  ];
-                                  final idx = value.toInt();
-                                  if (idx >= 0 && idx < days.length) {
-                                    return Text(
-                                      days[idx],
-                                      style: const TextStyle(
-                                        fontSize: 10,
-                                        color: KinsuTheme.textSecondary,
-                                      ),
-                                    );
-                                  }
-                                  return const Text('');
-                                },
+                        ),
+                      )
+                    else
+                      SizedBox(
+                        height: 200,
+                        child: LineChart(
+                          LineChartData(
+                            gridData: FlGridData(
+                              show: true,
+                              drawVerticalLine: false,
+                              horizontalInterval: interval,
+                              getDrawingHorizontalLine: (value) => const FlLine(
+                                color: KinsuTheme.divider,
+                                strokeWidth: 1,
                               ),
                             ),
-                          ),
-                          borderData: FlBorderData(show: false),
-                          lineBarsData: [
-                            LineChartBarData(
-                              spots: const [
-                                FlSpot(0, 130),
-                                FlSpot(1, 134),
-                                FlSpot(2, 128),
-                                FlSpot(3, 132),
-                                FlSpot(4, 129),
-                                FlSpot(5, 128),
-                              ],
-                              isCurved: true,
-                              color: const Color(0xFFE53935),
-                              barWidth: 2.5,
-                              dotData: FlDotData(
-                                show: true,
-                                getDotPainter: (spot, percent, bar, index) =>
-                                    FlDotCirclePainter(
-                                  radius: 4,
-                                  color: const Color(0xFFE53935),
-                                  strokeColor: Colors.white,
-                                  strokeWidth: 2,
-                                ),
+                            titlesData: FlTitlesData(
+                              topTitles: const AxisTitles(
+                                sideTitles: SideTitles(showTitles: false),
                               ),
-                              belowBarData: BarAreaData(
-                                show: true,
-                                color: const Color(0xFFE53935)
-                                    .withValues(alpha: 0.1),
+                              rightTitles: const AxisTitles(
+                                sideTitles: SideTitles(showTitles: false),
                               ),
-                            ),
-                            LineChartBarData(
-                              spots: const [
-                                FlSpot(0, 82),
-                                FlSpot(1, 86),
-                                FlSpot(2, 84),
-                                FlSpot(3, 83),
-                                FlSpot(4, 84),
-                                FlSpot(5, 86),
-                              ],
-                              isCurved: true,
-                              color: const Color(0xFFFF9800),
-                              barWidth: 2.5,
-                              dotData: FlDotData(
-                                show: true,
-                                getDotPainter: (spot, percent, bar, index) =>
-                                    FlDotCirclePainter(
-                                  radius: 4,
-                                  color: const Color(0xFFFF9800),
-                                  strokeColor: Colors.white,
-                                  strokeWidth: 2,
+                              leftTitles: const AxisTitles(
+                                sideTitles: SideTitles(showTitles: false),
+                              ),
+                              bottomTitles: AxisTitles(
+                                sideTitles: SideTitles(
+                                  showTitles: true,
+                                  getTitlesWidget: (value, meta) {
+                                    final idx = value.toInt();
+                                    if (idx >= 0 &&
+                                        idx < bpChart.labels.length) {
+                                      return Text(
+                                        bpChart.labels[idx],
+                                        style: const TextStyle(
+                                          fontSize: 10,
+                                          color: KinsuTheme.textSecondary,
+                                        ),
+                                      );
+                                    }
+                                    return const Text('');
+                                  },
                                 ),
                               ),
                             ),
-                          ],
-                          minY: 60,
-                          maxY: 160,
+                            borderData: FlBorderData(show: false),
+                            lineBarsData: [
+                              LineChartBarData(
+                                spots: bpChart.systolicSpots,
+                                isCurved: true,
+                                color: const Color(0xFFE53935),
+                                barWidth: 2.5,
+                                dotData: FlDotData(
+                                  show: true,
+                                  getDotPainter: (spot, percent, bar, index) =>
+                                      FlDotCirclePainter(
+                                    radius: 4,
+                                    color: const Color(0xFFE53935),
+                                    strokeColor: Colors.white,
+                                    strokeWidth: 2,
+                                  ),
+                                ),
+                                belowBarData: BarAreaData(
+                                  show: true,
+                                  color: const Color(0xFFE53935)
+                                      .withValues(alpha: 0.1),
+                                ),
+                              ),
+                              LineChartBarData(
+                                spots: bpChart.diastolicSpots,
+                                isCurved: true,
+                                color: const Color(0xFFFF9800),
+                                barWidth: 2.5,
+                                dotData: FlDotData(
+                                  show: true,
+                                  getDotPainter: (spot, percent, bar, index) =>
+                                      FlDotCirclePainter(
+                                    radius: 4,
+                                    color: const Color(0xFFFF9800),
+                                    strokeColor: Colors.white,
+                                    strokeWidth: 2,
+                                  ),
+                                ),
+                              ),
+                            ],
+                            minX: 0,
+                            maxX: (bpChart.labels.length - 1).toDouble(),
+                            minY: bpChart.minY,
+                            maxY: bpChart.maxY,
+                          ),
                         ),
                       ),
-                    ),
                   ],
                 ),
               ),
@@ -317,7 +470,43 @@ class _VitalsTrendsScreenState extends State<VitalsTrendsScreen> {
   }
 }
 
+class _TrendSnapshot {
+  final String label;
+  final Color color;
+
+  const _TrendSnapshot({
+    required this.label,
+    required this.color,
+  });
+}
+
+class _BloodPressureChartData {
+  final List<String> labels;
+  final List<FlSpot> systolicSpots;
+  final List<FlSpot> diastolicSpots;
+  final double minY;
+  final double maxY;
+
+  const _BloodPressureChartData({
+    required this.labels,
+    required this.systolicSpots,
+    required this.diastolicSpots,
+    required this.minY,
+    required this.maxY,
+  });
+
+  const _BloodPressureChartData.empty()
+      : labels = const <String>[],
+        systolicSpots = const <FlSpot>[],
+        diastolicSpots = const <FlSpot>[],
+        minY = 0,
+        maxY = 100;
+
+  bool get isEmpty => labels.isEmpty;
+}
+
 class _VitalMetric {
+  final String vitalType;
   final IconData icon;
   final Color iconColor;
   final String label;
@@ -328,6 +517,7 @@ class _VitalMetric {
   final String? contextNote;
 
   const _VitalMetric({
+    required this.vitalType,
     required this.icon,
     required this.iconColor,
     required this.label,

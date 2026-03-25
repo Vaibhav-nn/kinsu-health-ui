@@ -1,0 +1,24 @@
+flowchart LR
+  subgraph C["Client: Flutter App (Web/Android)"]
+    BOOT["App Bootstrap<br/>main.dart + Firebase.initializeApp + AuthGate"]
+    UI["UI Layer<br/>SignInPage, MainShell<br/>Home, Vault, Track, Family, AI"]
+    STATE["State Layer<br/>Provider Notifiers"]
+    DATA["Data Layer<br/>Feature Services"]
+    NET["Network Layer<br/>DioClient + FirebaseAuthInterceptor"]
+    BOOT --> UI --> STATE --> DATA --> NET
+  end
+
+  FB["Firebase Project<br/>Authentication"]:::ext
+  API["Kinsu Backend API<br/>http://localhost:8000/api/v1"]:::api
+  AUTH["Token Verification Middleware<br/>Firebase JWT validation"]:::api
+  ROUTES["Domain Modules<br/>Vitals, Symptoms, Illness,<br/>Medications, Reminders"]:::api
+  DB["Primary Database"]:::db
+
+  UI -- "Sign-in + authStateChanges" --> FB
+  FB -- "ID Token (JWT)" --> NET
+  NET -- "HTTPS + Bearer token" --> API
+  API --> AUTH --> ROUTES --> DB
+
+  classDef ext fill:#e8f5e9,stroke:#2e7d32,stroke-width:1px,color:#1b5e20;
+  classDef api fill:#e3f2fd,stroke:#1565c0,stroke-width:1px,color:#0d47a1;
+  classDef db fill:#fff3e0,stroke:#ef6c00,stroke-width:1px,color:#e65100;
