@@ -11,8 +11,10 @@ import '../home/wellness_tools_screens.dart' hide ExerciseScreen;
 import '../home/exercise_screen.dart';
 import 'illness/illness_list_screen.dart';
 import 'medications/medications_list_screen.dart';
+import 'vitals/log_vital_screen.dart';
 import 'reminders/reminders_timeline_screen.dart';
 import 'symptoms/symptoms_list_screen.dart';
+import 'symptoms/quick_symptom_log_screen.dart';
 import 'vitals/vitals_trends_screen.dart';
 
 class TrackHome extends StatefulWidget {
@@ -29,6 +31,7 @@ class _TrackHomeState extends State<TrackHome> {
     WidgetsBinding.instance.addPostFrameCallback((_) {
       context.read<VitalsProvider>().loadVitals();
       context.read<MedicationsProvider>().loadMedications(isActive: true);
+      context.read<MedicationsProvider>().loadDashboard();
     });
   }
 
@@ -114,6 +117,7 @@ class _TrackHomeState extends State<TrackHome> {
     final medicationsProvider = context.watch<MedicationsProvider>();
     final activeMeds =
         medicationsProvider.medications.where((item) => item.isActive).toList();
+    final dashboardItems = medicationsProvider.dashboard?.items ?? const [];
 
     final miniVitals = [
       _buildMiniVital(
@@ -159,7 +163,22 @@ class _TrackHomeState extends State<TrackHome> {
       body: ListView(
         padding: const EdgeInsets.all(16),
         children: [
-          const _SectionTitle(title: 'Today\'s Vitals'),
+          Row(
+            children: [
+              const Expanded(child: _SectionTitle(title: 'Today\'s Vitals')),
+              TextButton(
+                onPressed: () {
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (_) => const VitalsTrendsScreen(),
+                    ),
+                  );
+                },
+                child: const Text('View Trends'),
+              ),
+            ],
+          ),
           const SizedBox(height: 8),
           GridView.count(
             crossAxisCount: 3,
@@ -179,7 +198,7 @@ class _TrackHomeState extends State<TrackHome> {
                       Navigator.push(
                         context,
                         MaterialPageRoute(
-                          builder: (_) => const VitalsTrendsScreen(),
+                          builder: (_) => const LogVitalScreen(),
                         ),
                       );
                     },
@@ -200,7 +219,7 @@ class _TrackHomeState extends State<TrackHome> {
                     Navigator.push(
                       context,
                       MaterialPageRoute(
-                        builder: (_) => const VitalsTrendsScreen(),
+                        builder: (_) => const LogVitalScreen(),
                       ),
                     );
                   },
@@ -217,7 +236,7 @@ class _TrackHomeState extends State<TrackHome> {
                     Navigator.push(
                       context,
                       MaterialPageRoute(
-                        builder: (_) => const SymptomsListScreen(),
+                        builder: (_) => const QuickSymptomLogScreen(),
                       ),
                     );
                   },
@@ -243,12 +262,15 @@ class _TrackHomeState extends State<TrackHome> {
             ],
           ),
           const SizedBox(height: 6),
-          if (medicationsProvider.isLoading && activeMeds.isEmpty)
+          if ((medicationsProvider.isLoading ||
+                  medicationsProvider.isLoadingDashboard) &&
+              dashboardItems.isEmpty &&
+              activeMeds.isEmpty)
             const Padding(
               padding: EdgeInsets.symmetric(vertical: 10),
               child: Center(child: CircularProgressIndicator()),
             )
-          else if (activeMeds.isEmpty)
+          else if (dashboardItems.isEmpty && activeMeds.isEmpty)
             Container(
               padding: const EdgeInsets.all(12),
               decoration: KinsuTheme.cardDecoration,
@@ -257,6 +279,24 @@ class _TrackHomeState extends State<TrackHome> {
                 style: TextStyle(color: KinsuTheme.textSecondary),
               ),
             )
+          else if (dashboardItems.isNotEmpty)
+            ...dashboardItems.take(3).map(
+                  (item) => _FlowTile(
+                    icon: Icons.medication_outlined,
+                    color: const Color(0xFF3B82F6),
+                    title: item.medication.name,
+                    subtitle:
+                        '${item.scheduleLabel ?? _medicationSubtitle(item.medication)} · ${item.adherencePct}% adherence',
+                    onTap: () {
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (_) => const MedicationsListScreen(),
+                        ),
+                      );
+                    },
+                  ),
+                )
           else
             ...activeMeds.take(3).map(
                   (medication) => _FlowTile(

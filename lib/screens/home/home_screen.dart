@@ -1,9 +1,11 @@
 import 'dart:async';
 import 'dart:math' as math;
 
+import 'package:dio/dio.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
+import '../../core/constants.dart';
 import '../../core/theme.dart';
 import '../../models/family_member_profile.dart';
 import '../../models/home_models.dart';
@@ -114,6 +116,31 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
     super.dispose();
   }
 
+  String _friendlyError(Object error, {required String fallback}) {
+    if (error is DioException) {
+      final statusCode = error.response?.statusCode;
+      final data = error.response?.data;
+      final detail =
+          data is Map<String, dynamic> ? data['detail']?.toString() ?? '' : '';
+
+      if (error.type == DioExceptionType.connectionError ||
+          error.type == DioExceptionType.connectionTimeout ||
+          error.type == DioExceptionType.receiveTimeout ||
+          error.type == DioExceptionType.sendTimeout) {
+        return 'Cannot reach backend at ${ApiConstants.baseUrl}. Please ensure API server is running and reachable.';
+      }
+
+      if (statusCode == 404 && detail.contains('User not found')) {
+        return 'Your account is still being prepared. Please try again in a moment.';
+      }
+
+      if (statusCode != null) {
+        return detail.isEmpty ? '$fallback (status $statusCode).' : detail;
+      }
+    }
+    return fallback;
+  }
+
   Future<void> _loadHomeData({bool showSpinner = true}) async {
     if (showSpinner) {
       setState(() {
@@ -141,7 +168,8 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
         return;
       }
       setState(() {
-        _homeError = error.toString();
+        _homeError =
+            _friendlyError(error, fallback: 'Unable to load home dashboard.');
         _isHomeLoading = false;
       });
     }

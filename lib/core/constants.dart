@@ -31,6 +31,8 @@ class ApiConstants {
   static const String vitalTrends = '$apiV1/vitals/trends';
 
   static const String symptoms = '$apiV1/symptoms';
+  static const String symptomsQuickLog = '$apiV1/symptoms/quick-log';
+  static const String symptomsDashboard = '$apiV1/symptoms/dashboard';
 
   static const String illness = '$apiV1/illness';
 

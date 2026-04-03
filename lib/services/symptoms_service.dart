@@ -32,6 +32,25 @@ class SymptomsService {
     }
   }
 
+
+
+  Future<void> quickLogSymptom({
+    required String symptomName,
+    required int severity,
+    String? notes,
+  }) async {
+    await _withBootstrapRetry(() async {
+      await _dio.post(
+        ApiConstants.symptomsQuickLog,
+        data: {
+          'symptom_name': symptomName.toLowerCase().replaceAll(' ', '_'),
+          'severity': severity,
+          if (notes != null && notes.trim().isNotEmpty) 'notes': notes.trim(),
+        },
+      );
+    });
+  }
+
   Future<ChronicSymptom> addSymptom(ChronicSymptom symptom) async {
     return _withBootstrapRetry(() async {
       final response = await _dio.post(

@@ -85,6 +85,33 @@ class SymptomsProvider extends ChangeNotifier {
     }
   }
 
+
+
+  Future<bool> quickLogSymptom({
+    required String symptomName,
+    required int severity,
+    String? notes,
+  }) async {
+    _isLoading = true;
+    _error = null;
+    notifyListeners();
+
+    try {
+      await _service.quickLogSymptom(
+        symptomName: symptomName,
+        severity: severity,
+        notes: notes,
+      );
+      return true;
+    } catch (error) {
+      _error = _formatError(error);
+      return false;
+    } finally {
+      _isLoading = false;
+      notifyListeners();
+    }
+  }
+
   Future<bool> addSymptom(ChronicSymptom symptom) async {
     _isLoading = true;
     _error = null;

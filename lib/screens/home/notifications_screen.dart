@@ -1,6 +1,8 @@
+import 'package:dio/dio.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
+import '../../core/constants.dart';
 import '../../core/theme.dart';
 import '../../models/home_models.dart';
 import '../../services/home_service.dart';
@@ -16,6 +18,32 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
   List<HomeNotificationItem> _items = const [];
   bool _isLoading = true;
   String? _error;
+
+  String _friendlyError(Object error) {
+    if (error is DioException) {
+      final statusCode = error.response?.statusCode;
+      final data = error.response?.data;
+      final detail =
+          data is Map<String, dynamic> ? data['detail']?.toString() ?? '' : '';
+
+      if (error.type == DioExceptionType.connectionError ||
+          error.type == DioExceptionType.connectionTimeout ||
+          error.type == DioExceptionType.receiveTimeout ||
+          error.type == DioExceptionType.sendTimeout) {
+        return 'Cannot reach backend at ${ApiConstants.baseUrl}. Please ensure API server is running and reachable.';
+      }
+
+      if (statusCode == 404 && detail.contains('User not found')) {
+        return 'Your account is still being prepared. Please try again in a moment.';
+      }
+
+      if (statusCode != null && detail.isNotEmpty) {
+        return detail;
+      }
+    }
+
+    return 'Unable to load notifications right now.';
+  }
 
   @override
   void initState() {
@@ -44,7 +72,7 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
         return;
       }
       setState(() {
-        _error = error.toString();
+        _error = _friendlyError(error);
       });
     } finally {
       if (mounted) {
