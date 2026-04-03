@@ -16,6 +16,7 @@ import '../../services/home_service.dart';
 import '../ai/ai_screen.dart';
 import '../track/medications/medications_list_screen.dart';
 import '../track/symptoms/symptoms_list_screen.dart';
+import '../track/vitals/log_vital_screen.dart';
 import '../track/vitals/vitals_trends_screen.dart';
 import '../upload_record_screen.dart';
 import 'profile_screen.dart';
@@ -909,6 +910,11 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
         _dashboard?.medicationItems ?? const <HomeMedicationStatusItem>[];
     final insights = _dashboard?.insights ?? const <HomeInsightCardData>[];
     final unreadCount = _notificationUnreadCount();
+    final medicationsTaken = _dashboard?.medicationsTaken ?? 0;
+    final medicationsMissed = _dashboard?.medicationsMissed ?? 0;
+    final medicationsLeft = _dashboard?.medicationsLeft ?? 0;
+    final medicationTotal =
+        medicationsTaken + medicationsMissed + medicationsLeft;
 
     return Scaffold(
       body: SafeArea(
@@ -1013,49 +1019,54 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                               ],
                             ),
                           ),
-                          Stack(
-                            clipBehavior: Clip.none,
+                          Row(
                             children: [
-                              IconButton(
-                                icon: const Icon(
-                                  Icons.notifications_outlined,
-                                  color: Colors.white,
-                                ),
-                                onPressed: _showNotificationsSheet,
-                              ),
-                              if (unreadCount > 0)
-                                Positioned(
-                                  right: 6,
-                                  top: 6,
-                                  child: Container(
-                                    padding: const EdgeInsets.symmetric(
-                                        horizontal: 6, vertical: 2),
-                                    decoration: const BoxDecoration(
-                                      color: Color(0xFFFF7A45),
-                                      shape: BoxShape.circle,
-                                    ),
-                                    child: Text(
-                                      unreadCount > 9 ? '9+' : '$unreadCount',
-                                      style: const TextStyle(
-                                        color: Colors.white,
-                                        fontSize: 10,
-                                        fontWeight: FontWeight.w700,
+                              Stack(
+                                clipBehavior: Clip.none,
+                                children: [
+                                  _HeaderCircleIconButton(
+                                    icon: Icons.notifications_none_rounded,
+                                    onTap: _showNotificationsSheet,
+                                  ),
+                                  if (unreadCount > 0)
+                                    Positioned(
+                                      right: -2,
+                                      top: -2,
+                                      child: Container(
+                                        width: 22,
+                                        height: 22,
+                                        alignment: Alignment.center,
+                                        decoration: const BoxDecoration(
+                                          color: Color(0xFFFF7A45),
+                                          shape: BoxShape.circle,
+                                        ),
+                                        child: Text(
+                                          unreadCount > 9
+                                              ? '9+'
+                                              : '$unreadCount',
+                                          style: const TextStyle(
+                                            color: Colors.white,
+                                            fontSize: 10,
+                                            fontWeight: FontWeight.w700,
+                                          ),
+                                        ),
                                       ),
                                     ),
-                                  ),
-                                ),
+                                ],
+                              ),
+                              const SizedBox(width: 8),
+                              _HeaderCircleIconButton(
+                                icon: Icons.person_outline,
+                                onTap: () {
+                                  Navigator.push(
+                                    context,
+                                    MaterialPageRoute(
+                                      builder: (_) => const ProfileScreen(),
+                                    ),
+                                  );
+                                },
+                              ),
                             ],
-                          ),
-                          IconButton(
-                            icon: const Icon(Icons.person_outline,
-                                color: Colors.white),
-                            onPressed: () {
-                              Navigator.push(
-                                context,
-                                MaterialPageRoute(
-                                    builder: (_) => const ProfileScreen()),
-                              );
-                            },
                           ),
                         ],
                       ),
@@ -1209,7 +1220,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                               Navigator.push(
                                 context,
                                 MaterialPageRoute(
-                                    builder: (_) => const VitalsTrendsScreen()),
+                                    builder: (_) => const LogVitalScreen()),
                               );
                             },
                           ),
@@ -1287,8 +1298,26 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
               ),
               const SizedBox(height: 16),
               _reveal(
-                  index: 6,
-                  child: const _SectionTitle(title: 'Upcoming Appointments')),
+                index: 6,
+                child: Row(
+                  children: [
+                    const Expanded(
+                      child: _SectionTitle(title: 'Upcoming Appointments'),
+                    ),
+                    TextButton(
+                      onPressed: () {
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          const SnackBar(
+                            content: Text(
+                                'Appointment creation will be added next.'),
+                          ),
+                        );
+                      },
+                      child: const Text('Add +'),
+                    ),
+                  ],
+                ),
+              ),
               const SizedBox(height: 8),
               _reveal(
                 index: 7,
@@ -1323,47 +1352,34 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
               ),
               const SizedBox(height: 14),
               _reveal(
-                  index: 8,
-                  child: const _SectionTitle(title: 'Today\'s Medicines')),
+                index: 8,
+                child: Row(
+                  children: [
+                    const Expanded(
+                      child: _SectionTitle(title: 'Today\'s Medicines'),
+                    ),
+                    TextButton(
+                      onPressed: () {
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                            builder: (_) => const MedicationsListScreen(),
+                          ),
+                        );
+                      },
+                      child: const Text('View All'),
+                    ),
+                  ],
+                ),
+              ),
               const SizedBox(height: 8),
               _reveal(
                 index: 9,
-                child: Container(
-                  padding: const EdgeInsets.all(14),
-                  decoration: KinsuTheme.cardDecoration,
-                  child: Column(
-                    children: [
-                      Row(
-                        children: [
-                          Text(
-                              '${_dashboard?.medicationsTaken ?? 0}/${(_dashboard?.medicationsTaken ?? 0) + (_dashboard?.medicationsMissed ?? 0) + (_dashboard?.medicationsLeft ?? 0)} medicines handled'),
-                          const Spacer(),
-                          Text(
-                            '${(_dashboard?.medicationsTaken ?? 0) + (_dashboard?.medicationsMissed ?? 0) + (_dashboard?.medicationsLeft ?? 0) == 0 ? 0 : (((_dashboard?.medicationsTaken ?? 0) / ((_dashboard?.medicationsTaken ?? 0) + (_dashboard?.medicationsMissed ?? 0) + (_dashboard?.medicationsLeft ?? 0))) * 100).round()}%',
-                            style: const TextStyle(
-                              color: KinsuTheme.primary,
-                              fontWeight: FontWeight.w700,
-                            ),
-                          ),
-                        ],
-                      ),
-                      const SizedBox(height: 8),
-                      LinearProgressIndicator(
-                        value: ((_dashboard?.medicationsTaken ?? 0) +
-                                    (_dashboard?.medicationsMissed ?? 0) +
-                                    (_dashboard?.medicationsLeft ?? 0)) ==
-                                0
-                            ? 0
-                            : (_dashboard!.medicationsTaken /
-                                (_dashboard!.medicationsTaken +
-                                    _dashboard!.medicationsMissed +
-                                    _dashboard!.medicationsLeft)),
-                        minHeight: 8,
-                        borderRadius: BorderRadius.circular(8),
-                        backgroundColor: KinsuTheme.divider,
-                      ),
-                    ],
-                  ),
+                child: _MedicationProgressCard(
+                  taken: medicationsTaken,
+                  missed: medicationsMissed,
+                  left: medicationsLeft,
+                  total: medicationTotal,
                 ),
               ),
               const SizedBox(height: 8),
@@ -1754,6 +1770,33 @@ class _AnimatedHeroCard extends StatelessWidget {
   }
 }
 
+class _HeaderCircleIconButton extends StatelessWidget {
+  final IconData icon;
+  final VoidCallback onTap;
+
+  const _HeaderCircleIconButton({
+    required this.icon,
+    required this.onTap,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Material(
+      color: Colors.white.withValues(alpha: 0.18),
+      shape: const CircleBorder(),
+      child: InkWell(
+        onTap: onTap,
+        customBorder: const CircleBorder(),
+        child: SizedBox(
+          width: 42,
+          height: 42,
+          child: Icon(icon, color: Colors.white),
+        ),
+      ),
+    );
+  }
+}
+
 class _ContextAlertCard extends StatelessWidget {
   final String title;
   final String message;
@@ -1861,11 +1904,11 @@ class _ActionTile extends StatelessWidget {
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
           Container(
-            width: 46,
-            height: 46,
+            width: 58,
+            height: 58,
             decoration: BoxDecoration(
               color: bg,
-              borderRadius: BorderRadius.circular(14),
+              borderRadius: BorderRadius.circular(18),
             ),
             child: Icon(icon, color: color),
           ),
@@ -1873,7 +1916,7 @@ class _ActionTile extends StatelessWidget {
           Text(
             label,
             textAlign: TextAlign.center,
-            style: const TextStyle(fontSize: 11),
+            style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w500),
           ),
         ],
       ),
@@ -1905,24 +1948,195 @@ class _MiniActionTile extends StatelessWidget {
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
           Container(
-            width: 34,
-            height: 34,
+            width: 42,
+            height: 42,
             decoration: BoxDecoration(
               color: bg,
               borderRadius: BorderRadius.circular(10),
             ),
-            child: Icon(icon, color: color, size: 16),
+            child: Icon(icon, color: color, size: 18),
           ),
           const SizedBox(height: 4),
           Text(
             label,
             textAlign: TextAlign.center,
-            style: const TextStyle(fontSize: 10),
+            style: const TextStyle(fontSize: 11),
             maxLines: 2,
             overflow: TextOverflow.ellipsis,
           ),
         ],
       ),
+    );
+  }
+}
+
+class _MedicationProgressCard extends StatelessWidget {
+  final int taken;
+  final int missed;
+  final int left;
+  final int total;
+
+  const _MedicationProgressCard({
+    required this.taken,
+    required this.missed,
+    required this.left,
+    required this.total,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final percent = total == 0 ? 0 : ((taken / total) * 100).round();
+    final barCount = total == 0
+        ? 5
+        : total > 5
+            ? total
+            : 5;
+    final filledBars = taken.clamp(0, barCount);
+    final missedBars = missed.clamp(0, barCount - filledBars);
+
+    Widget statPill(String label, int value, Color tint) {
+      return Container(
+        width: 84,
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+        decoration: BoxDecoration(
+          color: tint,
+          borderRadius: BorderRadius.circular(22),
+        ),
+        child: Column(
+          children: [
+            Text(
+              label,
+              style: const TextStyle(
+                color: Colors.white70,
+                fontSize: 12,
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+            const SizedBox(height: 4),
+            Text(
+              '$value',
+              style: const TextStyle(
+                color: Colors.white,
+                fontSize: 22,
+                fontWeight: FontWeight.w800,
+              ),
+            ),
+          ],
+        ),
+      );
+    }
+
+    return Container(
+      padding: const EdgeInsets.all(18),
+      decoration: BoxDecoration(
+        borderRadius: BorderRadius.circular(28),
+        gradient: const LinearGradient(
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+          colors: [KinsuTheme.primary, KinsuTheme.primaryDark],
+        ),
+        boxShadow: const [
+          BoxShadow(
+            color: Color(0x22000000),
+            blurRadius: 22,
+            offset: Offset(0, 12),
+          ),
+        ],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const Text(
+                      "Today's Progress",
+                      style: TextStyle(
+                        color: Colors.white70,
+                        fontSize: 14,
+                        fontWeight: FontWeight.w500,
+                      ),
+                    ),
+                    const SizedBox(height: 8),
+                    Text(
+                      '$percent%',
+                      style: const TextStyle(
+                        color: Colors.white,
+                        fontSize: 34,
+                        fontWeight: FontWeight.w800,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              statPill('Taken', taken, Colors.white.withValues(alpha: 0.20)),
+              const SizedBox(width: 8),
+              statPill('Missed', missed, Colors.black.withValues(alpha: 0.16)),
+              const SizedBox(width: 8),
+              statPill('Left', left, Colors.white.withValues(alpha: 0.12)),
+            ],
+          ),
+          const SizedBox(height: 16),
+          Row(
+            children: List.generate(barCount, (index) {
+              final color = index < filledBars
+                  ? Colors.white
+                  : index < filledBars + missedBars
+                      ? const Color(0xFFFF9EA0)
+                      : Colors.white.withValues(alpha: 0.28);
+              return Expanded(
+                child: Container(
+                  height: 9,
+                  margin: EdgeInsets.only(right: index == barCount - 1 ? 0 : 8),
+                  decoration: BoxDecoration(
+                    color: color,
+                    borderRadius: BorderRadius.circular(999),
+                  ),
+                ),
+              );
+            }),
+          ),
+          const SizedBox(height: 14),
+          Row(
+            children: [
+              _medStateDot(Icons.check, Colors.white, const Color(0xFF12B76A)),
+              const SizedBox(width: 10),
+              _medStateDot(Icons.close, const Color(0xFFFF5F67), Colors.white),
+              const SizedBox(width: 10),
+              for (var i = 0; i < 3; i++) ...[
+                Container(
+                  width: 38,
+                  height: 38,
+                  decoration: BoxDecoration(
+                    shape: BoxShape.circle,
+                    color: Colors.white.withValues(alpha: 0.18),
+                    border: Border.all(
+                      color: Colors.white.withValues(alpha: 0.22),
+                    ),
+                  ),
+                ),
+                if (i < 2) const SizedBox(width: 10),
+              ],
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _medStateDot(IconData icon, Color fill, Color iconColor) {
+    return Container(
+      width: 38,
+      height: 38,
+      decoration: BoxDecoration(
+        color: fill,
+        shape: BoxShape.circle,
+      ),
+      child: Icon(icon, size: 20, color: iconColor),
     );
   }
 }
@@ -1946,34 +2160,65 @@ class _AppointmentCard extends StatelessWidget {
         borderRadius: BorderRadius.circular(12),
         onTap: onTap,
         child: Container(
-          width: 240,
-          padding: const EdgeInsets.all(12),
+          width: 260,
+          padding: const EdgeInsets.all(16),
           decoration: KinsuTheme.cardDecoration,
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Text(
-                appointment.doctor,
-                style:
-                    const TextStyle(fontSize: 15, fontWeight: FontWeight.w700),
+              Row(
+                children: [
+                  Container(
+                    width: 52,
+                    height: 52,
+                    decoration: BoxDecoration(
+                      color: const Color(0xFFEFF6FF),
+                      borderRadius: BorderRadius.circular(18),
+                    ),
+                    child: const Icon(
+                      Icons.health_and_safety_outlined,
+                      color: Color(0xFF3B82F6),
+                    ),
+                  ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          appointment.doctor,
+                          style: const TextStyle(
+                            fontSize: 15,
+                            fontWeight: FontWeight.w700,
+                          ),
+                        ),
+                        Text(
+                          appointment.specialty,
+                          style: const TextStyle(
+                            color: KinsuTheme.textSecondary,
+                            fontSize: 12,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
               ),
-              Text(
-                appointment.specialty,
-                style: const TextStyle(
-                  color: KinsuTheme.textSecondary,
-                  fontSize: 12,
-                ),
-              ),
-              const SizedBox(height: 8),
+              const Spacer(),
               Text(
                 dateTimeLabel,
-                style: const TextStyle(color: KinsuTheme.primary, fontSize: 12),
+                style: const TextStyle(
+                  color: KinsuTheme.primary,
+                  fontSize: 12,
+                  fontWeight: FontWeight.w700,
+                ),
               ),
+              const SizedBox(height: 2),
               Text(
                 appointment.place,
                 style: const TextStyle(
                   color: KinsuTheme.textSecondary,
-                  fontSize: 11,
+                  fontSize: 12,
                 ),
               ),
             ],
@@ -2018,7 +2263,7 @@ class _InsightCard extends StatelessWidget {
                 fontSize: 12,
                 color: KinsuTheme.textSecondary,
               ),
-              maxLines: 1,
+              maxLines: 2,
               overflow: TextOverflow.ellipsis,
             ),
             const SizedBox(height: 2),
@@ -2104,7 +2349,7 @@ class _RecentRecordCard extends StatelessWidget {
                       style: const TextStyle(fontWeight: FontWeight.w700),
                     ),
                     Text(
-                      '${record.type} · ${record.provider} · ${record.dateLabel}',
+                      '${record.provider} · ${record.dateLabel}',
                       style: const TextStyle(
                         color: KinsuTheme.textSecondary,
                         fontSize: 12,

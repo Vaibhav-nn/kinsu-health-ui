@@ -177,7 +177,7 @@ class _VaultScreenState extends State<VaultScreen> {
                 const Text(
                   'Hospitals, labs and radiology centers linked via your vault.',
                   style: TextStyle(
-                    color: KinsuTheme.textSecondary,
+                    color: Color(0xFF6B7280),
                     fontSize: 14,
                   ),
                 ),
@@ -939,7 +939,7 @@ class _VaultScreenState extends State<VaultScreen> {
                             ),
                           ),
                           _VaultCircleButton(
-                            icon: Icons.apartment_outlined,
+                            icon: Icons.receipt_long_outlined,
                             onTap: _showConnectedServicesSheet,
                           ),
                           const SizedBox(width: 10),
@@ -1182,9 +1182,9 @@ class _VaultCircleButton extends StatelessWidget {
         width: 52,
         height: 52,
         decoration: BoxDecoration(
-          color: filled ? KinsuTheme.primary : Colors.white,
+          color: filled ? KinsuTheme.primary : const Color(0xFFF3F4F6),
           shape: BoxShape.circle,
-          border: filled ? null : Border.all(color: KinsuTheme.divider),
+          border: filled ? null : Border.all(color: const Color(0xFFF3F4F6)),
         ),
         child: Icon(
           icon,
@@ -1398,7 +1398,7 @@ class _MetaChip extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
       decoration: BoxDecoration(
-        color: KinsuTheme.primaryLight.withValues(alpha: 0.18),
+        color: const Color(0xFFF3F4F6),
         borderRadius: BorderRadius.circular(10),
       ),
       child: Text(

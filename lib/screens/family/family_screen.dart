@@ -56,14 +56,26 @@ class _FamilyScreenState extends State<FamilyScreen> {
                           ),
                         ),
                       ),
-                      IconButton(
-                        onPressed: _openAddMember,
-                        icon: const Icon(Icons.person_add_alt_1),
+                      Material(
+                        color: KinsuTheme.primary,
+                        shape: const CircleBorder(),
+                        child: InkWell(
+                          onTap: _openAddMember,
+                          customBorder: const CircleBorder(),
+                          child: const SizedBox(
+                            width: 52,
+                            height: 52,
+                            child: Icon(
+                              Icons.person_add_alt_1,
+                              color: Colors.white,
+                            ),
+                          ),
+                        ),
                       ),
                     ],
                   ),
                   const Text(
-                    'Manage family members and caregiver access.',
+                    'Manage family members and caregiver access',
                     style: TextStyle(
                       color: KinsuTheme.textSecondary,
                       fontSize: 13,
@@ -165,10 +177,32 @@ class _FamilyScreenState extends State<FamilyScreen> {
                       ),
                     ),
                   const SizedBox(height: 6),
-                  OutlinedButton.icon(
-                    onPressed: _openAddMember,
-                    icon: const Icon(Icons.add),
-                    label: const Text('Add Family Member'),
+                  InkWell(
+                    onTap: _openAddMember,
+                    borderRadius: BorderRadius.circular(22),
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(vertical: 20),
+                      decoration: BoxDecoration(
+                        color: Colors.white,
+                        borderRadius: BorderRadius.circular(22),
+                        border: Border.all(color: KinsuTheme.divider),
+                      ),
+                      child: const Row(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          Icon(Icons.add, color: KinsuTheme.textSecondary),
+                          SizedBox(width: 10),
+                          Text(
+                            'Add Family Member',
+                            style: TextStyle(
+                              color: KinsuTheme.textSecondary,
+                              fontSize: 18,
+                              fontWeight: FontWeight.w600,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
                   ),
                 ],
               ),
@@ -302,7 +336,18 @@ class _FamilyDashboardCardView extends StatelessWidget {
                       ),
                     ),
                     const SizedBox(width: 12),
-                    const Icon(Icons.chevron_right_rounded),
+                    Container(
+                      width: 44,
+                      height: 44,
+                      decoration: BoxDecoration(
+                        color: const Color(0xFFF3F4F6),
+                        borderRadius: BorderRadius.circular(999),
+                      ),
+                      child: const Icon(
+                        Icons.chevron_right_rounded,
+                        color: KinsuTheme.textSecondary,
+                      ),
+                    ),
                   ],
                 ),
               ),
