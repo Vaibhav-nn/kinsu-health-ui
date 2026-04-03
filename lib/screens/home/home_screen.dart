@@ -17,7 +17,8 @@ import '../track/symptoms/symptoms_list_screen.dart';
 import '../track/vitals/vitals_trends_screen.dart';
 import '../upload_record_screen.dart';
 import 'profile_screen.dart';
-import 'wellness_tools_screens.dart';
+import 'wellness_tools_screens.dart' hide ExerciseScreen;
+import 'exercise_screen.dart';
 import '../vault_screen.dart';
 
 class HomeScreen extends StatefulWidget {

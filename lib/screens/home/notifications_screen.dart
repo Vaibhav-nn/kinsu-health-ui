@@ -202,7 +202,7 @@ class _NotificationCard extends StatelessWidget {
         color: highlight ? const Color(0xFFFFFBEB) : Colors.white,
         borderRadius: BorderRadius.circular(18),
         border: Border.all(
-          color: highlight ? const Color(0xFFFCD34D) : KinsuTheme.border,
+          color: highlight ? const Color(0xFFFCD34D) : KinsuTheme.divider,
         ),
       ),
       child: Row(
@@ -212,7 +212,7 @@ class _NotificationCard extends StatelessWidget {
             width: 40,
             height: 40,
             decoration: BoxDecoration(
-              color: iconColor.withOpacity(0.12),
+              color: iconColor.withValues(alpha: 0.12),
               borderRadius: BorderRadius.circular(12),
             ),
             child: Icon(icon, color: iconColor, size: 20),
