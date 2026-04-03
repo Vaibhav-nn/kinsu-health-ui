@@ -28,6 +28,8 @@ class FamilyService {
     required String phoneE164,
     String? relation,
     DateTime? dateOfBirth,
+    String? bloodGroup,
+    List<String>? healthConditions,
     String? notes,
   }) async {
     final response = await _dio.post(
@@ -39,6 +41,10 @@ class FamilyService {
         if (dateOfBirth != null)
           'date_of_birth':
               '${dateOfBirth.year.toString().padLeft(4, '0')}-${dateOfBirth.month.toString().padLeft(2, '0')}-${dateOfBirth.day.toString().padLeft(2, '0')}',
+        if (bloodGroup != null && bloodGroup.isNotEmpty)
+          'blood_group': bloodGroup,
+        if (healthConditions != null && healthConditions.isNotEmpty)
+          'health_conditions': healthConditions,
         if (notes != null && notes.isNotEmpty) 'notes': notes,
       },
     );
@@ -50,6 +56,14 @@ class FamilyService {
     final response = await _dio.get(ApiConstants.familyProfiles);
     return (response.data as List)
         .map((item) => AccountProfileOption.fromJson(item))
+        .toList();
+  }
+
+  Future<List<FamilyDashboardCard>> fetchDashboard() async {
+    final response = await _dio.get(ApiConstants.familyDashboard);
+    return (response.data as List<dynamic>)
+        .map((item) =>
+            FamilyDashboardCard.fromJson(item as Map<String, dynamic>))
         .toList();
   }
 }

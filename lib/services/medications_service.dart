@@ -83,4 +83,28 @@ class MedicationsService {
   Future<void> deleteMedication(int id) async {
     await _dio.delete('${ApiConstants.medications}/$id');
   }
+
+  Future<void> logDose(
+    int medicationId, {
+    required String status,
+    DateTime? scheduledFor,
+    DateTime? takenAt,
+    String? notes,
+  }) async {
+    final effectiveDate = scheduledFor ?? DateTime.now();
+    final dateLabel =
+        '${effectiveDate.year.toString().padLeft(4, '0')}-${effectiveDate.month.toString().padLeft(2, '0')}-${effectiveDate.day.toString().padLeft(2, '0')}';
+
+    await _withBootstrapRetry(() async {
+      await _dio.post(
+        '${ApiConstants.medications}/$medicationId/doses',
+        data: {
+          'scheduled_for': dateLabel,
+          'status': status,
+          if (takenAt != null) 'taken_at': takenAt.toUtc().toIso8601String(),
+          if (notes != null && notes.trim().isNotEmpty) 'notes': notes.trim(),
+        },
+      );
+    });
+  }
 }

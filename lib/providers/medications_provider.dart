@@ -142,4 +142,33 @@ class MedicationsProvider extends ChangeNotifier {
       notifyListeners();
     }
   }
+
+  Future<bool> logDose(
+    int medicationId, {
+    required String status,
+    DateTime? scheduledFor,
+    DateTime? takenAt,
+    String? notes,
+  }) async {
+    _isLoading = true;
+    _error = null;
+    notifyListeners();
+
+    try {
+      await _service.logDose(
+        medicationId,
+        status: status,
+        scheduledFor: scheduledFor,
+        takenAt: takenAt,
+        notes: notes,
+      );
+      await loadMedications(isActive: true);
+      return true;
+    } catch (error) {
+      _error = _formatError(error);
+      _isLoading = false;
+      notifyListeners();
+      return false;
+    }
+  }
 }

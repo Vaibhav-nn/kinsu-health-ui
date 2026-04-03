@@ -1,24 +1,157 @@
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
 
 import '../../core/theme.dart';
+import '../../models/medication.dart';
+import '../../models/vital.dart';
+import '../../providers/medications_provider.dart';
+import '../../providers/vitals_provider.dart';
+import '../home/notifications_screen.dart';
+import '../home/wellness_tools_screens.dart';
 import 'illness/illness_list_screen.dart';
 import 'medications/medications_list_screen.dart';
 import 'reminders/reminders_timeline_screen.dart';
 import 'symptoms/symptoms_list_screen.dart';
 import 'vitals/vitals_trends_screen.dart';
 
-class TrackHome extends StatelessWidget {
+class TrackHome extends StatefulWidget {
   const TrackHome({super.key});
 
   @override
+  State<TrackHome> createState() => _TrackHomeState();
+}
+
+class _TrackHomeState extends State<TrackHome> {
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      context.read<VitalsProvider>().loadVitals();
+      context.read<MedicationsProvider>().loadMedications(isActive: true);
+    });
+  }
+
+  List<VitalLog> _entriesForType(List<VitalLog> vitals, String type) {
+    final list = vitals.where((item) => item.vitalType == type).toList()
+      ..sort((a, b) => b.recordedAt.compareTo(a.recordedAt));
+    return list;
+  }
+
+  String _formatNumber(double value) {
+    if ((value - value.roundToDouble()).abs() < 0.05) {
+      return value.round().toString();
+    }
+    return value.toStringAsFixed(1);
+  }
+
+  String _trendLabel(List<VitalLog> entries) {
+    if (entries.length < 2) {
+      return 'No trend';
+    }
+    final latest = entries[0].value;
+    final previous = entries[1].value;
+    if (previous.abs() < 0.0001) {
+      return '→ 0%';
+    }
+    final deltaPct = ((latest - previous) / previous) * 100;
+    if (deltaPct.abs() < 0.1) {
+      return '→ 0%';
+    }
+    final arrow = deltaPct > 0 ? '↑' : '↓';
+    final pct = deltaPct.abs();
+    final pctLabel = (pct - pct.roundToDouble()).abs() < 0.05
+        ? pct.round().toString()
+        : pct.toStringAsFixed(1);
+    return '$arrow $pctLabel%';
+  }
+
+  _TrackMiniVital _buildMiniVital({
+    required List<VitalLog> vitals,
+    required String type,
+    required String label,
+    required String fallbackUnit,
+    required Color color,
+  }) {
+    final entries = _entriesForType(vitals, type);
+    if (entries.isEmpty) {
+      return _TrackMiniVital(
+        label: label,
+        value: '--',
+        unit: fallbackUnit,
+        color: color,
+        trend: 'No data',
+      );
+    }
+
+    final latest = entries.first;
+    final displayValue = type == 'blood_pressure' &&
+            latest.valueSecondary != null
+        ? '${_formatNumber(latest.value)}/${_formatNumber(latest.valueSecondary!)}'
+        : _formatNumber(latest.value);
+    final unit = latest.unit.trim().isEmpty ? fallbackUnit : latest.unit;
+
+    return _TrackMiniVital(
+      label: label,
+      value: displayValue,
+      unit: unit,
+      color: color,
+      trend: _trendLabel(entries),
+    );
+  }
+
+  String _medicationSubtitle(Medication medication) {
+    final doctor = medication.prescribingDoctor;
+    if (doctor != null && doctor.trim().isNotEmpty) {
+      return '${medication.dosage} · ${medication.frequency} · $doctor';
+    }
+    return '${medication.dosage} · ${medication.frequency}';
+  }
+
+  @override
   Widget build(BuildContext context) {
+    final vitalsProvider = context.watch<VitalsProvider>();
+    final medicationsProvider = context.watch<MedicationsProvider>();
+    final activeMeds =
+        medicationsProvider.medications.where((item) => item.isActive).toList();
+
+    final miniVitals = [
+      _buildMiniVital(
+        vitals: vitalsProvider.vitals,
+        type: 'blood_pressure',
+        label: 'BP',
+        fallbackUnit: 'mmHg',
+        color: const Color(0xFFDC2626),
+      ),
+      _buildMiniVital(
+        vitals: vitalsProvider.vitals,
+        type: 'blood_sugar',
+        label: 'Sugar',
+        fallbackUnit: 'mg/dL',
+        color: const Color(0xFFF59E0B),
+      ),
+      _buildMiniVital(
+        vitals: vitalsProvider.vitals,
+        type: 'heart_rate',
+        label: 'HR',
+        fallbackUnit: 'bpm',
+        color: const Color(0xFF009688),
+      ),
+    ];
+
     return Scaffold(
       appBar: AppBar(
         title: const Text('Track'),
         actions: [
           IconButton(
             icon: const Icon(Icons.notifications_outlined),
-            onPressed: () {},
+            onPressed: () {
+              Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (_) => const NotificationsScreen(),
+                ),
+              );
+            },
           ),
         ],
       ),
@@ -33,29 +166,25 @@ class TrackHome extends StatelessWidget {
             physics: const NeverScrollableScrollPhysics(),
             crossAxisSpacing: 8,
             mainAxisSpacing: 8,
-            children: const [
-              _VitalMiniCard(
-                label: 'BP',
-                value: '128/84',
-                unit: 'mmHg',
-                color: Color(0xFFDC2626),
-                trend: '↓ 3%',
-              ),
-              _VitalMiniCard(
-                label: 'Sugar',
-                value: '142',
-                unit: 'mg/dL',
-                color: Color(0xFFF59E0B),
-                trend: '↑ 8%',
-              ),
-              _VitalMiniCard(
-                label: 'HR',
-                value: '72',
-                unit: 'bpm',
-                color: Color(0xFF009688),
-                trend: '→ 0%',
-              ),
-            ],
+            children: miniVitals
+                .map(
+                  (item) => _VitalMiniCard(
+                    label: item.label,
+                    value: item.value,
+                    unit: item.unit,
+                    color: item.color,
+                    trend: item.trend,
+                    onTap: () {
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (_) => const VitalsTrendsScreen(),
+                        ),
+                      );
+                    },
+                  ),
+                )
+                .toList(),
           ),
           const SizedBox(height: 10),
           Row(
@@ -113,34 +242,37 @@ class TrackHome extends StatelessWidget {
             ],
           ),
           const SizedBox(height: 6),
-          _FlowTile(
-            icon: Icons.medication_outlined,
-            color: const Color(0xFF3B82F6),
-            title: 'Metformin 500mg',
-            subtitle: 'Morning, after breakfast · 92% adherence',
-            onTap: () {
-              Navigator.push(
-                context,
-                MaterialPageRoute(
-                  builder: (_) => const MedicationsListScreen(),
+          if (medicationsProvider.isLoading && activeMeds.isEmpty)
+            const Padding(
+              padding: EdgeInsets.symmetric(vertical: 10),
+              child: Center(child: CircularProgressIndicator()),
+            )
+          else if (activeMeds.isEmpty)
+            Container(
+              padding: const EdgeInsets.all(12),
+              decoration: KinsuTheme.cardDecoration,
+              child: const Text(
+                'No active medications yet. Add medications to track adherence.',
+                style: TextStyle(color: KinsuTheme.textSecondary),
+              ),
+            )
+          else
+            ...activeMeds.take(3).map(
+                  (medication) => _FlowTile(
+                    icon: Icons.medication_outlined,
+                    color: const Color(0xFF3B82F6),
+                    title: medication.name,
+                    subtitle: _medicationSubtitle(medication),
+                    onTap: () {
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (_) => const MedicationsListScreen(),
+                        ),
+                      );
+                    },
+                  ),
                 ),
-              );
-            },
-          ),
-          _FlowTile(
-            icon: Icons.medication_outlined,
-            color: const Color(0xFF3B82F6),
-            title: 'Amlodipine 5mg',
-            subtitle: 'Morning · 88% adherence',
-            onTap: () {
-              Navigator.push(
-                context,
-                MaterialPageRoute(
-                  builder: (_) => const MedicationsListScreen(),
-                ),
-              );
-            },
-          ),
           const SizedBox(height: 16),
           const _SectionTitle(title: 'More Tracking'),
           const SizedBox(height: 8),
@@ -208,6 +340,34 @@ class TrackHome extends StatelessWidget {
                   );
                 },
               ),
+              _MoreCard(
+                icon: Icons.fitness_center_outlined,
+                color: const Color(0xFFEF4444),
+                title: 'Exercise Log',
+                subtitle: 'Track workouts',
+                onTap: () {
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (_) => const ExerciseScreen(),
+                    ),
+                  );
+                },
+              ),
+              _MoreCard(
+                icon: Icons.bedtime_outlined,
+                color: const Color(0xFF6366F1),
+                title: 'Sleep Tracker',
+                subtitle: 'Log sleep schedule',
+                onTap: () {
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (_) => const SleepScreen(),
+                    ),
+                  );
+                },
+              ),
             ],
           ),
           const SizedBox(height: 16),
@@ -217,20 +377,54 @@ class TrackHome extends StatelessWidget {
             height: 100,
             child: ListView(
               scrollDirection: Axis.horizontal,
-              children: const [
+              children: [
                 _RoutineChip(
-                    title: 'Sleep', value: '7.5 hrs', color: Color(0xFF6366F1)),
-                SizedBox(width: 8),
+                  title: 'Sleep',
+                  value: 'Track',
+                  color: const Color(0xFF6366F1),
+                  onTap: () {
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(builder: (_) => const SleepScreen()),
+                    );
+                  },
+                ),
+                const SizedBox(width: 8),
                 _RoutineChip(
-                    title: 'Mood', value: 'Good', color: Color(0xFFF59E0B)),
-                SizedBox(width: 8),
+                  title: 'Mood',
+                  value: 'Log',
+                  color: const Color(0xFFF59E0B),
+                  onTap: () {
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(builder: (_) => const MoodScreen()),
+                    );
+                  },
+                ),
+                const SizedBox(width: 8),
                 _RoutineChip(
-                    title: 'Stress', value: 'Low', color: Color(0xFFEF4444)),
-                SizedBox(width: 8),
+                  title: 'Diet',
+                  value: 'Plan',
+                  color: const Color(0xFFEF4444),
+                  onTap: () {
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(builder: (_) => const DietScreen()),
+                    );
+                  },
+                ),
+                const SizedBox(width: 8),
                 _RoutineChip(
-                    title: 'Vitamins',
-                    value: '2/3 taken',
-                    color: Color(0xFF10B981)),
+                  title: 'Exercise',
+                  value: 'Add',
+                  color: const Color(0xFF10B981),
+                  onTap: () {
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(builder: (_) => const ExerciseScreen()),
+                    );
+                  },
+                ),
               ],
             ),
           ),
@@ -260,6 +454,7 @@ class _VitalMiniCard extends StatelessWidget {
   final String unit;
   final Color color;
   final String trend;
+  final VoidCallback? onTap;
 
   const _VitalMiniCard({
     required this.label,
@@ -267,38 +462,50 @@ class _VitalMiniCard extends StatelessWidget {
     required this.unit,
     required this.color,
     required this.trend,
+    this.onTap,
   });
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.all(10),
-      decoration: KinsuTheme.cardDecoration,
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text(
-            label,
-            style:
-                const TextStyle(fontSize: 11, color: KinsuTheme.textSecondary),
-          ),
-          const Spacer(),
-          Text(
-            value,
-            style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w700),
-          ),
-          Text(
-            unit,
-            style:
-                const TextStyle(fontSize: 10, color: KinsuTheme.textSecondary),
-          ),
-          const SizedBox(height: 2),
-          Text(
-            trend,
-            style: TextStyle(
-                fontSize: 10, fontWeight: FontWeight.w600, color: color),
-          ),
-        ],
+    return InkWell(
+      borderRadius: BorderRadius.circular(12),
+      onTap: onTap,
+      child: Container(
+        padding: const EdgeInsets.all(10),
+        decoration: KinsuTheme.cardDecoration,
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              label,
+              style: const TextStyle(
+                fontSize: 11,
+                color: KinsuTheme.textSecondary,
+              ),
+            ),
+            const Spacer(),
+            Text(
+              value,
+              style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w700),
+            ),
+            Text(
+              unit,
+              style: const TextStyle(
+                fontSize: 10,
+                color: KinsuTheme.textSecondary,
+              ),
+            ),
+            const SizedBox(height: 2),
+            Text(
+              trend,
+              style: TextStyle(
+                fontSize: 10,
+                fontWeight: FontWeight.w600,
+                color: color,
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }
@@ -384,7 +591,7 @@ class _FlowTile extends StatelessWidget {
                 width: 38,
                 height: 38,
                 decoration: BoxDecoration(
-                  color: color.withOpacity(0.12),
+                  color: color.withValues(alpha: 0.12),
                   borderRadius: BorderRadius.circular(10),
                 ),
                 child: Icon(icon, color: color, size: 18),
@@ -469,37 +676,59 @@ class _RoutineChip extends StatelessWidget {
   final String title;
   final String value;
   final Color color;
+  final VoidCallback? onTap;
 
   const _RoutineChip({
     required this.title,
     required this.value,
     required this.color,
+    this.onTap,
   });
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      width: 120,
-      padding: const EdgeInsets.all(12),
-      decoration: KinsuTheme.cardDecoration,
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Icon(Icons.circle, size: 12, color: color),
-          const SizedBox(height: 8),
-          Text(
-            value,
-            style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w700),
-          ),
-          Text(
-            title,
-            style: const TextStyle(
-              fontSize: 11,
-              color: KinsuTheme.textSecondary,
+    return InkWell(
+      borderRadius: BorderRadius.circular(12),
+      onTap: onTap,
+      child: Container(
+        width: 120,
+        padding: const EdgeInsets.all(12),
+        decoration: KinsuTheme.cardDecoration,
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Icon(Icons.circle, size: 12, color: color),
+            const SizedBox(height: 8),
+            Text(
+              value,
+              style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w700),
             ),
-          ),
-        ],
+            Text(
+              title,
+              style: const TextStyle(
+                fontSize: 11,
+                color: KinsuTheme.textSecondary,
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }
+}
+
+class _TrackMiniVital {
+  final String label;
+  final String value;
+  final String unit;
+  final Color color;
+  final String trend;
+
+  const _TrackMiniVital({
+    required this.label,
+    required this.value,
+    required this.unit,
+    required this.color,
+    required this.trend,
+  });
 }

@@ -1,22 +1,24 @@
+import 'dart:async';
 import 'dart:math' as math;
 
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
 import '../../core/theme.dart';
-import '../../models/medication.dart';
-import '../../models/vital.dart';
-import '../../providers/medications_provider.dart';
 import '../../models/family_member_profile.dart';
+import '../../models/home_models.dart';
 import '../../providers/family_provider.dart';
-import '../../providers/theme_provider.dart';
+import '../../providers/medications_provider.dart';
 import '../../providers/vitals_provider.dart';
+import '../../services/home_service.dart';
 import '../ai/ai_screen.dart';
 import '../track/medications/medications_list_screen.dart';
+import '../track/symptoms/symptoms_list_screen.dart';
 import '../track/vitals/vitals_trends_screen.dart';
 import '../upload_record_screen.dart';
-import 'notifications_screen.dart';
 import 'profile_screen.dart';
+import 'wellness_tools_screens.dart';
+import '../vault_screen.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -25,12 +27,48 @@ class HomeScreen extends StatefulWidget {
   State<HomeScreen> createState() => _HomeScreenState();
 }
 
-class _HomeScreenState extends State<HomeScreen>
-    with SingleTickerProviderStateMixin {
+class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
   late final AnimationController _heroController;
+  late final AnimationController _introController;
+  Timer? _heroSlideTimer;
   final TextEditingController _searchController = TextEditingController();
-  final Map<String, bool> _todayMeds = <String, bool>{};
-  late final List<_AppointmentData> _appointments;
+
+  HomeOverviewData? _overview;
+  HomeDashboardData? _dashboard;
+  bool _isHomeLoading = true;
+  String? _homeError;
+  bool _showAiAlert = true;
+  int _heroSlideIndex = 0;
+
+  static const List<_HeroSlideData> _heroSlides = [
+    _HeroSlideData(
+      emoji: '🌅',
+      headline: 'Great morning!',
+      subline: 'Your health journey continues today.',
+      tip: 'Tip: Keep your medication streak active today.',
+      colors: [KinsuTheme.primary, KinsuTheme.primaryDark],
+    ),
+    _HeroSlideData(
+      emoji: '💪',
+      headline: 'Consistency is working',
+      subline: 'Your daily tracking habits are improving trends.',
+      tip: 'Tip: Log vitals after breakfast for stable comparisons.',
+      colors: [Color(0xFF3B82F6), Color(0xFF1D4ED8)],
+    ),
+    _HeroSlideData(
+      emoji: '🎯',
+      headline: 'Stay on target',
+      subline: 'You are building better long-term health signals.',
+      tip: 'Tip: Review your trends weekly with AI summary.',
+      colors: [Color(0xFF8B5CF6), Color(0xFF6D28D9)],
+    ),
+  ];
+
+  static const List<String> _recentSearches = [
+    'Blood sugar reports',
+    'Dr. Kapoor prescription',
+    'Vitamin D levels',
+  ];
 
   @override
   void initState() {
@@ -39,101 +77,233 @@ class _HomeScreenState extends State<HomeScreen>
       vsync: this,
       duration: const Duration(seconds: 6),
     )..repeat();
+    _introController = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 900),
+    )..forward();
+    _heroSlideTimer = Timer.periodic(const Duration(seconds: 4), (_) {
+      if (!mounted) {
+        return;
+      }
+      setState(() {
+        _heroSlideIndex = (_heroSlideIndex + 1) % _heroSlides.length;
+      });
+    });
 
-    final now = DateTime.now();
-    _appointments = [
-      _AppointmentData(
-        doctor: 'Dr. R. Kapoor',
-        specialty: 'Cardiologist',
-        at: DateTime(now.year, now.month, now.day + 2, 10, 30),
-        place: 'Apollo Hospital',
-        notes: 'Bring latest BP logs and medication list.',
-      ),
-      _AppointmentData(
-        doctor: 'Dr. A. Mehta',
-        specialty: 'Endocrinologist',
-        at: DateTime(now.year, now.month, now.day + 5, 14, 0),
-        place: 'Max Hospital',
-        notes: 'Follow-up on blood sugar trends and diet plan.',
-      ),
-    ];
-
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      context.read<MedicationsProvider>().loadMedications(isActive: true);
-      context.read<VitalsProvider>().loadVitals();
-      context.read<FamilyProvider>().loadFamilyData();
+    WidgetsBinding.instance.addPostFrameCallback((_) async {
+      final familyProvider = context.read<FamilyProvider>();
+      final medicationsProvider = context.read<MedicationsProvider>();
+      final vitalsProvider = context.read<VitalsProvider>();
+      await familyProvider.loadFamilyData();
+      await medicationsProvider.loadMedications(isActive: true);
+      await vitalsProvider.loadVitals();
+      if (!mounted) {
+        return;
+      }
+      await _loadHomeData();
     });
   }
 
   @override
   void dispose() {
+    _heroSlideTimer?.cancel();
     _heroController.dispose();
+    _introController.dispose();
     _searchController.dispose();
     super.dispose();
   }
 
-  String _medicationKey(Medication medication) {
-    if (medication.id != null) {
-      return 'id:${medication.id}';
+  Future<void> _loadHomeData({bool showSpinner = true}) async {
+    if (showSpinner) {
+      setState(() {
+        _isHomeLoading = true;
+        _homeError = null;
+      });
     }
-    return 'name:${medication.name.toLowerCase()}';
-  }
 
-  void _syncTodayMedicationMap(List<Medication> medications) {
-    final keys = medications.map(_medicationKey).toSet();
-    _todayMeds.removeWhere((key, _) => !keys.contains(key));
-    for (final key in keys) {
-      _todayMeds.putIfAbsent(key, () => false);
-    }
-  }
-
-  int _computeStreakDay({
-    required List<Medication> medications,
-    required List<VitalLog> vitals,
-  }) {
-    final now = DateTime.now();
-    final today = DateTime(now.year, now.month, now.day);
-
-    DateTime? start;
-
-    for (final medication in medications) {
-      final candidate = DateTime(
-        medication.startDate.year,
-        medication.startDate.month,
-        medication.startDate.day,
-      );
-      if (start == null || candidate.isBefore(start)) {
-        start = candidate;
+    try {
+      final homeService = context.read<HomeService>();
+      final overview = await homeService.fetchOverview();
+      final dashboard = await homeService.fetchDashboard();
+      if (!mounted) {
+        return;
       }
-    }
-
-    for (final vital in vitals) {
-      final candidate = DateTime(
-        vital.recordedAt.year,
-        vital.recordedAt.month,
-        vital.recordedAt.day,
-      );
-      if (start == null || candidate.isBefore(start)) {
-        start = candidate;
+      setState(() {
+        _overview = overview;
+        _dashboard = dashboard;
+        _homeError = null;
+        _isHomeLoading = false;
+        _showAiAlert = dashboard.aiAlert != null;
+      });
+    } catch (error) {
+      if (!mounted) {
+        return;
       }
+      setState(() {
+        _homeError = error.toString();
+        _isHomeLoading = false;
+      });
     }
-
-    if (start == null) {
-      final startOfYear = DateTime(now.year, 1, 1);
-      return today.difference(startOfYear).inDays + 1;
-    }
-
-    final normalizedStart = start.isAfter(today) ? today : start;
-    return today.difference(normalizedStart).inDays + 1;
   }
 
-  String _formatAppointmentDateTime(DateTime dateTime) {
-    final localizations = MaterialLocalizations.of(context);
-    final dateLabel = localizations.formatMediumDate(dateTime);
-    final timeLabel = localizations.formatTimeOfDay(
-      TimeOfDay.fromDateTime(dateTime),
+  Future<void> _refreshAll() async {
+    final familyProvider = context.read<FamilyProvider>();
+    final medicationsProvider = context.read<MedicationsProvider>();
+    final vitalsProvider = context.read<VitalsProvider>();
+    await familyProvider.loadFamilyData();
+    await medicationsProvider.loadMedications(isActive: true);
+    await vitalsProvider.loadVitals();
+    if (!mounted) {
+      return;
+    }
+    await _loadHomeData(showSpinner: false);
+  }
+
+  int _notificationUnreadCount() {
+    if (_overview != null) {
+      return _overview!.notificationUnreadCount;
+    }
+    return _dashboard?.notifications.where((item) => !item.isRead).length ?? 0;
+  }
+
+  List<_AppointmentData> _appointmentCards() {
+    return (_dashboard?.appointments ?? const <HomeAppointmentCardData>[])
+        .map(
+          (item) => _AppointmentData(
+            doctor: item.doctorName,
+            specialty: item.specialty ?? 'Appointment',
+            at: item.appointmentAt,
+            place: item.location ?? 'Location pending',
+            notes: item.notes,
+          ),
+        )
+        .toList();
+  }
+
+  Color _recordColor(String type) {
+    switch (type) {
+      case 'lab_report':
+        return KinsuTheme.primary;
+      case 'prescription':
+        return const Color(0xFF3B82F6);
+      case 'imaging':
+        return const Color(0xFF8B5CF6);
+      default:
+        return const Color(0xFFF59E0B);
+    }
+  }
+
+  IconData _recordIcon(String type) {
+    switch (type) {
+      case 'lab_report':
+        return Icons.science_outlined;
+      case 'prescription':
+        return Icons.medical_services_outlined;
+      case 'imaging':
+        return Icons.image_outlined;
+      default:
+        return Icons.description_outlined;
+    }
+  }
+
+  String _recordTypeLabel(String type) {
+    switch (type) {
+      case 'lab_report':
+        return 'Lab Report';
+      case 'prescription':
+        return 'Prescription';
+      case 'imaging':
+        return 'Imaging';
+      case 'discharge_summary':
+        return 'Discharge Summary';
+      default:
+        return type.replaceAll('_', ' ').trim().isEmpty
+            ? 'Record'
+            : type
+                .replaceAll('_', ' ')
+                .split(' ')
+                .map((part) => part.isEmpty
+                    ? part
+                    : '${part[0].toUpperCase()}${part.substring(1)}')
+                .join(' ');
+    }
+  }
+
+  List<_RecentRecordData> _recentRecordCards() {
+    return (_dashboard?.recentRecords ?? const <HomeRecentRecordData>[])
+        .map(
+          (item) => _RecentRecordData(
+            type: _recordTypeLabel(item.recordType),
+            title: item.title,
+            provider: item.subtitle,
+            dateLabel: MaterialLocalizations.of(context)
+                .formatMediumDate(item.recordDate),
+            icon: _recordIcon(item.recordType),
+            color: _recordColor(item.recordType),
+          ),
+        )
+        .toList();
+  }
+
+  List<_NotificationItemData> _notificationItems() {
+    return (_dashboard?.notifications ?? const <HomeNotificationItem>[])
+        .map(
+          (item) => _NotificationItemData(
+            title: item.title,
+            description: item.body,
+            time: _relativeLabel(item.createdAt),
+            unread: !item.isRead,
+            alert: item.notificationType == 'ai' ||
+                item.notificationType == 'insight',
+          ),
+        )
+        .toList();
+  }
+
+  String _relativeLabel(DateTime value) {
+    final diff = DateTime.now().difference(value);
+    if (diff.inMinutes < 1) {
+      return 'Just now';
+    }
+    if (diff.inMinutes < 60) {
+      return '${diff.inMinutes} min ago';
+    }
+    if (diff.inHours < 24) {
+      return '${diff.inHours} hr ago';
+    }
+    if (diff.inDays == 1) {
+      return 'Yesterday';
+    }
+    return '${diff.inDays} days ago';
+  }
+
+  Future<void> _markMedicationTaken(HomeMedicationStatusItem item) async {
+    final success = await context.read<MedicationsProvider>().logDose(
+          item.id,
+          status: 'taken',
+          takenAt: DateTime.now(),
+        );
+    if (!mounted) {
+      return;
+    }
+    if (success) {
+      await _loadHomeData(showSpinner: false);
+      if (!mounted) {
+        return;
+      }
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('${item.name} marked as taken.')),
+      );
+      return;
+    }
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(
+          context.read<MedicationsProvider>().error ??
+              'Unable to update medication.',
+        ),
+      ),
     );
-    return '$dateLabel · $timeLabel';
   }
 
   Future<void> _showAppointmentOverview(_AppointmentData appointment) async {
@@ -183,6 +353,15 @@ class _HomeScreenState extends State<HomeScreen>
         );
       },
     );
+  }
+
+  String _formatAppointmentDateTime(DateTime dateTime) {
+    final localizations = MaterialLocalizations.of(context);
+    final dateLabel = localizations.formatMediumDate(dateTime);
+    final timeLabel = localizations.formatTimeOfDay(
+      TimeOfDay.fromDateTime(dateTime),
+    );
+    return '$dateLabel · $timeLabel';
   }
 
   Future<void> _showHomeVitalOverview({
@@ -302,6 +481,7 @@ class _HomeScreenState extends State<HomeScreen>
 
     await medicationsProvider.loadMedications(isActive: true);
     await vitalsProvider.loadVitals();
+    await _loadHomeData(showSpinner: false);
 
     if (!mounted) {
       return;
@@ -314,455 +494,1085 @@ class _HomeScreenState extends State<HomeScreen>
     );
   }
 
-  @override
-  Widget build(BuildContext context) {
-    final themeMode = context.watch<AppThemeProvider>().themeMode;
-    final medicationsProvider = context.watch<MedicationsProvider>();
-    final vitalsProvider = context.watch<VitalsProvider>();
-    final familyProvider = context.watch<FamilyProvider>();
-    final activeProfile = _activeProfileOption(familyProvider);
-    final profileDisplayName = activeProfile?.displayName ?? 'Priya Sharma';
-    final avatarInitials = _initialsFromName(profileDisplayName);
+  void _openHomeUtilityScreen(String item) {
+    Widget? screen;
+    switch (item) {
+      case 'Exercise':
+        screen = const ExerciseScreen();
+        break;
+      case 'Diet':
+        screen = const DietScreen();
+        break;
+      case 'Sleep':
+        screen = const SleepScreen();
+        break;
+      case 'Mood':
+        screen = const MoodScreen();
+        break;
+      case 'Community':
+        screen = const CommunityScreen();
+        break;
+      case 'Settings':
+        screen = const SettingsScreen();
+        break;
+    }
 
-    final activeMedications = medicationsProvider.medications
-        .where((medication) => medication.isActive)
-        .toList();
-    _syncTodayMedicationMap(activeMedications);
+    if (screen == null) {
+      return;
+    }
 
-    final taken = activeMedications
-        .where((medication) => _todayMeds[_medicationKey(medication)] ?? false)
-        .length;
-    final total = activeMedications.length;
-    final progress = total == 0 ? 0.0 : taken / total;
-    final streakDay = _computeStreakDay(
-      medications: activeMedications,
-      vitals: vitalsProvider.vitals,
+    Navigator.push(
+      context,
+      MaterialPageRoute(builder: (_) => screen!),
     );
+  }
 
-    return Scaffold(
-      body: SafeArea(
-        child: ListView(
-          padding: const EdgeInsets.fromLTRB(16, 12, 16, 18),
-          children: [
-            Row(
-              children: [
-                PopupMenuButton<int?>(
-                  tooltip: 'Switch account',
-                  padding: EdgeInsets.zero,
-                  onSelected: _switchProfile,
-                  itemBuilder: (context) {
-                    final profiles = familyProvider.profiles;
-                    if (profiles.isEmpty) {
-                      return const [
-                        PopupMenuItem<int>(
-                          value: -1,
-                          enabled: false,
-                          child: Text('No linked accounts'),
-                        ),
-                      ];
-                    }
+  IconData _searchIcon(String section) {
+    switch (section) {
+      case 'vitals':
+        return Icons.monitor_heart_outlined;
+      case 'symptoms':
+        return Icons.sick_outlined;
+      case 'medications':
+        return Icons.medication_outlined;
+      case 'records':
+        return Icons.description_outlined;
+      case 'appointments':
+        return Icons.event_note_outlined;
+      default:
+        return Icons.search;
+    }
+  }
 
-                    return profiles.map((profile) {
-                      final isActive = profile.profileId ==
-                          familyProvider.activeFamilyProfileId;
-                      final label = profile.subtitle == null ||
-                              profile.subtitle!.trim().isEmpty
-                          ? profile.displayName
-                          : '${profile.displayName} (${profile.subtitle})';
-                      return PopupMenuItem<int?>(
-                        value: profile.profileId,
-                        child: Row(
-                          children: [
-                            Icon(
-                              isActive
-                                  ? Icons.check_circle
-                                  : Icons.radio_button_unchecked,
-                              size: 16,
-                              color: isActive
-                                  ? KinsuTheme.primary
-                                  : KinsuTheme.textSecondary,
-                            ),
-                            const SizedBox(width: 8),
-                            Expanded(
-                              child: Text(
-                                label,
-                                overflow: TextOverflow.ellipsis,
-                              ),
-                            ),
-                          ],
-                        ),
-                      );
-                    }).toList();
-                  },
-                  child: CircleAvatar(
-                    radius: 20,
-                    child: Text(avatarInitials),
-                  ),
-                ),
-                const SizedBox(width: 10),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      const Text(
-                        'Good Morning',
-                        style: TextStyle(
-                          color: KinsuTheme.textSecondary,
-                          fontSize: 12,
-                        ),
-                      ),
-                      Text(
-                        profileDisplayName,
-                        style: TextStyle(
-                          fontSize: 17,
-                          fontWeight: FontWeight.w700,
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-                IconButton(
-                  icon: const Icon(Icons.notifications_outlined),
-                  onPressed: () {
-                    Navigator.push(
-                      context,
-                      MaterialPageRoute(
-                        builder: (_) => const NotificationsScreen(),
-                      ),
-                    );
-                  },
-                ),
-                IconButton(
-                  icon: const Icon(Icons.person_outline),
-                  onPressed: () {
-                    Navigator.push(
-                      context,
-                      MaterialPageRoute(builder: (_) => const ProfileScreen()),
-                    );
-                  },
-                ),
-              ],
-            ),
-            const SizedBox(height: 10),
-            TextField(
-              controller: _searchController,
-              decoration: const InputDecoration(
-                hintText: 'Search records, meds, doctors...',
-                prefixIcon: Icon(Icons.search),
-              ),
-            ),
-            const SizedBox(height: 10),
-            _ThemeModeSelector(currentMode: themeMode),
-            const SizedBox(height: 12),
-            _AnimatedHeroCard(
-              controller: _heroController,
-              dayNumber: streakDay,
-            ),
-            const SizedBox(height: 14),
-            const _SectionTitle(title: 'Quick Actions'),
-            const SizedBox(height: 8),
-            GridView.count(
-              crossAxisCount: 4,
-              shrinkWrap: true,
-              physics: const NeverScrollableScrollPhysics(),
-              children: [
-                _ActionTile(
-                  icon: Icons.upload_file_outlined,
-                  label: 'Upload Record',
-                  bg: const Color(0xFFE6F7F6),
-                  color: KinsuTheme.primary,
-                  onTap: () {
-                    Navigator.push(
-                      context,
-                      MaterialPageRoute(
-                        builder: (_) => const UploadRecordScreen(),
-                      ),
-                    );
-                  },
-                ),
-                _ActionTile(
-                  icon: Icons.medication_outlined,
-                  label: 'Medications',
-                  bg: const Color(0xFFEFF6FF),
-                  color: const Color(0xFF3B82F6),
-                  onTap: () {
-                    Navigator.push(
-                      context,
-                      MaterialPageRoute(
-                        builder: (_) => const MedicationsListScreen(),
-                      ),
-                    );
-                  },
-                ),
-                _ActionTile(
-                  icon: Icons.monitor_heart_outlined,
-                  label: 'Log Vitals',
-                  bg: const Color(0xFFF5F3FF),
-                  color: const Color(0xFF8B5CF6),
-                  onTap: () {
-                    Navigator.push(
-                      context,
-                      MaterialPageRoute(
-                        builder: (_) => const VitalsTrendsScreen(),
-                      ),
-                    );
-                  },
-                ),
-                _ActionTile(
-                  icon: Icons.sos_outlined,
-                  label: 'SOS',
-                  bg: const Color(0xFFFEF2F2),
-                  color: const Color(0xFFDC2626),
-                  onTap: () {
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      const SnackBar(content: Text('SOS flow coming next.')),
-                    );
-                  },
-                ),
-              ],
-            ),
-            const SizedBox(height: 8),
-            Wrap(
-              spacing: 8,
-              runSpacing: 8,
-              children: [
-                'Exercise',
-                'Diet',
-                'Sleep',
-                'Mood',
-                'Community',
-                'Settings',
-              ]
-                  .map(
-                    (item) => ActionChip(
-                      label: Text(item),
-                      onPressed: () {
-                        ScaffoldMessenger.of(context).showSnackBar(
-                          SnackBar(content: Text('$item screen coming next.')),
-                        );
-                      },
-                    ),
-                  )
-                  .toList(),
-            ),
-            const SizedBox(height: 16),
-            const _SectionTitle(title: 'Upcoming Appointments'),
-            const SizedBox(height: 8),
-            SizedBox(
-              height: 130,
-              child: ListView.separated(
-                scrollDirection: Axis.horizontal,
-                itemCount: _appointments.length,
-                separatorBuilder: (_, __) => const SizedBox(width: 10),
-                itemBuilder: (context, index) {
-                  final appointment = _appointments[index];
-                  return _AppointmentCard(
-                    appointment: appointment,
-                    dateTimeLabel: _formatAppointmentDateTime(appointment.at),
-                    onTap: () => _showAppointmentOverview(appointment),
-                  );
-                },
-              ),
-            ),
-            const SizedBox(height: 14),
-            const _SectionTitle(title: 'Today\'s Medicines'),
-            const SizedBox(height: 8),
-            Container(
-              padding: const EdgeInsets.all(14),
-              decoration: KinsuTheme.cardDecoration,
-              child: Column(
-                children: [
-                  Row(
-                    children: [
-                      Text('$taken/$total medicines taken'),
-                      const Spacer(),
-                      Text(
-                        '${(progress * 100).round()}%',
-                        style: const TextStyle(
-                          color: KinsuTheme.primary,
-                          fontWeight: FontWeight.w700,
-                        ),
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: 8),
-                  LinearProgressIndicator(
-                    value: progress,
-                    minHeight: 8,
-                    borderRadius: BorderRadius.circular(8),
-                    backgroundColor: KinsuTheme.divider,
-                  ),
-                ],
-              ),
-            ),
-            const SizedBox(height: 8),
-            if (medicationsProvider.isLoading && activeMedications.isEmpty)
-              const Padding(
-                padding: EdgeInsets.symmetric(vertical: 12),
-                child: Center(child: CircularProgressIndicator()),
-              )
-            else if (activeMedications.isEmpty)
-              Container(
-                padding: const EdgeInsets.all(12),
-                decoration: KinsuTheme.cardDecoration,
-                child: const Text(
-                  'No active medications yet. Add medications in Track to show them here.',
-                  style: TextStyle(color: KinsuTheme.textSecondary),
-                ),
-              )
-            else
-              ...activeMedications.map((medication) {
-                final key = _medicationKey(medication);
-                final isTaken = _todayMeds[key] ?? false;
+  Future<void> _openSearchResult(HomeSearchResultItemData item) async {
+    if (item.section == 'records') {
+      await Navigator.push(
+        context,
+        MaterialPageRoute(builder: (_) => const VaultScreen()),
+      );
+      return;
+    }
+    if (item.section == 'medications') {
+      await Navigator.push(
+        context,
+        MaterialPageRoute(builder: (_) => const MedicationsListScreen()),
+      );
+      return;
+    }
+    if (item.section == 'vitals') {
+      await Navigator.push(
+        context,
+        MaterialPageRoute(builder: (_) => const VitalsTrendsScreen()),
+      );
+      return;
+    }
+    if (item.section == 'symptoms') {
+      await Navigator.push(
+        context,
+        MaterialPageRoute(builder: (_) => const SymptomsListScreen()),
+      );
+      return;
+    }
 
-                return Padding(
-                  padding: const EdgeInsets.only(bottom: 8),
-                  child: Container(
-                    padding: const EdgeInsets.all(12),
-                    decoration: KinsuTheme.cardDecoration,
-                    child: Row(
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text(item.title)),
+    );
+  }
+
+  Future<void> _showSearchOverlay() async {
+    var localQuery = _searchController.text.trim();
+    var localResults = <HomeSearchResultItemData>[];
+    var localError = '';
+    var localLoading = false;
+    final modalController = TextEditingController(text: localQuery);
+    var searchTicket = 0;
+
+    Future<void> runSearch(
+      String value,
+      void Function(void Function()) setModalState,
+    ) async {
+      final trimmed = value.trim();
+      searchTicket += 1;
+      final currentTicket = searchTicket;
+      if (trimmed.isEmpty) {
+        setModalState(() {
+          localQuery = '';
+          localResults = <HomeSearchResultItemData>[];
+          localLoading = false;
+          localError = '';
+          _searchController.clear();
+        });
+        return;
+      }
+
+      setModalState(() {
+        localQuery = trimmed;
+        localLoading = true;
+        localError = '';
+        _searchController.text = trimmed;
+      });
+
+      try {
+        final results = await context.read<HomeService>().search(trimmed);
+        if (!mounted || currentTicket != searchTicket) {
+          return;
+        }
+        setModalState(() {
+          localResults = results;
+          localLoading = false;
+        });
+      } catch (error) {
+        if (!mounted || currentTicket != searchTicket) {
+          return;
+        }
+        setModalState(() {
+          localResults = <HomeSearchResultItemData>[];
+          localLoading = false;
+          localError = error.toString();
+        });
+      }
+    }
+
+    await showModalBottomSheet<void>(
+      context: context,
+      isScrollControlled: true,
+      useSafeArea: true,
+      backgroundColor: Theme.of(context).scaffoldBackgroundColor,
+      builder: (modalContext) {
+        return StatefulBuilder(
+          builder: (context, setModalState) {
+            return FractionallySizedBox(
+              heightFactor: 0.96,
+              child: Padding(
+                padding: const EdgeInsets.fromLTRB(16, 12, 16, 20),
+                child: Column(
+                  children: [
+                    Row(
                       children: [
-                        Checkbox.adaptive(
-                          value: isTaken,
-                          onChanged: (value) {
-                            setState(() {
-                              _todayMeds[key] = value ?? false;
-                            });
-                          },
-                          activeColor: KinsuTheme.statusActive,
+                        Expanded(
+                          child: TextField(
+                            autofocus: true,
+                            controller: modalController,
+                            onChanged: (value) =>
+                                runSearch(value, setModalState),
+                            decoration: const InputDecoration(
+                              hintText: 'Search everything...',
+                              prefixIcon: Icon(Icons.search),
+                            ),
+                          ),
                         ),
-                        const SizedBox(width: 6),
+                        TextButton(
+                          onPressed: () => Navigator.pop(context),
+                          child: const Text('Cancel'),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 10),
+                    Expanded(
+                      child: localQuery.isEmpty
+                          ? ListView(
+                              children: _recentSearches
+                                  .map(
+                                    (item) => ListTile(
+                                      leading: const Icon(Icons.history),
+                                      title: Text(item),
+                                      onTap: () async {
+                                        modalController.text = item;
+                                        modalController.selection =
+                                            TextSelection.collapsed(
+                                                offset: item.length);
+                                        await runSearch(item, setModalState);
+                                      },
+                                    ),
+                                  )
+                                  .toList(),
+                            )
+                          : localLoading
+                              ? const Center(child: CircularProgressIndicator())
+                              : localError.isNotEmpty
+                                  ? Center(
+                                      child: Text(
+                                        localError,
+                                        textAlign: TextAlign.center,
+                                        style: const TextStyle(
+                                            color: KinsuTheme.textSecondary),
+                                      ),
+                                    )
+                                  : localResults.isEmpty
+                                      ? const Center(
+                                          child: Text(
+                                            'No matches found yet.',
+                                            style: TextStyle(
+                                                color:
+                                                    KinsuTheme.textSecondary),
+                                          ),
+                                        )
+                                      : ListView(
+                                          children: localResults
+                                              .map(
+                                                (item) => ListTile(
+                                                  leading: Icon(_searchIcon(
+                                                      item.section)),
+                                                  title: Text(item.title),
+                                                  subtitle: Text(
+                                                    '${item.section[0].toUpperCase()}${item.section.substring(1)} · ${item.subtitle}',
+                                                  ),
+                                                  onTap: () async {
+                                                    _searchController.text =
+                                                        item.title;
+                                                    Navigator.pop(context);
+                                                    await _openSearchResult(
+                                                        item);
+                                                  },
+                                                ),
+                                              )
+                                              .toList(),
+                                        ),
+                    ),
+                  ],
+                ),
+              ),
+            );
+          },
+        );
+      },
+    );
+    modalController.dispose();
+  }
+
+  Future<void> _showNotificationsSheet() async {
+    final items = _notificationItems();
+    await showModalBottomSheet<void>(
+      context: context,
+      isScrollControlled: true,
+      useSafeArea: true,
+      showDragHandle: true,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+      ),
+      builder: (context) {
+        return Padding(
+          padding: const EdgeInsets.fromLTRB(16, 6, 16, 24),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              const Text(
+                'Notifications',
+                style: TextStyle(fontSize: 20, fontWeight: FontWeight.w700),
+              ),
+              const SizedBox(height: 10),
+              if (items.isEmpty)
+                const Padding(
+                  padding: EdgeInsets.symmetric(vertical: 12),
+                  child: Text(
+                    'No notifications yet.',
+                    style: TextStyle(color: KinsuTheme.textSecondary),
+                  ),
+                )
+              else
+                ...items.map(
+                  (item) => Container(
+                    margin: const EdgeInsets.only(bottom: 8),
+                    padding: const EdgeInsets.all(12),
+                    decoration: BoxDecoration(
+                      color: item.alert
+                          ? const Color(0xFFFFFBEB)
+                          : KinsuTheme.surface,
+                      borderRadius: BorderRadius.circular(12),
+                      border: Border.all(
+                        color: item.alert
+                            ? const Color(0xFFFDE68A)
+                            : KinsuTheme.divider,
+                      ),
+                    ),
+                    child: Row(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Container(
+                          width: 8,
+                          height: 8,
+                          margin: const EdgeInsets.only(top: 6),
+                          decoration: BoxDecoration(
+                            shape: BoxShape.circle,
+                            color: item.unread
+                                ? KinsuTheme.primary
+                                : Colors.transparent,
+                          ),
+                        ),
+                        const SizedBox(width: 10),
                         Expanded(
                           child: Column(
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
                               Text(
-                                medication.name,
+                                item.title,
                                 style: const TextStyle(
-                                  fontSize: 16,
-                                  fontWeight: FontWeight.w500,
+                                    fontWeight: FontWeight.w700),
+                              ),
+                              const SizedBox(height: 2),
+                              Text(
+                                item.description,
+                                style: const TextStyle(
+                                  color: KinsuTheme.textSecondary,
+                                  fontSize: 13,
                                 ),
                               ),
+                              const SizedBox(height: 2),
                               Text(
-                                '${medication.dosage} · ${medication.frequency.replaceAll('_', ' ')}',
+                                item.time,
                                 style: const TextStyle(
-                                  fontSize: 12,
                                   color: KinsuTheme.textSecondary,
+                                  fontSize: 11,
                                 ),
                               ),
                             ],
                           ),
                         ),
-                        TextButton(
-                          onPressed: () {
-                            setState(() {
-                              _todayMeds[key] = !isTaken;
-                            });
-                          },
-                          child: Text(isTaken ? 'Undo' : 'Take'),
-                        ),
                       ],
                     ),
                   ),
-                );
-              }),
-            const SizedBox(height: 8),
-            Row(
-              children: [
-                const Expanded(
-                  child: _SectionTitle(title: 'Health Insights'),
                 ),
-                TextButton.icon(
-                  onPressed: () {
-                    Navigator.push(
-                      context,
-                      MaterialPageRoute(builder: (_) => const AiScreen()),
-                    );
-                  },
-                  icon: const Icon(Icons.auto_awesome, size: 16),
-                  label: const Text('AI Summary'),
-                ),
-              ],
-            ),
-            const SizedBox(height: 8),
-            SizedBox(
-              height: 160,
-              child: ListView(
-                scrollDirection: Axis.horizontal,
-                children: [
-                  _InsightCard(
-                    title: 'Blood Sugar',
-                    value: '142 mg/dL',
-                    trend: '↑ 8%',
-                    warning: true,
-                    note: 'A bit high this week',
-                    onTap: () => _showHomeVitalOverview(
-                      title: 'Blood Sugar Trend',
-                      vitalType: 'blood_sugar',
-                    ),
-                  ),
-                  const SizedBox(width: 10),
-                  _InsightCard(
-                    title: 'Blood Pressure',
-                    value: '128/84',
-                    trend: '↓ 3%',
-                    warning: false,
-                    note: 'Meds are working',
-                    onTap: () => _showHomeVitalOverview(
-                      title: 'Blood Pressure Trend',
-                      vitalType: 'blood_pressure',
-                    ),
-                  ),
-                  const SizedBox(width: 10),
-                  _InsightCard(
-                    title: 'Heart Rate',
-                    value: '72 bpm',
-                    trend: '↓ 0.4',
-                    warning: false,
-                    note: 'Stable this week',
-                    onTap: () => _showHomeVitalOverview(
-                      title: 'Heart Rate Trend',
-                      vitalType: 'heart_rate',
-                    ),
-                  ),
-                ],
-              ),
-            ),
-          ],
-        ),
+            ],
+          ),
+        );
+      },
+    );
+  }
+
+  Widget _reveal({
+    required int index,
+    required Widget child,
+  }) {
+    final start = (index * 0.08).clamp(0.0, 0.75).toDouble();
+    final end = (start + 0.22).clamp(start + 0.05, 1.0).toDouble();
+    final animation = CurvedAnimation(
+      parent: _introController,
+      curve: Interval(start, end, curve: Curves.easeOutCubic),
+    );
+    return FadeTransition(
+      opacity: animation,
+      child: SlideTransition(
+        position: Tween<Offset>(
+          begin: const Offset(0, 0.08),
+          end: Offset.zero,
+        ).animate(animation),
+        child: child,
       ),
     );
   }
-}
-
-class _ThemeModeSelector extends StatelessWidget {
-  final ThemeMode currentMode;
-
-  const _ThemeModeSelector({required this.currentMode});
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
-      decoration: KinsuTheme.cardDecoration,
-      child: Wrap(
-        spacing: 8,
-        runSpacing: 8,
-        children: [
-          const Icon(Icons.brightness_6_outlined, size: 18),
-          _modeChip(context, ThemeMode.system, 'System'),
-          _modeChip(context, ThemeMode.light, 'Light'),
-          _modeChip(context, ThemeMode.dark, 'Dark'),
-        ],
-      ),
-    );
-  }
+    final familyProvider = context.watch<FamilyProvider>();
+    final activeProfile = familyProvider.activeDashboardCard;
+    final activeProfileOption = _activeProfileOption(familyProvider);
+    final profileDisplayName = activeProfile?.displayName ??
+        _overview?.profile.displayName ??
+        activeProfileOption?.displayName ??
+        'Kinsu User';
+    final avatarInitials = activeProfile?.initials.isNotEmpty == true
+        ? activeProfile!.initials
+        : _initialsFromName(profileDisplayName);
+    final appointments = _appointmentCards();
+    final recentRecords = _recentRecordCards();
+    final medicationItems =
+        _dashboard?.medicationItems ?? const <HomeMedicationStatusItem>[];
+    final insights = _dashboard?.insights ?? const <HomeInsightCardData>[];
+    final unreadCount = _notificationUnreadCount();
 
-  Widget _modeChip(BuildContext context, ThemeMode mode, String label) {
-    return ChoiceChip(
-      label: Text(label),
-      selected: currentMode == mode,
-      onSelected: (_) => context.read<AppThemeProvider>().setThemeMode(mode),
+    return Scaffold(
+      body: SafeArea(
+        child: RefreshIndicator(
+          onRefresh: _refreshAll,
+          child: ListView(
+            padding: const EdgeInsets.fromLTRB(16, 12, 16, 18),
+            children: [
+              _reveal(
+                index: 0,
+                child: Container(
+                  padding: const EdgeInsets.all(14),
+                  decoration: BoxDecoration(
+                    borderRadius: BorderRadius.circular(18),
+                    gradient: const LinearGradient(
+                      begin: Alignment.topLeft,
+                      end: Alignment.bottomRight,
+                      colors: [KinsuTheme.primary, KinsuTheme.primaryDark],
+                    ),
+                  ),
+                  child: Column(
+                    children: [
+                      Row(
+                        children: [
+                          PopupMenuButton<int?>(
+                            tooltip: 'Switch account',
+                            padding: EdgeInsets.zero,
+                            onSelected: _switchProfile,
+                            itemBuilder: (context) {
+                              final profiles = familyProvider.profiles;
+                              if (profiles.isEmpty) {
+                                return const [
+                                  PopupMenuItem<int>(
+                                    value: -1,
+                                    enabled: false,
+                                    child: Text('No linked accounts'),
+                                  ),
+                                ];
+                              }
+                              return profiles.map((profile) {
+                                final isActive = profile.profileId ==
+                                    familyProvider.activeFamilyProfileId;
+                                final label = profile.subtitle == null ||
+                                        profile.subtitle!.trim().isEmpty
+                                    ? profile.displayName
+                                    : '${profile.displayName} (${profile.subtitle})';
+                                return PopupMenuItem<int?>(
+                                  value: profile.profileId,
+                                  child: Row(
+                                    children: [
+                                      Icon(
+                                        isActive
+                                            ? Icons.check_circle
+                                            : Icons.radio_button_unchecked,
+                                        size: 16,
+                                        color: isActive
+                                            ? KinsuTheme.primary
+                                            : KinsuTheme.textSecondary,
+                                      ),
+                                      const SizedBox(width: 8),
+                                      Expanded(
+                                        child: Text(
+                                          label,
+                                          overflow: TextOverflow.ellipsis,
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                );
+                              }).toList();
+                            },
+                            child: CircleAvatar(
+                              radius: 20,
+                              backgroundColor:
+                                  Colors.white.withValues(alpha: 0.2),
+                              child: Text(
+                                avatarInitials,
+                                style: const TextStyle(color: Colors.white),
+                              ),
+                            ),
+                          ),
+                          const SizedBox(width: 10),
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text(
+                                  'Good Morning',
+                                  style: TextStyle(
+                                    color: Colors.white.withValues(alpha: 0.75),
+                                    fontSize: 12,
+                                  ),
+                                ),
+                                Text(
+                                  profileDisplayName,
+                                  style: const TextStyle(
+                                    color: Colors.white,
+                                    fontSize: 17,
+                                    fontWeight: FontWeight.w700,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                          Stack(
+                            clipBehavior: Clip.none,
+                            children: [
+                              IconButton(
+                                icon: const Icon(
+                                  Icons.notifications_outlined,
+                                  color: Colors.white,
+                                ),
+                                onPressed: _showNotificationsSheet,
+                              ),
+                              if (unreadCount > 0)
+                                Positioned(
+                                  right: 6,
+                                  top: 6,
+                                  child: Container(
+                                    padding: const EdgeInsets.symmetric(
+                                        horizontal: 6, vertical: 2),
+                                    decoration: const BoxDecoration(
+                                      color: Color(0xFFFF7A45),
+                                      shape: BoxShape.circle,
+                                    ),
+                                    child: Text(
+                                      unreadCount > 9 ? '9+' : '$unreadCount',
+                                      style: const TextStyle(
+                                        color: Colors.white,
+                                        fontSize: 10,
+                                        fontWeight: FontWeight.w700,
+                                      ),
+                                    ),
+                                  ),
+                                ),
+                            ],
+                          ),
+                          IconButton(
+                            icon: const Icon(Icons.person_outline,
+                                color: Colors.white),
+                            onPressed: () {
+                              Navigator.push(
+                                context,
+                                MaterialPageRoute(
+                                    builder: (_) => const ProfileScreen()),
+                              );
+                            },
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 10),
+                      InkWell(
+                        borderRadius: BorderRadius.circular(16),
+                        onTap: _showSearchOverlay,
+                        child: Container(
+                          height: 48,
+                          padding: const EdgeInsets.symmetric(horizontal: 14),
+                          decoration: BoxDecoration(
+                            color: Colors.white.withValues(alpha: 0.15),
+                            borderRadius: BorderRadius.circular(16),
+                          ),
+                          child: Row(
+                            children: [
+                              Icon(
+                                Icons.search,
+                                color: Colors.white.withValues(alpha: 0.75),
+                              ),
+                              const SizedBox(width: 10),
+                              Expanded(
+                                child: Text(
+                                  _searchController.text.trim().isEmpty
+                                      ? (_overview?.searchPlaceholder ??
+                                          'Search records, meds, doctors...')
+                                      : _searchController.text.trim(),
+                                  style: TextStyle(
+                                    color: Colors.white.withValues(alpha: 0.86),
+                                    fontSize: 15,
+                                  ),
+                                  overflow: TextOverflow.ellipsis,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+              if (_homeError != null && _dashboard == null) ...[
+                const SizedBox(height: 12),
+                Container(
+                  padding: const EdgeInsets.all(14),
+                  decoration: KinsuTheme.cardDecoration,
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      const Text(
+                        'Unable to load home dashboard',
+                        style: TextStyle(fontWeight: FontWeight.w700),
+                      ),
+                      const SizedBox(height: 6),
+                      Text(
+                        _homeError!,
+                        style: const TextStyle(color: KinsuTheme.textSecondary),
+                      ),
+                      const SizedBox(height: 10),
+                      OutlinedButton(
+                        onPressed: _loadHomeData,
+                        child: const Text('Retry'),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+              const SizedBox(height: 12),
+              _reveal(
+                index: 2,
+                child: _AnimatedHeroCard(
+                  controller: _heroController,
+                  dayNumber: _dashboard?.streakDay ?? 1,
+                  slide: _heroSlides[_heroSlideIndex],
+                  currentSlide: _heroSlideIndex,
+                  totalSlides: _heroSlides.length,
+                  onDotTap: (index) {
+                    setState(() {
+                      _heroSlideIndex = index;
+                    });
+                  },
+                ),
+              ),
+              if (_showAiAlert && _dashboard?.aiAlert != null) ...[
+                const SizedBox(height: 10),
+                _reveal(
+                  index: 3,
+                  child: _ContextAlertCard(
+                    title: _dashboard!.aiAlert!.title,
+                    message: _dashboard!.aiAlert!.body,
+                    onClose: () => setState(() => _showAiAlert = false),
+                    onTap: () {
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(builder: (_) => const AiScreen()),
+                      );
+                    },
+                  ),
+                ),
+              ],
+              const SizedBox(height: 14),
+              _reveal(
+                  index: 4, child: const _SectionTitle(title: 'Quick Actions')),
+              const SizedBox(height: 8),
+              _reveal(
+                index: 5,
+                child: Container(
+                  padding: const EdgeInsets.all(12),
+                  decoration: KinsuTheme.cardDecoration,
+                  child: Column(
+                    children: [
+                      GridView.count(
+                        crossAxisCount: 4,
+                        shrinkWrap: true,
+                        physics: const NeverScrollableScrollPhysics(),
+                        children: [
+                          _ActionTile(
+                            icon: Icons.upload_file_outlined,
+                            label: 'Upload Record',
+                            bg: const Color(0xFFE6F7F6),
+                            color: KinsuTheme.primary,
+                            onTap: () {
+                              Navigator.push(
+                                context,
+                                MaterialPageRoute(
+                                    builder: (_) => const UploadRecordScreen()),
+                              );
+                            },
+                          ),
+                          _ActionTile(
+                            icon: Icons.medication_outlined,
+                            label: 'Medications',
+                            bg: const Color(0xFFEFF6FF),
+                            color: const Color(0xFF3B82F6),
+                            onTap: () {
+                              Navigator.push(
+                                context,
+                                MaterialPageRoute(
+                                    builder: (_) =>
+                                        const MedicationsListScreen()),
+                              );
+                            },
+                          ),
+                          _ActionTile(
+                            icon: Icons.monitor_heart_outlined,
+                            label: 'Log Vitals',
+                            bg: const Color(0xFFF5F3FF),
+                            color: const Color(0xFF8B5CF6),
+                            onTap: () {
+                              Navigator.push(
+                                context,
+                                MaterialPageRoute(
+                                    builder: (_) => const VitalsTrendsScreen()),
+                              );
+                            },
+                          ),
+                          _ActionTile(
+                            icon: Icons.sos_outlined,
+                            label: 'SOS',
+                            bg: const Color(0xFFFEF2F2),
+                            color: const Color(0xFFDC2626),
+                            onTap: () {
+                              Navigator.push(
+                                context,
+                                MaterialPageRoute(
+                                    builder: (_) => const SosScreen()),
+                              );
+                            },
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 8),
+                      GridView.count(
+                        crossAxisCount: 6,
+                        shrinkWrap: true,
+                        physics: const NeverScrollableScrollPhysics(),
+                        mainAxisSpacing: 8,
+                        crossAxisSpacing: 6,
+                        childAspectRatio: 0.78,
+                        children: [
+                          _MiniActionTile(
+                            icon: Icons.fitness_center,
+                            label: 'Exercise',
+                            bg: const Color(0xFFFEF2F2),
+                            color: const Color(0xFFDC2626),
+                            onTap: () => _openHomeUtilityScreen('Exercise'),
+                          ),
+                          _MiniActionTile(
+                            icon: Icons.restaurant_menu,
+                            label: 'Diet',
+                            bg: const Color(0xFFFFFBEB),
+                            color: const Color(0xFFF59E0B),
+                            onTap: () => _openHomeUtilityScreen('Diet'),
+                          ),
+                          _MiniActionTile(
+                            icon: Icons.bedtime_outlined,
+                            label: 'Sleep',
+                            bg: const Color(0xFFEEF2FF),
+                            color: const Color(0xFF4F46E5),
+                            onTap: () => _openHomeUtilityScreen('Sleep'),
+                          ),
+                          _MiniActionTile(
+                            icon: Icons.mood_outlined,
+                            label: 'Mood',
+                            bg: const Color(0xFFFDF2F8),
+                            color: const Color(0xFFEC4899),
+                            onTap: () => _openHomeUtilityScreen('Mood'),
+                          ),
+                          _MiniActionTile(
+                            icon: Icons.groups_outlined,
+                            label: 'Community',
+                            bg: const Color(0xFFF0FDF4),
+                            color: const Color(0xFF10B981),
+                            onTap: () => _openHomeUtilityScreen('Community'),
+                          ),
+                          _MiniActionTile(
+                            icon: Icons.settings_outlined,
+                            label: 'Settings',
+                            bg: const Color(0xFFF9FAFB),
+                            color: const Color(0xFF6B7280),
+                            onTap: () => _openHomeUtilityScreen('Settings'),
+                          ),
+                        ],
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+              const SizedBox(height: 16),
+              _reveal(
+                  index: 6,
+                  child: const _SectionTitle(title: 'Upcoming Appointments')),
+              const SizedBox(height: 8),
+              _reveal(
+                index: 7,
+                child: appointments.isEmpty
+                    ? Container(
+                        padding: const EdgeInsets.all(14),
+                        decoration: KinsuTheme.cardDecoration,
+                        child: const Text(
+                          'No upcoming appointments yet.',
+                          style: TextStyle(color: KinsuTheme.textSecondary),
+                        ),
+                      )
+                    : SizedBox(
+                        height: 130,
+                        child: ListView.separated(
+                          scrollDirection: Axis.horizontal,
+                          itemCount: appointments.length,
+                          separatorBuilder: (_, __) =>
+                              const SizedBox(width: 10),
+                          itemBuilder: (context, index) {
+                            final appointment = appointments[index];
+                            return _AppointmentCard(
+                              appointment: appointment,
+                              dateTimeLabel:
+                                  _formatAppointmentDateTime(appointment.at),
+                              onTap: () =>
+                                  _showAppointmentOverview(appointment),
+                            );
+                          },
+                        ),
+                      ),
+              ),
+              const SizedBox(height: 14),
+              _reveal(
+                  index: 8,
+                  child: const _SectionTitle(title: 'Today\'s Medicines')),
+              const SizedBox(height: 8),
+              _reveal(
+                index: 9,
+                child: Container(
+                  padding: const EdgeInsets.all(14),
+                  decoration: KinsuTheme.cardDecoration,
+                  child: Column(
+                    children: [
+                      Row(
+                        children: [
+                          Text(
+                              '${_dashboard?.medicationsTaken ?? 0}/${(_dashboard?.medicationsTaken ?? 0) + (_dashboard?.medicationsMissed ?? 0) + (_dashboard?.medicationsLeft ?? 0)} medicines handled'),
+                          const Spacer(),
+                          Text(
+                            '${(_dashboard?.medicationsTaken ?? 0) + (_dashboard?.medicationsMissed ?? 0) + (_dashboard?.medicationsLeft ?? 0) == 0 ? 0 : (((_dashboard?.medicationsTaken ?? 0) / ((_dashboard?.medicationsTaken ?? 0) + (_dashboard?.medicationsMissed ?? 0) + (_dashboard?.medicationsLeft ?? 0))) * 100).round()}%',
+                            style: const TextStyle(
+                              color: KinsuTheme.primary,
+                              fontWeight: FontWeight.w700,
+                            ),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 8),
+                      LinearProgressIndicator(
+                        value: ((_dashboard?.medicationsTaken ?? 0) +
+                                    (_dashboard?.medicationsMissed ?? 0) +
+                                    (_dashboard?.medicationsLeft ?? 0)) ==
+                                0
+                            ? 0
+                            : (_dashboard!.medicationsTaken /
+                                (_dashboard!.medicationsTaken +
+                                    _dashboard!.medicationsMissed +
+                                    _dashboard!.medicationsLeft)),
+                        minHeight: 8,
+                        borderRadius: BorderRadius.circular(8),
+                        backgroundColor: KinsuTheme.divider,
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+              const SizedBox(height: 8),
+              if (_isHomeLoading && _dashboard == null)
+                const Padding(
+                  padding: EdgeInsets.symmetric(vertical: 12),
+                  child: Center(child: CircularProgressIndicator()),
+                )
+              else if (medicationItems.isEmpty)
+                Container(
+                  padding: const EdgeInsets.all(12),
+                  decoration: KinsuTheme.cardDecoration,
+                  child: const Text(
+                    'No active medications yet. Add medications in Track to show them here.',
+                    style: TextStyle(color: KinsuTheme.textSecondary),
+                  ),
+                )
+              else
+                ...medicationItems.map((item) {
+                  final isTaken = item.status == 'taken';
+                  final isMissed = item.status == 'missed';
+                  return Padding(
+                    padding: const EdgeInsets.only(bottom: 8),
+                    child: Container(
+                      padding: const EdgeInsets.all(12),
+                      decoration: KinsuTheme.cardDecoration,
+                      child: Row(
+                        children: [
+                          Container(
+                            width: 32,
+                            height: 32,
+                            decoration: BoxDecoration(
+                              shape: BoxShape.circle,
+                              color: isTaken
+                                  ? const Color(0xFFE8F5E9)
+                                  : isMissed
+                                      ? const Color(0xFFFEF2F2)
+                                      : const Color(0xFFEFF6FF),
+                            ),
+                            child: Icon(
+                              isTaken
+                                  ? Icons.check
+                                  : isMissed
+                                      ? Icons.close
+                                      : Icons.medication_outlined,
+                              size: 18,
+                              color: isTaken
+                                  ? KinsuTheme.statusActive
+                                  : isMissed
+                                      ? const Color(0xFFDC2626)
+                                      : const Color(0xFF3B82F6),
+                            ),
+                          ),
+                          const SizedBox(width: 10),
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text(
+                                  item.name,
+                                  style: const TextStyle(
+                                    fontSize: 16,
+                                    fontWeight: FontWeight.w500,
+                                  ),
+                                ),
+                                Text(
+                                  item.scheduledLabel == null ||
+                                          item.scheduledLabel!.trim().isEmpty
+                                      ? item.subtitle
+                                      : '${item.scheduledLabel} · ${item.subtitle}',
+                                  style: const TextStyle(
+                                    fontSize: 12,
+                                    color: KinsuTheme.textSecondary,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                          if (isTaken)
+                            Container(
+                              padding: const EdgeInsets.symmetric(
+                                  horizontal: 12, vertical: 6),
+                              decoration: BoxDecoration(
+                                color: const Color(0xFFE8F5E9),
+                                borderRadius: BorderRadius.circular(999),
+                              ),
+                              child: const Text(
+                                'Taken',
+                                style: TextStyle(
+                                  color: KinsuTheme.statusActive,
+                                  fontWeight: FontWeight.w700,
+                                ),
+                              ),
+                            )
+                          else if (isMissed)
+                            Container(
+                              padding: const EdgeInsets.symmetric(
+                                  horizontal: 12, vertical: 6),
+                              decoration: BoxDecoration(
+                                color: const Color(0xFFFEF2F2),
+                                borderRadius: BorderRadius.circular(999),
+                              ),
+                              child: const Text(
+                                'Missed',
+                                style: TextStyle(
+                                  color: Color(0xFFDC2626),
+                                  fontWeight: FontWeight.w700,
+                                ),
+                              ),
+                            )
+                          else
+                            FilledButton(
+                              onPressed: () => _markMedicationTaken(item),
+                              style: FilledButton.styleFrom(
+                                backgroundColor: KinsuTheme.primary,
+                                foregroundColor: Colors.white,
+                                padding: const EdgeInsets.symmetric(
+                                    horizontal: 14, vertical: 8),
+                              ),
+                              child: const Text('Take'),
+                            ),
+                        ],
+                      ),
+                    ),
+                  );
+                }),
+              const SizedBox(height: 8),
+              _reveal(
+                index: 10,
+                child: Row(
+                  children: [
+                    const Expanded(
+                        child: _SectionTitle(title: 'Health Insights')),
+                    TextButton.icon(
+                      onPressed: () {
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(builder: (_) => const AiScreen()),
+                        );
+                      },
+                      icon: const Icon(Icons.auto_awesome, size: 16),
+                      label: const Text('AI Summary'),
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(height: 8),
+              _reveal(
+                index: 11,
+                child: insights.isEmpty
+                    ? Container(
+                        padding: const EdgeInsets.all(14),
+                        decoration: KinsuTheme.cardDecoration,
+                        child: const Text(
+                          'No health insights yet. Start tracking vitals to see changes here.',
+                          style: TextStyle(color: KinsuTheme.textSecondary),
+                        ),
+                      )
+                    : SizedBox(
+                        height: 160,
+                        child: ListView.separated(
+                          scrollDirection: Axis.horizontal,
+                          itemCount: insights.length,
+                          separatorBuilder: (_, __) =>
+                              const SizedBox(width: 10),
+                          itemBuilder: (context, index) {
+                            final insight = insights[index];
+                            return _InsightCard(
+                              title: insight.title,
+                              value: insight.metric,
+                              trend: insight.deltaLabel,
+                              warning: insight.trend == 'up',
+                              note: insight.summary,
+                              onTap: () => _showHomeVitalOverview(
+                                title: '${insight.title} Trend',
+                                vitalType: insight.key,
+                              ),
+                            );
+                          },
+                        ),
+                      ),
+              ),
+              const SizedBox(height: 16),
+              _reveal(
+                index: 12,
+                child: Row(
+                  children: [
+                    const Expanded(
+                        child: _SectionTitle(title: 'Recent Records')),
+                    TextButton(
+                      onPressed: () {
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                              builder: (_) => const VaultScreen()),
+                        );
+                      },
+                      child: const Text('View All'),
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(height: 8),
+              _reveal(
+                index: 13,
+                child: recentRecords.isEmpty
+                    ? Container(
+                        padding: const EdgeInsets.all(12),
+                        decoration: KinsuTheme.cardDecoration,
+                        child: const Text(
+                          'No records uploaded yet.',
+                          style: TextStyle(color: KinsuTheme.textSecondary),
+                        ),
+                      )
+                    : Column(
+                        children: recentRecords
+                            .map(
+                              (record) => Padding(
+                                padding: const EdgeInsets.only(bottom: 8),
+                                child: _RecentRecordCard(
+                                  record: record,
+                                  onTap: () {
+                                    Navigator.push(
+                                      context,
+                                      MaterialPageRoute(
+                                          builder: (_) => const VaultScreen()),
+                                    );
+                                  },
+                                ),
+                              ),
+                            )
+                            .toList(),
+                      ),
+              ),
+            ],
+          ),
+        ),
+      ),
     );
   }
 }
@@ -770,10 +1580,18 @@ class _ThemeModeSelector extends StatelessWidget {
 class _AnimatedHeroCard extends StatelessWidget {
   final AnimationController controller;
   final int dayNumber;
+  final _HeroSlideData slide;
+  final int currentSlide;
+  final int totalSlides;
+  final ValueChanged<int> onDotTap;
 
   const _AnimatedHeroCard({
     required this.controller,
     required this.dayNumber,
+    required this.slide,
+    required this.currentSlide,
+    required this.totalSlides,
+    required this.onDotTap,
   });
 
   @override
@@ -783,11 +1601,13 @@ class _AnimatedHeroCard extends StatelessWidget {
       builder: (context, _) {
         final t = controller.value * 2 * math.pi;
         return Container(
-          height: 130,
+          height: 156,
           decoration: BoxDecoration(
             borderRadius: BorderRadius.circular(16),
-            gradient: const LinearGradient(
-              colors: [KinsuTheme.primary, KinsuTheme.primaryDark],
+            gradient: LinearGradient(
+              begin: Alignment.topLeft,
+              end: Alignment.bottomRight,
+              colors: slide.colors,
             ),
           ),
           child: Stack(
@@ -803,22 +1623,88 @@ class _AnimatedHeroCard extends StatelessWidget {
                 child: _bubble(28, Colors.white.withValues(alpha: 0.15)),
               ),
               Padding(
-                padding: const EdgeInsets.all(14),
+                padding: const EdgeInsets.fromLTRB(14, 12, 14, 12),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
+                    Row(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Expanded(
+                          child: Text(
+                            '${slide.emoji} ${slide.headline}',
+                            style: const TextStyle(
+                              color: Colors.white,
+                              fontSize: 17,
+                              fontWeight: FontWeight.w700,
+                            ),
+                          ),
+                        ),
+                        Container(
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 9,
+                            vertical: 4,
+                          ),
+                          decoration: BoxDecoration(
+                            color: Colors.white.withValues(alpha: 0.17),
+                            borderRadius: BorderRadius.circular(999),
+                          ),
+                          child: Text(
+                            '$dayNumber days',
+                            style: const TextStyle(
+                              color: Colors.white,
+                              fontSize: 11,
+                              fontWeight: FontWeight.w700,
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 4),
                     Text(
-                      'Day $dayNumber — Keep it up!',
-                      style: const TextStyle(
-                        color: Colors.white,
-                        fontSize: 18,
-                        fontWeight: FontWeight.w700,
+                      slide.subline,
+                      style: const TextStyle(color: Colors.white70),
+                    ),
+                    const Spacer(),
+                    Container(
+                      width: double.infinity,
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 10,
+                        vertical: 8,
+                      ),
+                      decoration: BoxDecoration(
+                        color: Colors.white.withValues(alpha: 0.14),
+                        borderRadius: BorderRadius.circular(11),
+                      ),
+                      child: Text(
+                        slide.tip,
+                        style: const TextStyle(
+                          color: Colors.white,
+                          fontSize: 11,
+                        ),
                       ),
                     ),
                     const SizedBox(height: 4),
-                    const Text(
-                      'Your health habit streak is active. Log vitals today to continue.',
-                      style: TextStyle(color: Colors.white70),
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: List.generate(
+                        totalSlides,
+                        (index) => GestureDetector(
+                          onTap: () => onDotTap(index),
+                          child: AnimatedContainer(
+                            duration: const Duration(milliseconds: 220),
+                            margin: const EdgeInsets.symmetric(horizontal: 3),
+                            width: currentSlide == index ? 16 : 6,
+                            height: 6,
+                            decoration: BoxDecoration(
+                              borderRadius: BorderRadius.circular(999),
+                              color: currentSlide == index
+                                  ? Colors.white
+                                  : Colors.white54,
+                            ),
+                          ),
+                        ),
+                      ),
                     ),
                   ],
                 ),
@@ -835,6 +1721,75 @@ class _AnimatedHeroCard extends StatelessWidget {
       width: size,
       height: size,
       decoration: BoxDecoration(shape: BoxShape.circle, color: color),
+    );
+  }
+}
+
+class _ContextAlertCard extends StatelessWidget {
+  final String title;
+  final String message;
+  final VoidCallback onTap;
+  final VoidCallback onClose;
+
+  const _ContextAlertCard({
+    required this.title,
+    required this.message,
+    required this.onTap,
+    required this.onClose,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: const Color(0xFFFFFBEB),
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: const Color(0xFFFDE68A)),
+      ),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Icon(Icons.warning_amber_rounded, color: Color(0xFFB45309)),
+          const SizedBox(width: 8),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  title,
+                  style: const TextStyle(
+                    color: Color(0xFF92400E),
+                    fontWeight: FontWeight.w700,
+                  ),
+                ),
+                const SizedBox(height: 2),
+                Text(
+                  message,
+                  style: const TextStyle(
+                    color: Color(0xFF92400E),
+                    fontSize: 12,
+                  ),
+                ),
+                TextButton(
+                  onPressed: onTap,
+                  style: TextButton.styleFrom(
+                    padding: EdgeInsets.zero,
+                    minimumSize: const Size(0, 28),
+                    tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                  ),
+                  child: const Text('View AI Summary'),
+                ),
+              ],
+            ),
+          ),
+          IconButton(
+            onPressed: onClose,
+            icon: const Icon(Icons.close, size: 17),
+            visualDensity: VisualDensity.compact,
+          ),
+        ],
+      ),
     );
   }
 }
@@ -890,6 +1845,52 @@ class _ActionTile extends StatelessWidget {
             label,
             textAlign: TextAlign.center,
             style: const TextStyle(fontSize: 11),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _MiniActionTile extends StatelessWidget {
+  final IconData icon;
+  final String label;
+  final Color bg;
+  final Color color;
+  final VoidCallback onTap;
+
+  const _MiniActionTile({
+    required this.icon,
+    required this.label,
+    required this.bg,
+    required this.color,
+    required this.onTap,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return InkWell(
+      borderRadius: BorderRadius.circular(10),
+      onTap: onTap,
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          Container(
+            width: 34,
+            height: 34,
+            decoration: BoxDecoration(
+              color: bg,
+              borderRadius: BorderRadius.circular(10),
+            ),
+            child: Icon(icon, color: color, size: 16),
+          ),
+          const SizedBox(height: 4),
+          Text(
+            label,
+            textAlign: TextAlign.center,
+            style: const TextStyle(fontSize: 10),
+            maxLines: 2,
+            overflow: TextOverflow.ellipsis,
           ),
         ],
       ),
@@ -1034,6 +2035,64 @@ class _InsightCard extends StatelessWidget {
   }
 }
 
+class _RecentRecordCard extends StatelessWidget {
+  final _RecentRecordData record;
+  final VoidCallback onTap;
+
+  const _RecentRecordCard({
+    required this.record,
+    required this.onTap,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Material(
+      color: Colors.transparent,
+      child: InkWell(
+        borderRadius: BorderRadius.circular(12),
+        onTap: onTap,
+        child: Container(
+          padding: const EdgeInsets.all(12),
+          decoration: KinsuTheme.cardDecoration,
+          child: Row(
+            children: [
+              Container(
+                width: 40,
+                height: 40,
+                decoration: BoxDecoration(
+                  color: record.color.withValues(alpha: 0.12),
+                  borderRadius: BorderRadius.circular(10),
+                ),
+                child: Icon(record.icon, color: record.color),
+              ),
+              const SizedBox(width: 10),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      record.title,
+                      style: const TextStyle(fontWeight: FontWeight.w700),
+                    ),
+                    Text(
+                      '${record.type} · ${record.provider} · ${record.dateLabel}',
+                      style: const TextStyle(
+                        color: KinsuTheme.textSecondary,
+                        fontSize: 12,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              const Icon(Icons.chevron_right, color: KinsuTheme.textSecondary),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
 class _AppointmentData {
   final String doctor;
   final String specialty;
@@ -1089,4 +2148,54 @@ class _AppointmentDetailRow extends StatelessWidget {
       ),
     );
   }
+}
+
+class _HeroSlideData {
+  final String emoji;
+  final String headline;
+  final String subline;
+  final String tip;
+  final List<Color> colors;
+
+  const _HeroSlideData({
+    required this.emoji,
+    required this.headline,
+    required this.subline,
+    required this.tip,
+    required this.colors,
+  });
+}
+
+class _NotificationItemData {
+  final String title;
+  final String description;
+  final String time;
+  final bool unread;
+  final bool alert;
+
+  const _NotificationItemData({
+    required this.title,
+    required this.description,
+    required this.time,
+    required this.unread,
+    required this.alert,
+  });
+}
+
+class _RecentRecordData {
+  final String type;
+  final String title;
+  final String provider;
+  final String dateLabel;
+  final IconData icon;
+  final Color color;
+
+  const _RecentRecordData({
+    required this.type,
+    required this.title,
+    required this.provider,
+    required this.dateLabel,
+    required this.icon,
+    required this.color,
+  });
 }

@@ -3,6 +3,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:dio/dio.dart';
 import 'package:provider/provider.dart';
 
+import 'package:kinsu_health/providers/family_provider.dart';
 import 'package:kinsu_health/providers/illness_provider.dart';
 import 'package:kinsu_health/providers/medications_provider.dart';
 import 'package:kinsu_health/providers/reminders_provider.dart';
@@ -15,6 +16,7 @@ import 'package:kinsu_health/screens/track/illness/illness_list_screen.dart';
 import 'package:kinsu_health/screens/track/medications/add_medication_screen.dart';
 import 'package:kinsu_health/screens/track/reminders/add_reminder_screen.dart';
 import 'package:kinsu_health/screens/track/vitals/vitals_trends_screen.dart';
+import 'package:kinsu_health/services/family_service.dart';
 import 'package:kinsu_health/services/illness_service.dart';
 import 'package:kinsu_health/services/medications_service.dart';
 import 'package:kinsu_health/services/reminders_service.dart';
@@ -45,6 +47,8 @@ void main() {
         ChangeNotifierProvider(
             create: (_) => MedicationsProvider(MedicationsService(dio))),
         ChangeNotifierProvider(create: (_) => VaultProvider(VaultService(dio))),
+        ChangeNotifierProvider(
+            create: (_) => FamilyProvider(FamilyService(dio))),
       ],
       child: const MaterialApp(home: MainShell()),
     ));
@@ -137,6 +141,8 @@ void main() {
               create: (_) => MedicationsProvider(MedicationsService(dio))),
           ChangeNotifierProvider(
               create: (_) => RemindersProvider(RemindersService(dio))),
+          ChangeNotifierProvider(
+              create: (_) => FamilyProvider(FamilyService(dio))),
         ],
         child: const MaterialApp(home: HomeScreen()),
       ),

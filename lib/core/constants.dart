@@ -15,31 +15,43 @@ class ApiConstants {
   /// API version prefix.
   static const String apiV1 = '/api/v1';
 
-  // ── Endpoint paths ─────────────────────────────────────
   static const String authLogin = '$apiV1/auth/login';
+  static const String authProfile = '$apiV1/auth/profile';
+  static const String authConsent = '$apiV1/auth/consent';
 
-  // Vitals
+  static const String homescreenOverview = '$apiV1/homescreen/overview';
+  static const String homescreenDashboard = '$apiV1/homescreen/dashboard';
+  static const String homescreenNotifications =
+      '$apiV1/homescreen/notifications';
+  static const String homescreenSearch = '$apiV1/homescreen/search';
+
+  static const String appointments = '$apiV1/appointments';
+
   static const String vitals = '$apiV1/vitals';
   static const String vitalTrends = '$apiV1/vitals/trends';
 
-  // Symptoms
   static const String symptoms = '$apiV1/symptoms';
 
-  // Illness
   static const String illness = '$apiV1/illness';
 
-  // Medications
   static const String medications = '$apiV1/medications';
+  static const String medicationsDashboard = '$apiV1/medications/dashboard';
+  static const String medicationsAdherence = '$apiV1/medications/adherence';
 
-  // Reminders
   static const String reminders = '$apiV1/reminders';
   static const String reminderTimeline = '$apiV1/reminders/timeline';
 
-  // Family
+  static const String exerciseCatalog = '$apiV1/exercise/catalog';
+  static const String exerciseLogs = '$apiV1/exercise/logs';
+  static const String exerciseSummary = '$apiV1/exercise/summary';
+  static const String exerciseHistory = '$apiV1/exercise/history';
+  static const String exerciseRecommendations =
+      '$apiV1/exercise/recommendations';
+
   static const String familyMembers = '$apiV1/family/members';
   static const String familyProfiles = '$apiV1/family/profiles';
+  static const String familyDashboard = '$apiV1/family/dashboard';
 
-  // Vault
   static const String vaultRecords = '$apiV1/vault/records';
   static const String vaultUploadUrl = '$apiV1/vault/records/upload-url';
   static const String vaultConfirmUpload =
