@@ -73,7 +73,7 @@ class _FamilyScreenState extends State<FamilyScreen> {
                   Container(
                     padding: const EdgeInsets.all(16),
                     decoration: BoxDecoration(
-                      color: KinsuTheme.primaryLight.withOpacity(0.22),
+                      color: KinsuTheme.primaryLight.withValues(alpha: 0.22),
                       borderRadius: BorderRadius.circular(18),
                       border: Border.all(color: KinsuTheme.primaryLight),
                     ),
@@ -241,7 +241,8 @@ class _FamilyDashboardCardView extends StatelessWidget {
                                     vertical: 5,
                                   ),
                                   decoration: BoxDecoration(
-                                    color: KinsuTheme.primaryLight.withOpacity(0.35),
+                                    color: KinsuTheme.primaryLight
+                                        .withValues(alpha: 0.35),
                                     borderRadius: BorderRadius.circular(999),
                                   ),
                                   child: Text(
@@ -259,7 +260,8 @@ class _FamilyDashboardCardView extends StatelessWidget {
                             [
                               card.relation,
                               if (card.age != null) '${card.age}y',
-                              if (card.bloodGroup != null && card.bloodGroup!.isNotEmpty)
+                              if (card.bloodGroup != null &&
+                                  card.bloodGroup!.isNotEmpty)
                                 card.bloodGroup!,
                             ].join(' · '),
                             style: const TextStyle(
@@ -281,7 +283,8 @@ class _FamilyDashboardCardView extends StatelessWidget {
                                       ),
                                       decoration: BoxDecoration(
                                         color: const Color(0xFFFFF7ED),
-                                        borderRadius: BorderRadius.circular(999),
+                                        borderRadius:
+                                            BorderRadius.circular(999),
                                       ),
                                       child: Text(
                                         _labelize(condition),
@@ -350,7 +353,7 @@ class _FamilyDashboardCardView extends StatelessWidget {
       case 'V':
         return const Color(0xFFFFF3E8);
       default:
-        return KinsuTheme.primaryLight.withOpacity(0.35);
+        return KinsuTheme.primaryLight.withValues(alpha: 0.35);
     }
   }
 

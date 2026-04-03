@@ -3,6 +3,7 @@ import 'package:flutter/foundation.dart';
 
 import '../core/constants.dart';
 import '../models/health_record.dart';
+import '../models/vault_models.dart';
 import '../services/vault_service.dart';
 
 class VaultProvider extends ChangeNotifier {
@@ -13,15 +14,27 @@ class VaultProvider extends ChangeNotifier {
   List<HealthRecord> _records = [];
   List<HealthRecord> get records => _records;
 
+  List<VaultConnectedService> _connectedServices = [];
+  List<VaultConnectedService> get connectedServices => _connectedServices;
+
   bool _isLoading = false;
   bool get isLoading => _isLoading;
+
+  bool _isLoadingServices = false;
+  bool get isLoadingServices => _isLoadingServices;
 
   String? _error;
   String? get error => _error;
 
+  String? _servicesError;
+  String? get servicesError => _servicesError;
+
   /// Load health records with optional server-side filters.
   Future<void> loadRecords({
     String? recordType,
+    String? documentSubtype,
+    String? providerName,
+    String? tag,
     String? query,
     DateTime? startDate,
     DateTime? endDate,
@@ -36,6 +49,9 @@ class VaultProvider extends ChangeNotifier {
     try {
       _records = await _service.fetchRecords(
         recordType: recordType,
+        documentSubtype: documentSubtype,
+        providerName: providerName,
+        tag: tag,
         query: query,
         startDate: startDate,
         endDate: endDate,
@@ -51,6 +67,25 @@ class VaultProvider extends ChangeNotifier {
     notifyListeners();
   }
 
+  Future<void> loadConnectedServices() async {
+    _isLoadingServices = true;
+    _servicesError = null;
+    notifyListeners();
+
+    try {
+      _connectedServices = await _service.fetchConnectedServices();
+    } catch (e) {
+      _servicesError = _parseError(e);
+    }
+
+    _isLoadingServices = false;
+    notifyListeners();
+  }
+
+  Future<VaultLabTrend> fetchLabTrend(String parameterKey) {
+    return _service.fetchLabTrend(parameterKey);
+  }
+
   /// Create a new record with file upload.
   Future<bool> createRecordWithFile({
     required String recordType,
@@ -64,7 +99,6 @@ class VaultProvider extends ChangeNotifier {
       _error = null;
       notifyListeners();
 
-      // Create record
       final recordId = await _service.createRecord(
         recordType: recordType,
         recordDate: recordDate,
@@ -72,7 +106,6 @@ class VaultProvider extends ChangeNotifier {
         notes: notes,
       );
 
-      // Upload file
       await _service.uploadFile(recordId: recordId, file: file);
 
       _isLoading = false;
@@ -100,7 +133,6 @@ class VaultProvider extends ChangeNotifier {
       _error = null;
       notifyListeners();
 
-      // Create record
       final recordId = await _service.createRecord(
         recordType: recordType,
         recordDate: recordDate,
@@ -108,21 +140,18 @@ class VaultProvider extends ChangeNotifier {
         notes: notes,
       );
 
-      // Get presigned URL
       final uploadData = await _service.getPresignedUploadUrl(
         recordId: recordId,
         fileName: file.name,
         contentType: contentType,
       );
 
-      // Upload to S3
       await _service.uploadToS3(
         presignedUrl: uploadData['upload_url'],
         file: file,
         contentType: contentType,
       );
 
-      // Confirm upload
       await _service.confirmUpload(
         recordId: recordId,
         s3Key: uploadData['s3_key'],
@@ -157,6 +186,7 @@ class VaultProvider extends ChangeNotifier {
   /// Clear error message.
   void clearError() {
     _error = null;
+    _servicesError = null;
     notifyListeners();
   }
 
@@ -170,7 +200,7 @@ class VaultProvider extends ChangeNotifier {
       return 'Cannot reach backend at ${ApiConstants.baseUrl}. '
           'Please ensure API server is running and reachable.';
     }
-    if (error.toString().contains('404')) {
+    if (message.contains('404')) {
       return 'Records not found. Please create your first record.';
     }
     return 'An error occurred: $message';

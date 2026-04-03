@@ -56,4 +56,8 @@ class ApiConstants {
   static const String vaultUploadUrl = '$apiV1/vault/records/upload-url';
   static const String vaultConfirmUpload =
       '$apiV1/vault/records/confirm-upload';
+  static const String vaultConnectedServices =
+      '$apiV1/vault/connected-services';
+  static const String vaultLabParameterTrends =
+      '$apiV1/vault/lab-parameters/trends';
 }

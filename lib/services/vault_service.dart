@@ -5,6 +5,7 @@ import 'package:file_picker/file_picker.dart';
 
 import '../core/constants.dart';
 import '../models/health_record.dart';
+import '../models/vault_models.dart';
 
 /// API service for vault endpoints using Dio.
 class VaultService {
@@ -15,6 +16,9 @@ class VaultService {
   /// Fetch health records with optional filters.
   Future<List<HealthRecord>> fetchRecords({
     String? recordType,
+    String? documentSubtype,
+    String? providerName,
+    String? tag,
     String? query,
     DateTime? startDate,
     DateTime? endDate,
@@ -32,6 +36,15 @@ class VaultService {
     };
     if (recordType != null) {
       params['record_type'] = recordType;
+    }
+    if (documentSubtype != null && documentSubtype.trim().isNotEmpty) {
+      params['document_subtype'] = documentSubtype.trim();
+    }
+    if (providerName != null && providerName.trim().isNotEmpty) {
+      params['provider_name'] = providerName.trim();
+    }
+    if (tag != null && tag.trim().isNotEmpty) {
+      params['tag'] = tag.trim();
     }
     if (query != null && query.trim().isNotEmpty) {
       params['q'] = query.trim();
@@ -55,6 +68,22 @@ class VaultService {
         .map((json) => HealthRecord.fromJson(json))
         .toList();
     return records;
+  }
+
+  Future<List<VaultConnectedService>> fetchConnectedServices() async {
+    final response = await _dio.get(ApiConstants.vaultConnectedServices);
+    return (response.data as List<dynamic>)
+        .map((item) =>
+            VaultConnectedService.fromJson(item as Map<String, dynamic>))
+        .toList();
+  }
+
+  Future<VaultLabTrend> fetchLabTrend(String parameterKey) async {
+    final response = await _dio.get(
+      ApiConstants.vaultLabParameterTrends,
+      queryParameters: {'parameter_key': parameterKey},
+    );
+    return VaultLabTrend.fromJson(response.data as Map<String, dynamic>);
   }
 
   /// Create a new health record
@@ -89,7 +118,6 @@ class VaultService {
     FormData formData;
 
     if (file.bytes != null) {
-      // Web: use bytes directly
       formData = FormData.fromMap({
         'file': MultipartFile.fromBytes(
           file.bytes!,
@@ -97,7 +125,6 @@ class VaultService {
         ),
       });
     } else if (file.path != null) {
-      // Mobile/Desktop: read from path
       formData = FormData.fromMap({
         'file': await MultipartFile.fromFile(
           file.path!,
@@ -147,7 +174,6 @@ class VaultService {
       throw Exception('File has no bytes or path');
     }
 
-    // Use a separate Dio instance for S3 upload (no auth headers)
     final s3Dio = Dio();
     await s3Dio.put(
       presignedUrl,
