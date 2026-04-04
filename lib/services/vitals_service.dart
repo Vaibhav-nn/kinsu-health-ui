@@ -16,6 +16,16 @@ class VitalsService {
     return VitalLog.fromJson(response.data);
   }
 
+  Future<List<VitalLog>> logSnapshot(VitalSnapshot snapshot) async {
+    final response = await _dio.post(
+      ApiConstants.vitalSnapshot,
+      data: snapshot.toJson(),
+    );
+    return (response.data as List<dynamic>)
+        .map((item) => VitalLog.fromJson(item as Map<String, dynamic>))
+        .toList();
+  }
+
   Future<List<VitalLog>> listVitals({
     String? vitalType,
     DateTime? startDate,
@@ -35,9 +45,7 @@ class VitalsService {
       ApiConstants.vitals,
       queryParameters: params,
     );
-    return (response.data as List)
-        .map((e) => VitalLog.fromJson(e))
-        .toList();
+    return (response.data as List).map((e) => VitalLog.fromJson(e)).toList();
   }
 
   Future<VitalTrendResponse> getVitalTrends({

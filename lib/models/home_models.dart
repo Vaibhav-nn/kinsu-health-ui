@@ -57,9 +57,17 @@ class HomeOverviewData {
 class HomeNotificationItem {
   final int id;
   final String notificationType;
+  final String category;
+  final String priority;
+  final String? sectionKey;
+  final String? sectionLabel;
   final String title;
   final String body;
   final String? actionRoute;
+  final String? primaryActionLabel;
+  final String? secondaryActionLabel;
+  final String? secondaryActionRoute;
+  final Map<String, dynamic>? metadataJson;
   final bool isRead;
   final DateTime? readAt;
   final DateTime createdAt;
@@ -67,9 +75,17 @@ class HomeNotificationItem {
   const HomeNotificationItem({
     required this.id,
     required this.notificationType,
+    required this.category,
+    required this.priority,
+    required this.sectionKey,
+    required this.sectionLabel,
     required this.title,
     required this.body,
     required this.actionRoute,
+    required this.primaryActionLabel,
+    required this.secondaryActionLabel,
+    required this.secondaryActionRoute,
+    required this.metadataJson,
     required this.isRead,
     required this.readAt,
     required this.createdAt,
@@ -79,9 +95,19 @@ class HomeNotificationItem {
     return HomeNotificationItem(
       id: (json['id'] ?? 0) as int,
       notificationType: (json['notification_type'] ?? 'general') as String,
+      category: (json['category'] ?? 'general') as String,
+      priority: (json['priority'] ?? 'normal') as String,
+      sectionKey: json['section_key'] as String?,
+      sectionLabel: json['section_label'] as String?,
       title: (json['title'] ?? '') as String,
       body: (json['body'] ?? '') as String,
       actionRoute: json['action_route'] as String?,
+      primaryActionLabel: json['primary_action_label'] as String?,
+      secondaryActionLabel: json['secondary_action_label'] as String?,
+      secondaryActionRoute: json['secondary_action_route'] as String?,
+      metadataJson: json['metadata_json'] is Map<String, dynamic>
+          ? Map<String, dynamic>.from(json['metadata_json'] as Map)
+          : null,
       isRead: json['is_read'] as bool? ?? false,
       readAt: json['read_at'] != null
           ? DateTime.tryParse(json['read_at'].toString())

@@ -64,6 +64,19 @@ class VitalsProvider extends ChangeNotifier {
     }
   }
 
+  Future<bool> logSnapshot(VitalSnapshot snapshot) async {
+    try {
+      final created = await _service.logSnapshot(snapshot);
+      _vitals = [...created, ..._vitals];
+      notifyListeners();
+      return true;
+    } catch (e) {
+      _error = _parseError(e);
+      notifyListeners();
+      return false;
+    }
+  }
+
   Future<bool> deleteVital(int id) async {
     try {
       await _service.deleteVital(id);

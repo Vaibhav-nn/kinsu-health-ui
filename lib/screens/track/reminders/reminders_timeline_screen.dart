@@ -27,13 +27,26 @@ class _RemindersTimelineScreenState extends State<RemindersTimelineScreen> {
   IconData _typeIcon(String type) {
     switch (type) {
       case 'medication':
+      case 'medicine':
         return Icons.medication;
       case 'appointment':
+      case 'doctor_consultation':
         return Icons.event;
       case 'checkup':
-        return Icons.health_and_safety;
+      case 'sleep':
+        return Icons.bedtime_outlined;
+      case 'water':
+        return Icons.water_drop_outlined;
+      case 'food':
+        return Icons.restaurant_outlined;
+      case 'skin_care':
+        return Icons.spa_outlined;
+      case 'hair_care':
+        return Icons.content_cut_outlined;
+      case 'eye_care':
+        return Icons.visibility_outlined;
       case 'custom':
-        return Icons.alarm;
+        return Icons.health_and_safety;
       default:
         return Icons.notifications;
     }
@@ -42,13 +55,24 @@ class _RemindersTimelineScreenState extends State<RemindersTimelineScreen> {
   Color _typeColor(String type) {
     switch (type) {
       case 'medication':
+      case 'medicine':
         return const Color(0xFF2196F3);
       case 'appointment':
+      case 'doctor_consultation':
         return const Color(0xFF9C27B0);
       case 'checkup':
+      case 'sleep':
         return KinsuTheme.primary;
-      case 'custom':
+      case 'water':
+        return const Color(0xFF06B6D4);
+      case 'food':
         return const Color(0xFFFF9800);
+      case 'skin_care':
+      case 'hair_care':
+      case 'eye_care':
+        return const Color(0xFF8B5CF6);
+      case 'custom':
+        return const Color(0xFF64748B);
       default:
         return KinsuTheme.textSecondary;
     }

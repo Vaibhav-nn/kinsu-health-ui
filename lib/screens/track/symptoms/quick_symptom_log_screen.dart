@@ -12,20 +12,61 @@ class QuickSymptomLogScreen extends StatefulWidget {
 }
 
 class _QuickSymptomLogScreenState extends State<QuickSymptomLogScreen> {
-  static const List<String> _symptoms = [
-    'Headache',
+  static const _moodOptions = [
+    'Energetic',
     'Fatigue',
-    'Nausea',
-    'Dizziness',
-    'Body ache',
-    'Fever',
+    'Stable Mood',
+    'Happy',
+    'Anxious',
+    'Sad',
+    'Low Energy',
+    'Mood Swings',
+  ];
+
+  static const _digestionOptions = [
+    'Bloating',
+    'Constipation',
+    'Loose Stool',
+    'Acidity',
+  ];
+
+  static const _painOptions = [
+    'Headache',
+    'Body Ache',
+    'Joint Pain',
+    'Swelling',
+  ];
+
+  static const _activityOptions = [
+    'Walked',
+    'Worked Out',
+    'Sedentary',
+    'Light Activity',
+  ];
+
+  static const _cycleOptions = [
+    'Period',
+    'PMS',
+    'Cramps',
+    'Irregular',
+  ];
+
+  static const _otherOptions = [
     'Cough',
+    'Fever',
+    'Dizziness',
     'Breathlessness',
   ];
 
-  final TextEditingController _notesController = TextEditingController();
-  String? _selectedSymptom = _symptoms.first;
+  final _notesController = TextEditingController();
+  String? _primaryFeeling;
   int _severity = 5;
+  final Set<String> _moodTags = {};
+  final Set<String> _digestionTags = {};
+  final Set<String> _painTags = {};
+  final Set<String> _activityTags = {};
+  final Set<String> _cycleTags = {};
+  final Set<String> _otherTags = {};
 
   @override
   void dispose() {
@@ -34,19 +75,19 @@ class _QuickSymptomLogScreenState extends State<QuickSymptomLogScreen> {
   }
 
   Future<void> _submit() async {
-    final symptom = _selectedSymptom;
-    if (symptom == null) {
-      return;
-    }
-
-    final provider = context.read<SymptomsProvider>();
-    final success = await provider.quickLogSymptom(
-      symptomName: symptom,
-      severity: _severity,
-      notes: _notesController.text.trim().isEmpty
-          ? null
-          : _notesController.text.trim(),
-    );
+    final success = await context.read<SymptomsProvider>().submitDailyCheckIn(
+          primaryFeeling: _primaryFeeling,
+          moodTags: _moodTags.toList(),
+          digestionTags: _digestionTags.toList(),
+          painTags: _painTags.toList(),
+          activityTags: _activityTags.toList(),
+          cycleTags: _cycleTags.toList(),
+          otherTags: _otherTags.toList(),
+          notes: _notesController.text.trim().isEmpty
+              ? null
+              : _notesController.text.trim(),
+          severity: _severity,
+        );
 
     if (!mounted) {
       return;
@@ -55,7 +96,7 @@ class _QuickSymptomLogScreenState extends State<QuickSymptomLogScreen> {
     if (success) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
-          content: Text('Symptoms logged successfully.'),
+          content: Text('Daily check-in saved successfully.'),
           backgroundColor: KinsuTheme.statusActive,
         ),
       );
@@ -66,22 +107,30 @@ class _QuickSymptomLogScreenState extends State<QuickSymptomLogScreen> {
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
         content: Text(
-          provider.error ?? 'Unable to log symptoms. Please try again.',
+          context.read<SymptomsProvider>().error ??
+              'Unable to save your symptom check-in.',
         ),
         backgroundColor: KinsuTheme.statusError,
       ),
     );
   }
 
+  void _toggle(Set<String> target, String value) {
+    setState(() {
+      if (!target.add(value)) {
+        target.remove(value);
+      }
+    });
+  }
+
   @override
   Widget build(BuildContext context) {
-    final isSaving =
-        context.select<SymptomsProvider, bool>((provider) => provider.isLoading);
+    final isSaving = context
+        .select<SymptomsProvider, bool>((provider) => provider.isLoading);
 
     return Scaffold(
-      backgroundColor: KinsuTheme.background,
       appBar: AppBar(
-        title: const Text('Quick Symptom Log'),
+        title: const Text('Log Symptoms'),
         leading: IconButton(
           icon: const Icon(Icons.close),
           onPressed: () => Navigator.of(context).pop(),
@@ -91,43 +140,71 @@ class _QuickSymptomLogScreenState extends State<QuickSymptomLogScreen> {
         padding: const EdgeInsets.all(16),
         children: [
           const Text(
-            'What are you experiencing?',
-            style: TextStyle(
-              fontSize: 16,
-              fontWeight: FontWeight.w700,
-            ),
+            'Daily Check-in',
+            style: TextStyle(fontSize: 28, fontWeight: FontWeight.w800),
           ),
-          const SizedBox(height: 16),
-          Wrap(
-            spacing: 10,
-            runSpacing: 10,
-            children: _symptoms
-                .map(
-                  (symptom) => ChoiceChip(
-                    label: Text(symptom),
-                    selected: _selectedSymptom == symptom,
-                    onSelected: (_) {
-                      setState(() => _selectedSymptom = symptom);
-                    },
-                  ),
-                )
-                .toList(),
-          ),
-          const SizedBox(height: 28),
+          const SizedBox(height: 8),
           const Text(
-            'Severity (1-10)',
-            style: TextStyle(
-              fontSize: 16,
-              fontWeight: FontWeight.w700,
-            ),
+            'Your patterns speak. Let\'s listen. Capture how you feel across mood, digestion, pain, movement, and other body signals.',
+            style: TextStyle(color: KinsuTheme.textSecondary, height: 1.4),
+          ),
+          const SizedBox(height: 20),
+          _TagSection(
+            title: 'How do you feel today?',
+            options: _moodOptions,
+            selected: _moodTags,
+            onToggle: (value) {
+              _toggle(_moodTags, value);
+              _primaryFeeling ??= value;
+            },
+          ),
+          const SizedBox(height: 18),
+          _TagSection(
+            title: 'Digestion & Stool',
+            options: _digestionOptions,
+            selected: _digestionTags,
+            onToggle: (value) => _toggle(_digestionTags, value),
+          ),
+          const SizedBox(height: 18),
+          _TagSection(
+            title: 'Pain',
+            options: _painOptions,
+            selected: _painTags,
+            onToggle: (value) => _toggle(_painTags, value),
+          ),
+          const SizedBox(height: 18),
+          _TagSection(
+            title: 'Physical Activity',
+            options: _activityOptions,
+            selected: _activityTags,
+            onToggle: (value) => _toggle(_activityTags, value),
+          ),
+          const SizedBox(height: 18),
+          _TagSection(
+            title: 'Menstrual Cycle',
+            options: _cycleOptions,
+            selected: _cycleTags,
+            onToggle: (value) => _toggle(_cycleTags, value),
+          ),
+          const SizedBox(height: 18),
+          _TagSection(
+            title: 'Other',
+            options: _otherOptions,
+            selected: _otherTags,
+            onToggle: (value) => _toggle(_otherTags, value),
+          ),
+          const SizedBox(height: 20),
+          const Text(
+            'How intense did it feel?',
+            style: TextStyle(fontWeight: FontWeight.w700, fontSize: 16),
           ),
           const SizedBox(height: 12),
           SliderTheme(
             data: SliderTheme.of(context).copyWith(
               activeTrackColor: KinsuTheme.primary,
-              inactiveTrackColor: KinsuTheme.textSecondary.withValues(alpha: 0.25),
+              inactiveTrackColor:
+                  KinsuTheme.textSecondary.withValues(alpha: 0.2),
               thumbColor: KinsuTheme.primary,
-              overlayColor: KinsuTheme.primary.withValues(alpha: 0.12),
             ),
             child: Slider(
               value: _severity.toDouble(),
@@ -140,42 +217,30 @@ class _QuickSymptomLogScreenState extends State<QuickSymptomLogScreen> {
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              const Text(
-                'Mild',
-                style: TextStyle(color: KinsuTheme.textSecondary),
-              ),
+              const Text('Mild',
+                  style: TextStyle(color: KinsuTheme.textSecondary)),
               Text(
                 '$_severity/10',
-                style: const TextStyle(
-                  fontSize: 18,
-                  fontWeight: FontWeight.w700,
-                ),
+                style:
+                    const TextStyle(fontWeight: FontWeight.w700, fontSize: 18),
               ),
-              const Text(
-                'Severe',
-                style: TextStyle(color: KinsuTheme.textSecondary),
-              ),
+              const Text('Severe',
+                  style: TextStyle(color: KinsuTheme.textSecondary)),
             ],
           ),
-          const SizedBox(height: 28),
-          const Text(
-            'Notes (optional)',
-            style: TextStyle(
-              fontSize: 16,
-              fontWeight: FontWeight.w700,
-            ),
-          ),
-          const SizedBox(height: 12),
+          const SizedBox(height: 20),
           TextField(
             controller: _notesController,
             minLines: 4,
-            maxLines: 4,
+            maxLines: 5,
             decoration: const InputDecoration(
-              hintText: 'Add any additional details...',
+              labelText: 'Extra Notes (optional)',
+              hintText:
+                  'Anything else you\'d like to mention? Personal observations or specific details...',
               alignLabelWithHint: true,
             ),
           ),
-          const SizedBox(height: 28),
+          const SizedBox(height: 24),
           ElevatedButton(
             onPressed: isSaving ? null : _submit,
             child: isSaving
@@ -183,14 +248,57 @@ class _QuickSymptomLogScreenState extends State<QuickSymptomLogScreen> {
                     width: 20,
                     height: 20,
                     child: CircularProgressIndicator(
-                      strokeWidth: 2,
-                      valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
-                    ),
+                        strokeWidth: 2, color: Colors.white),
                   )
-                : const Text('Log Symptoms'),
+                : const Text('Save Daily Logs'),
           ),
         ],
       ),
+    );
+  }
+}
+
+class _TagSection extends StatelessWidget {
+  final String title;
+  final List<String> options;
+  final Set<String> selected;
+  final ValueChanged<String> onToggle;
+
+  const _TagSection({
+    required this.title,
+    required this.options,
+    required this.selected,
+    required this.onToggle,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          title,
+          style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 16),
+        ),
+        const SizedBox(height: 10),
+        Wrap(
+          spacing: 10,
+          runSpacing: 10,
+          children: options.map((option) {
+            final isSelected = selected.contains(option);
+            return ChoiceChip(
+              label: Text(option),
+              selected: isSelected,
+              onSelected: (_) => onToggle(option),
+              selectedColor: KinsuTheme.primary.withValues(alpha: 0.12),
+              labelStyle: TextStyle(
+                color: isSelected ? KinsuTheme.primary : KinsuTheme.textPrimary,
+                fontWeight: isSelected ? FontWeight.w700 : FontWeight.w500,
+              ),
+            );
+          }).toList(),
+        ),
+      ],
     );
   }
 }

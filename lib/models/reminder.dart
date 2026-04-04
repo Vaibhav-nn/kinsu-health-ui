@@ -1,4 +1,4 @@
-/// Data model for Reminders — matches backend Pydantic schema.
+// Data model for reminders returned by the backend API.
 
 class Reminder {
   final int? id;
@@ -9,6 +9,7 @@ class Reminder {
   final String recurrence;
   final bool isEnabled;
   final String? notes;
+  final Map<String, dynamic>? details;
   final DateTime? createdAt;
   final DateTime? updatedAt;
 
@@ -21,6 +22,7 @@ class Reminder {
     this.recurrence = 'daily',
     this.isEnabled = true,
     this.notes,
+    this.details,
     this.createdAt,
     this.updatedAt,
   });
@@ -34,6 +36,9 @@ class Reminder {
         recurrence: json['recurrence'] ?? 'daily',
         isEnabled: json['is_enabled'] ?? true,
         notes: json['notes'],
+        details: json['details'] is Map<String, dynamic>
+            ? Map<String, dynamic>.from(json['details'] as Map)
+            : null,
         createdAt: json['created_at'] != null
             ? DateTime.parse(json['created_at'])
             : null,
@@ -50,6 +55,7 @@ class Reminder {
         'recurrence': recurrence,
         'is_enabled': isEnabled,
         'notes': notes,
+        'details': details,
       };
 
   /// Parse "HH:MM:SS" string to a display-friendly format.

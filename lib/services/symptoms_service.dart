@@ -32,12 +32,11 @@ class SymptomsService {
     }
   }
 
-
-
   Future<void> quickLogSymptom({
     required String symptomName,
     required int severity,
     String? notes,
+    Map<String, dynamic>? details,
   }) async {
     await _withBootstrapRetry(() async {
       await _dio.post(
@@ -46,6 +45,49 @@ class SymptomsService {
           'symptom_name': symptomName.toLowerCase().replaceAll(' ', '_'),
           'severity': severity,
           if (notes != null && notes.trim().isNotEmpty) 'notes': notes.trim(),
+          if (details != null) 'details': details,
+        },
+      );
+    });
+  }
+
+  Future<void> dailyCheckIn({
+    String? primaryFeeling,
+    List<String> moodTags = const [],
+    List<String> digestionTags = const [],
+    List<String> painTags = const [],
+    List<String> activityTags = const [],
+    List<String> cycleTags = const [],
+    List<String> otherTags = const [],
+    String? notes,
+    int severity = 5,
+  }) async {
+    await _withBootstrapRetry(() async {
+      await _dio.post(
+        ApiConstants.symptomsDailyCheckIn,
+        data: {
+          if (primaryFeeling != null && primaryFeeling.trim().isNotEmpty)
+            'primary_feeling': primaryFeeling.trim(),
+          'mood_tags': moodTags
+              .map((tag) => tag.toLowerCase().replaceAll(' ', '_'))
+              .toList(),
+          'digestion_tags': digestionTags
+              .map((tag) => tag.toLowerCase().replaceAll(' ', '_'))
+              .toList(),
+          'pain_tags': painTags
+              .map((tag) => tag.toLowerCase().replaceAll(' ', '_'))
+              .toList(),
+          'activity_tags': activityTags
+              .map((tag) => tag.toLowerCase().replaceAll(' ', '_'))
+              .toList(),
+          'cycle_tags': cycleTags
+              .map((tag) => tag.toLowerCase().replaceAll(' ', '_'))
+              .toList(),
+          'other_tags': otherTags
+              .map((tag) => tag.toLowerCase().replaceAll(' ', '_'))
+              .toList(),
+          if (notes != null && notes.trim().isNotEmpty) 'notes': notes.trim(),
+          'severity': severity,
         },
       );
     });

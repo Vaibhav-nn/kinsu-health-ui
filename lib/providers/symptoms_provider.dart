@@ -85,12 +85,11 @@ class SymptomsProvider extends ChangeNotifier {
     }
   }
 
-
-
   Future<bool> quickLogSymptom({
     required String symptomName,
     required int severity,
     String? notes,
+    Map<String, dynamic>? details,
   }) async {
     _isLoading = true;
     _error = null;
@@ -101,6 +100,44 @@ class SymptomsProvider extends ChangeNotifier {
         symptomName: symptomName,
         severity: severity,
         notes: notes,
+        details: details,
+      );
+      return true;
+    } catch (error) {
+      _error = _formatError(error);
+      return false;
+    } finally {
+      _isLoading = false;
+      notifyListeners();
+    }
+  }
+
+  Future<bool> submitDailyCheckIn({
+    String? primaryFeeling,
+    List<String> moodTags = const [],
+    List<String> digestionTags = const [],
+    List<String> painTags = const [],
+    List<String> activityTags = const [],
+    List<String> cycleTags = const [],
+    List<String> otherTags = const [],
+    String? notes,
+    int severity = 5,
+  }) async {
+    _isLoading = true;
+    _error = null;
+    notifyListeners();
+
+    try {
+      await _service.dailyCheckIn(
+        primaryFeeling: primaryFeeling,
+        moodTags: moodTags,
+        digestionTags: digestionTags,
+        painTags: painTags,
+        activityTags: activityTags,
+        cycleTags: cycleTags,
+        otherTags: otherTags,
+        notes: notes,
+        severity: severity,
       );
       return true;
     } catch (error) {

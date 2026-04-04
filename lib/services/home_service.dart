@@ -46,9 +46,13 @@ class HomeService {
     });
   }
 
-  Future<List<HomeNotificationItem>> fetchNotifications() async {
+  Future<List<HomeNotificationItem>> fetchNotifications(
+      {String? category}) async {
     return _withBootstrapRetry(() async {
-      final response = await _dio.get(ApiConstants.homescreenNotifications);
+      final response = await _dio.get(
+        ApiConstants.homescreenNotifications,
+        queryParameters: category == null ? null : {'category': category},
+      );
       return (response.data as List<dynamic>)
           .map((item) =>
               HomeNotificationItem.fromJson(item as Map<String, dynamic>))

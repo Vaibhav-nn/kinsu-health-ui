@@ -1,10 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+
 import '../../../core/theme.dart';
 import '../../../models/vital.dart';
 import '../../../providers/vitals_provider.dart';
 
-/// Form screen to log a new vital reading.
 class LogVitalScreen extends StatefulWidget {
   const LogVitalScreen({super.key});
 
@@ -14,59 +14,109 @@ class LogVitalScreen extends StatefulWidget {
 
 class _LogVitalScreenState extends State<LogVitalScreen> {
   final _formKey = GlobalKey<FormState>();
-  String _selectedType = 'blood_pressure';
-  final _valueController = TextEditingController();
-  final _secondaryController = TextEditingController();
+
+  final _bpSystolicController = TextEditingController();
+  final _bpDiastolicController = TextEditingController();
+  final _bloodSugarController = TextEditingController();
+  final _heartRateController = TextEditingController();
+  final _weightController = TextEditingController();
+  final _temperatureController = TextEditingController();
+  final _spo2Controller = TextEditingController();
   final _notesController = TextEditingController();
+
   DateTime _recordedAt = DateTime.now();
-
-  static const _vitalTypes = {
-    'blood_pressure': {
-      'label': 'Blood Pressure',
-      'unit': 'mmHg',
-      'hasSecondary': true
-    },
-    'blood_sugar': {
-      'label': 'Blood Sugar',
-      'unit': 'mg/dL',
-      'hasSecondary': false
-    },
-    'heart_rate': {'label': 'Heart Rate', 'unit': 'bpm', 'hasSecondary': false},
-    'spo2': {'label': 'SpO2', 'unit': '%', 'hasSecondary': false},
-    'weight': {'label': 'Weight', 'unit': 'kg', 'hasSecondary': false},
-    'temperature': {
-      'label': 'Temperature',
-      'unit': '°F',
-      'hasSecondary': false
-    },
-  };
-
-  Map<String, dynamic> get _currentConfig => _vitalTypes[_selectedType]!;
 
   @override
   void dispose() {
-    _valueController.dispose();
-    _secondaryController.dispose();
+    _bpSystolicController.dispose();
+    _bpDiastolicController.dispose();
+    _bloodSugarController.dispose();
+    _heartRateController.dispose();
+    _weightController.dispose();
+    _temperatureController.dispose();
+    _spo2Controller.dispose();
     _notesController.dispose();
     super.dispose();
   }
 
-  Future<void> _submit() async {
-    if (!_formKey.currentState!.validate()) return;
+  double? _parseNumber(String value) {
+    final trimmed = value.trim();
+    if (trimmed.isEmpty) {
+      return null;
+    }
+    return double.tryParse(trimmed);
+  }
 
-    final vital = VitalLog(
-      vitalType: _selectedType,
-      value: double.parse(_valueController.text),
-      valueSecondary: _secondaryController.text.isNotEmpty
-          ? double.parse(_secondaryController.text)
-          : null,
-      unit: _currentConfig['unit'] as String,
+  Future<void> _pickDateTime() async {
+    final pickedDate = await showDatePicker(
+      context: context,
+      initialDate: _recordedAt,
+      firstDate: DateTime.now().subtract(const Duration(days: 3650)),
+      lastDate: DateTime.now(),
+    );
+    if (pickedDate == null || !mounted) {
+      return;
+    }
+
+    final pickedTime = await showTimePicker(
+      context: context,
+      initialTime: TimeOfDay.fromDateTime(_recordedAt),
+    );
+    if (pickedTime == null) {
+      return;
+    }
+
+    setState(() {
+      _recordedAt = DateTime(
+        pickedDate.year,
+        pickedDate.month,
+        pickedDate.day,
+        pickedTime.hour,
+        pickedTime.minute,
+      );
+    });
+  }
+
+  Future<void> _submit() async {
+    final hasAnyValue = [
+      _bpSystolicController,
+      _bpDiastolicController,
+      _bloodSugarController,
+      _heartRateController,
+      _weightController,
+      _temperatureController,
+      _spo2Controller,
+    ].any((controller) => controller.text.trim().isNotEmpty);
+
+    if (!hasAnyValue) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Please enter at least one vital before saving.'),
+          backgroundColor: KinsuTheme.statusWarning,
+        ),
+      );
+      return;
+    }
+
+    if (!_formKey.currentState!.validate()) {
+      return;
+    }
+
+    final snapshot = VitalSnapshot(
       recordedAt: _recordedAt,
-      notes: _notesController.text.isNotEmpty ? _notesController.text : null,
+      notes: _notesController.text.trim().isEmpty
+          ? null
+          : _notesController.text.trim(),
+      bloodPressureSystolic: _parseNumber(_bpSystolicController.text),
+      bloodPressureDiastolic: _parseNumber(_bpDiastolicController.text),
+      bloodSugar: _parseNumber(_bloodSugarController.text),
+      heartRate: _parseNumber(_heartRateController.text),
+      weight: _parseNumber(_weightController.text),
+      temperature: _parseNumber(_temperatureController.text),
+      spo2: _parseNumber(_spo2Controller.text),
     );
 
-    final success = await context.read<VitalsProvider>().logVital(vital);
-
+    final success = await context.read<VitalsProvider>().logSnapshot(snapshot);
     if (!mounted) {
       return;
     }
@@ -74,28 +124,31 @@ class _LogVitalScreenState extends State<LogVitalScreen> {
     if (success) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
-          content: Text('Vital logged successfully!'),
+          content: Text('Daily vitals saved successfully.'),
           backgroundColor: KinsuTheme.statusActive,
         ),
       );
-      Navigator.pop(context);
+      Navigator.pop(context, true);
       return;
     }
 
-    final error = context.read<VitalsProvider>().error ??
-        'Could not save vital. Check backend connection and try again.';
     ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text(error)),
+      SnackBar(
+        content: Text(
+          context.read<VitalsProvider>().error ??
+              'Unable to save vitals right now.',
+        ),
+        backgroundColor: KinsuTheme.statusError,
+      ),
     );
   }
 
   @override
   Widget build(BuildContext context) {
-    final hasSecondary = _currentConfig['hasSecondary'] as bool;
-
+    final isLoading = context.watch<VitalsProvider>().isLoading;
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Log Vital'),
+        title: const Text('Log Vitals'),
         leading: IconButton(
           icon: const Icon(Icons.close),
           onPressed: () => Navigator.pop(context),
@@ -106,169 +159,163 @@ class _LogVitalScreenState extends State<LogVitalScreen> {
         child: ListView(
           padding: const EdgeInsets.all(16),
           children: [
-            // ── Vital Type Selector ─────────────────
             const Text(
-              'Vital Type',
-              style: TextStyle(
-                fontSize: 14,
-                fontWeight: FontWeight.w600,
-                color: KinsuTheme.textPrimary,
-              ),
+              'Daily Record',
+              style: TextStyle(fontSize: 28, fontWeight: FontWeight.w800),
             ),
             const SizedBox(height: 8),
-            Wrap(
-              spacing: 8,
-              runSpacing: 8,
-              children: _vitalTypes.entries.map((entry) {
-                final isSelected = _selectedType == entry.key;
-                return ChoiceChip(
-                  label: Text(entry.value['label'] as String),
-                  selected: isSelected,
-                  onSelected: (selected) {
-                    if (selected) {
-                      setState(() {
-                        _selectedType = entry.key;
-                        _valueController.clear();
-                        _secondaryController.clear();
-                      });
-                    }
-                  },
-                  selectedColor: KinsuTheme.primary,
-                  labelStyle: TextStyle(
-                    color: isSelected ? Colors.white : KinsuTheme.textPrimary,
-                  ),
-                );
-              }).toList(),
+            const Text(
+              'How are you feeling today? Regular tracking helps your care team provide more personalized insights.',
+              style: TextStyle(color: KinsuTheme.textSecondary, height: 1.4),
             ),
-            const SizedBox(height: 24),
-
-            // ── Value Input ─────────────────────────
+            const SizedBox(height: 20),
+            const _SectionLabel('Blood Pressure'),
+            const SizedBox(height: 8),
             Row(
               children: [
                 Expanded(
-                  child: TextFormField(
-                    controller: _valueController,
-                    keyboardType: TextInputType.number,
-                    decoration: InputDecoration(
-                      labelText: hasSecondary
-                          ? 'Systolic'
-                          : _currentConfig['label'] as String,
-                      suffixText: _currentConfig['unit'] as String,
-                    ),
-                    validator: (v) {
-                      if (v == null || v.isEmpty) return 'Required';
-                      if (double.tryParse(v) == null) return 'Invalid number';
-                      return null;
-                    },
+                  child: _VitalField(
+                    controller: _bpSystolicController,
+                    label: 'Systolic',
+                    suffix: 'mmHg',
                   ),
                 ),
-                if (hasSecondary) ...[
-                  const SizedBox(width: 12),
-                  Expanded(
-                    child: TextFormField(
-                      controller: _secondaryController,
-                      keyboardType: TextInputType.number,
-                      decoration: InputDecoration(
-                        labelText: 'Diastolic',
-                        suffixText: _currentConfig['unit'] as String,
-                      ),
-                      validator: (v) {
-                        if (hasSecondary && (v == null || v.isEmpty)) {
-                          return 'Required';
-                        }
-                        if (v != null &&
-                            v.isNotEmpty &&
-                            double.tryParse(v) == null) {
-                          return 'Invalid';
-                        }
-                        return null;
-                      },
-                    ),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: _VitalField(
+                    controller: _bpDiastolicController,
+                    label: 'Diastolic',
+                    suffix: 'mmHg',
                   ),
-                ],
+                ),
               ],
             ),
             const SizedBox(height: 16),
-
-            // ── Date & Time ─────────────────────────
+            _VitalField(
+              controller: _bloodSugarController,
+              label: 'Blood Sugar (Fasting)',
+              suffix: 'mg/dL',
+            ),
+            const SizedBox(height: 16),
+            _VitalField(
+              controller: _heartRateController,
+              label: 'Heart Rate',
+              suffix: 'bpm',
+            ),
+            const SizedBox(height: 16),
+            _VitalField(
+              controller: _weightController,
+              label: 'Weight',
+              suffix: 'kg',
+            ),
+            const SizedBox(height: 16),
+            _VitalField(
+              controller: _temperatureController,
+              label: 'Temperature',
+              suffix: '°F',
+            ),
+            const SizedBox(height: 16),
+            _VitalField(
+              controller: _spo2Controller,
+              label: 'SpO2',
+              suffix: '%',
+            ),
+            const SizedBox(height: 16),
             InkWell(
-              onTap: () async {
-                final date = await showDatePicker(
-                  context: context,
-                  initialDate: _recordedAt,
-                  firstDate: DateTime(2020),
-                  lastDate: DateTime.now(),
-                );
-                if (date != null) {
-                  final time = await showTimePicker(
-                    context: context,
-                    initialTime: TimeOfDay.fromDateTime(_recordedAt),
-                  );
-                  if (time != null) {
-                    setState(() {
-                      _recordedAt = DateTime(
-                        date.year,
-                        date.month,
-                        date.day,
-                        time.hour,
-                        time.minute,
-                      );
-                    });
-                  }
-                }
-              },
+              onTap: _pickDateTime,
               child: Container(
                 padding: const EdgeInsets.all(16),
                 decoration: KinsuTheme.cardDecoration,
                 child: Row(
                   children: [
-                    const Icon(Icons.calendar_today,
-                        size: 20, color: KinsuTheme.primary),
+                    const Icon(Icons.calendar_today_outlined,
+                        color: KinsuTheme.primary),
                     const SizedBox(width: 12),
                     Text(
-                      '${_recordedAt.day}/${_recordedAt.month}/${_recordedAt.year}  '
-                      '${_recordedAt.hour.toString().padLeft(2, '0')}:'
-                      '${_recordedAt.minute.toString().padLeft(2, '0')}',
-                      style: const TextStyle(fontSize: 15),
+                      '${_recordedAt.day}/${_recordedAt.month}/${_recordedAt.year}  ${TimeOfDay.fromDateTime(_recordedAt).format(context)}',
+                      style: const TextStyle(fontWeight: FontWeight.w600),
                     ),
                   ],
                 ),
               ),
             ),
             const SizedBox(height: 16),
-
-            // ── Notes ───────────────────────────────
             TextFormField(
               controller: _notesController,
-              maxLines: 3,
+              minLines: 4,
+              maxLines: 4,
               decoration: const InputDecoration(
-                labelText: 'Notes (optional)',
+                labelText: 'Additional Notes',
                 alignLabelWithHint: true,
               ),
             ),
-            const SizedBox(height: 32),
-
-            // ── Submit ──────────────────────────────
-            Consumer<VitalsProvider>(
-              builder: (context, provider, _) {
-                return ElevatedButton(
-                  onPressed: provider.isLoading ? null : _submit,
-                  child: provider.isLoading
-                      ? const SizedBox(
-                          height: 20,
-                          width: 20,
-                          child: CircularProgressIndicator(
-                            strokeWidth: 2,
-                            color: Colors.white,
-                          ),
-                        )
-                      : const Text('Save Vital'),
-                );
-              },
+            const SizedBox(height: 24),
+            ElevatedButton(
+              onPressed: isLoading ? null : _submit,
+              child: isLoading
+                  ? const SizedBox(
+                      width: 20,
+                      height: 20,
+                      child: CircularProgressIndicator(
+                          strokeWidth: 2, color: Colors.white),
+                    )
+                  : const Text('Save Vitals'),
+            ),
+            const SizedBox(height: 12),
+            Text(
+              'Last updated: ${MaterialLocalizations.of(context).formatMediumDate(_recordedAt)}, ${TimeOfDay.fromDateTime(_recordedAt).format(context)}',
+              style: const TextStyle(
+                color: KinsuTheme.textSecondary,
+                fontSize: 13,
+              ),
             ),
           ],
         ),
       ),
+    );
+  }
+}
+
+class _VitalField extends StatelessWidget {
+  final TextEditingController controller;
+  final String label;
+  final String suffix;
+
+  const _VitalField({
+    required this.controller,
+    required this.label,
+    required this.suffix,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return TextFormField(
+      controller: controller,
+      keyboardType: const TextInputType.numberWithOptions(decimal: true),
+      validator: (value) {
+        if (value == null || value.trim().isEmpty) {
+          return null;
+        }
+        return double.tryParse(value.trim()) == null ? 'Invalid number' : null;
+      },
+      decoration: InputDecoration(
+        labelText: label,
+        suffixText: suffix,
+      ),
+    );
+  }
+}
+
+class _SectionLabel extends StatelessWidget {
+  final String title;
+
+  const _SectionLabel(this.title);
+
+  @override
+  Widget build(BuildContext context) {
+    return Text(
+      title,
+      style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w700),
     );
   }
 }

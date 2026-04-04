@@ -1,4 +1,4 @@
-/// Data models for Vitals — matches backend Pydantic schemas.
+// Data models for vitals returned by the backend API.
 
 class VitalLog {
   final int? id;
@@ -104,4 +104,40 @@ class VitalTrendResponse {
             ? (json['max_value'] as num).toDouble()
             : null,
       );
+}
+
+class VitalSnapshot {
+  final DateTime recordedAt;
+  final String? notes;
+  final double? bloodPressureSystolic;
+  final double? bloodPressureDiastolic;
+  final double? bloodSugar;
+  final double? heartRate;
+  final double? weight;
+  final double? temperature;
+  final double? spo2;
+
+  VitalSnapshot({
+    required this.recordedAt,
+    this.notes,
+    this.bloodPressureSystolic,
+    this.bloodPressureDiastolic,
+    this.bloodSugar,
+    this.heartRate,
+    this.weight,
+    this.temperature,
+    this.spo2,
+  });
+
+  Map<String, dynamic> toJson() => {
+        'recorded_at': recordedAt.toIso8601String(),
+        'notes': notes,
+        'blood_pressure_systolic': bloodPressureSystolic,
+        'blood_pressure_diastolic': bloodPressureDiastolic,
+        'blood_sugar': bloodSugar,
+        'heart_rate': heartRate,
+        'weight': weight,
+        'temperature': temperature,
+        'spo2': spo2,
+      };
 }

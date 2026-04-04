@@ -11,6 +11,7 @@ import '../home/wellness_tools_screens.dart' hide ExerciseScreen;
 import '../home/exercise_screen.dart';
 import 'illness/illness_list_screen.dart';
 import 'medications/medications_list_screen.dart';
+import 'reminders/add_reminder_screen.dart';
 import 'vitals/log_vital_screen.dart';
 import 'reminders/reminders_timeline_screen.dart';
 import 'symptoms/symptoms_list_screen.dart';
@@ -145,7 +146,7 @@ class _TrackHomeState extends State<TrackHome> {
 
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Track'),
+        title: const Text('Daily Overview'),
         actions: [
           IconButton(
             icon: const Icon(Icons.notifications_outlined),
@@ -163,6 +164,59 @@ class _TrackHomeState extends State<TrackHome> {
       body: ListView(
         padding: const EdgeInsets.all(16),
         children: [
+          const Text(
+            'Your wellness markers look stable today. Take a moment to log what matters most.',
+            style: TextStyle(
+              color: KinsuTheme.textSecondary,
+              height: 1.45,
+            ),
+          ),
+          const SizedBox(height: 18),
+          Wrap(
+            spacing: 10,
+            runSpacing: 10,
+            children: [
+              _TrackTabPill(
+                label: 'Hub',
+                selected: true,
+                onTap: () {},
+              ),
+              _TrackTabPill(
+                label: 'Vitals',
+                onTap: () {
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (_) => const VitalsTrendsScreen(),
+                    ),
+                  );
+                },
+              ),
+              _TrackTabPill(
+                label: 'Meds',
+                onTap: () {
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (_) => const MedicationsListScreen(),
+                    ),
+                  );
+                },
+              ),
+              _TrackTabPill(
+                label: 'Symptoms',
+                onTap: () {
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (_) => const QuickSymptomLogScreen(),
+                    ),
+                  );
+                },
+              ),
+            ],
+          ),
+          const SizedBox(height: 18),
           Row(
             children: [
               const Expanded(child: _SectionTitle(title: 'Today\'s Vitals')),
@@ -206,7 +260,7 @@ class _TrackHomeState extends State<TrackHome> {
                 )
                 .toList(),
           ),
-          const SizedBox(height: 10),
+          const SizedBox(height: 14),
           Row(
             children: [
               Expanded(
@@ -220,6 +274,24 @@ class _TrackHomeState extends State<TrackHome> {
                       context,
                       MaterialPageRoute(
                         builder: (_) => const LogVitalScreen(),
+                      ),
+                    );
+                  },
+                ),
+              ),
+              const SizedBox(width: 8),
+              Expanded(
+                child: _QuickAction(
+                  icon: Icons.medication_outlined,
+                  label: 'Log Meds',
+                  bg: const Color(0xFFEFF6FF),
+                  color: const Color(0xFF2563EB),
+                  onTap: () {
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (_) =>
+                            const AddReminderScreen(initialType: 'medicine'),
                       ),
                     );
                   },
@@ -243,6 +315,22 @@ class _TrackHomeState extends State<TrackHome> {
                 ),
               ),
             ],
+          ),
+          const SizedBox(height: 16),
+          const _TrackInsightCard(
+            title: 'Weekly Wellness Tip',
+            body:
+                'Increasing your hydration by just 500ml daily can significantly improve your morning vital readings.',
+            accent: Color(0xFFF59E0B),
+            icon: Icons.tips_and_updates_outlined,
+          ),
+          const SizedBox(height: 12),
+          const _TrackInsightCard(
+            title: 'Community Insight',
+            body:
+                'Users reported a 15% decrease in stress after a 5-minute focused breathing practice.',
+            accent: Color(0xFF0EA5A4),
+            icon: Icons.groups_outlined,
           ),
           const SizedBox(height: 16),
           Row(
@@ -485,6 +573,108 @@ class _SectionTitle extends StatelessWidget {
     return Text(
       title,
       style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w700),
+    );
+  }
+}
+
+class _TrackTabPill extends StatelessWidget {
+  final String label;
+  final bool selected;
+  final VoidCallback onTap;
+
+  const _TrackTabPill({
+    required this.label,
+    required this.onTap,
+    this.selected = false,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return InkWell(
+      borderRadius: BorderRadius.circular(16),
+      onTap: onTap,
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 10),
+        decoration: BoxDecoration(
+          color: selected
+              ? KinsuTheme.primary.withValues(alpha: 0.12)
+              : Colors.white,
+          borderRadius: BorderRadius.circular(16),
+          border: Border.all(
+            color: selected ? KinsuTheme.primary : KinsuTheme.divider,
+          ),
+        ),
+        child: Text(
+          label,
+          style: TextStyle(
+            fontWeight: FontWeight.w700,
+            color: selected ? KinsuTheme.primary : KinsuTheme.textSecondary,
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _TrackInsightCard extends StatelessWidget {
+  final String title;
+  final String body;
+  final Color accent;
+  final IconData icon;
+
+  const _TrackInsightCard({
+    required this.title,
+    required this.body,
+    required this.accent,
+    required this.icon,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: accent.withValues(alpha: 0.08),
+        borderRadius: BorderRadius.circular(22),
+        border: Border.all(color: accent.withValues(alpha: 0.18)),
+      ),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Container(
+            width: 42,
+            height: 42,
+            decoration: BoxDecoration(
+              color: Colors.white,
+              borderRadius: BorderRadius.circular(14),
+            ),
+            child: Icon(icon, color: accent),
+          ),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  title,
+                  style: const TextStyle(
+                    fontSize: 17,
+                    fontWeight: FontWeight.w700,
+                  ),
+                ),
+                const SizedBox(height: 6),
+                Text(
+                  body,
+                  style: const TextStyle(
+                    color: KinsuTheme.textSecondary,
+                    height: 1.45,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
     );
   }
 }
