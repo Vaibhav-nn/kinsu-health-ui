@@ -1,6 +1,7 @@
 import 'dart:math' as math;
 
 import 'package:flutter/material.dart';
+import 'package:kinsu_health/widgets/ios_back_button.dart';
 
 import '../../core/theme.dart';
 
@@ -10,7 +11,11 @@ class SosScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: const Text('SOS')),
+      appBar: AppBar(
+        leading: const IosBackButton(),
+        automaticallyImplyLeading: false,
+        title: const Text('SOS'),
+      ),
       body: ListView(
         padding: const EdgeInsets.all(16),
         children: [
@@ -113,7 +118,11 @@ class _ExerciseScreenState extends State<ExerciseScreen> {
     final totalMinutes =
         _entries.fold<int>(0, (sum, item) => sum + item.minutes);
     return Scaffold(
-      appBar: AppBar(title: const Text('Exercise')),
+      appBar: AppBar(
+        leading: const IosBackButton(),
+        automaticallyImplyLeading: false,
+        title: const Text('Exercise'),
+      ),
       body: ListView(
         padding: const EdgeInsets.all(16),
         children: [
@@ -200,7 +209,11 @@ class _DietScreenState extends State<DietScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: const Text('Diet')),
+      appBar: AppBar(
+        leading: const IosBackButton(),
+        automaticallyImplyLeading: false,
+        title: const Text('Diet'),
+      ),
       body: ListView(
         padding: const EdgeInsets.all(16),
         children: [
@@ -283,7 +296,11 @@ class _SleepScreenState extends State<SleepScreen> {
     final mins = duration.inMinutes.remainder(60);
 
     return Scaffold(
-      appBar: AppBar(title: const Text('Sleep')),
+      appBar: AppBar(
+        leading: const IosBackButton(),
+        automaticallyImplyLeading: false,
+        title: const Text('Sleep'),
+      ),
       body: ListView(
         padding: const EdgeInsets.all(16),
         children: [
@@ -369,7 +386,11 @@ class _MoodScreenState extends State<MoodScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: const Text('Mood')),
+      appBar: AppBar(
+        leading: const IosBackButton(),
+        automaticallyImplyLeading: false,
+        title: const Text('Mood'),
+      ),
       body: ListView(
         padding: const EdgeInsets.all(16),
         children: [
@@ -423,7 +444,11 @@ class CommunityScreen extends StatelessWidget {
     ];
 
     return Scaffold(
-      appBar: AppBar(title: const Text('Community')),
+      appBar: AppBar(
+        leading: const IosBackButton(),
+        automaticallyImplyLeading: false,
+        title: const Text('Community'),
+      ),
       body: ListView.separated(
         padding: const EdgeInsets.all(16),
         itemCount: posts.length,
@@ -454,7 +479,11 @@ class _SettingsScreenState extends State<SettingsScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: const Text('Settings')),
+      appBar: AppBar(
+        leading: const IosBackButton(),
+        automaticallyImplyLeading: false,
+        title: const Text('Settings'),
+      ),
       body: ListView(
         padding: const EdgeInsets.all(16),
         children: [

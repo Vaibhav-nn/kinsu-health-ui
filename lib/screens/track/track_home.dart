@@ -6,7 +6,7 @@ import 'package:provider/provider.dart';
 import '../../core/theme.dart';
 import '../../models/vital.dart';
 import '../../providers/vitals_provider.dart';
-import '../home/notifications_screen.dart';
+import '../../services/home_service.dart';
 import 'medications/add_medication_screen.dart';
 import 'symptoms/quick_symptom_log_screen.dart';
 import 'vitals/log_vital_screen.dart';
@@ -20,12 +20,30 @@ class TrackHome extends StatefulWidget {
 }
 
 class _TrackHomeState extends State<TrackHome> {
+  String _displayName = 'there';
+
   @override
   void initState() {
     super.initState();
     WidgetsBinding.instance.addPostFrameCallback((_) {
       context.read<VitalsProvider>().loadVitals();
+      _loadDisplayName();
     });
+  }
+
+  Future<void> _loadDisplayName() async {
+    try {
+      final overview = await context.read<HomeService>().fetchOverview();
+      final raw = overview.profile.displayName.trim();
+      if (!mounted || raw.isEmpty) {
+        return;
+      }
+      setState(() {
+        _displayName = raw;
+      });
+    } catch (_) {
+      // Keep default fallback when profile endpoint is temporarily unavailable.
+    }
   }
 
   List<VitalLog> _entriesForType(List<VitalLog> vitals, String type) {
@@ -118,62 +136,24 @@ class _TrackHomeState extends State<TrackHome> {
       backgroundColor: KinsuTheme.background,
       body: SafeArea(
         child: ListView(
-          padding: const EdgeInsets.fromLTRB(20, 18, 20, 30),
+          padding: const EdgeInsets.fromLTRB(20, 12, 20, 30),
           children: [
-            Row(
-              children: [
-                const Icon(Icons.menu_rounded,
-                    color: KinsuTheme.primaryDark, size: 20),
-                const SizedBox(width: 14),
-                const Expanded(
-                  child: Text(
-                    'Serene Sanctuary',
-                    style: TextStyle(
-                      fontSize: 30,
-                      fontWeight: FontWeight.w800,
-                      color: KinsuTheme.primaryDark,
-                    ),
-                  ),
-                ),
-                GestureDetector(
-                  onTap: () {
-                    Navigator.push(
-                      context,
-                      MaterialPageRoute(
-                          builder: (_) => const NotificationsScreen()),
-                    );
-                  },
-                  child: Container(
-                    width: 38,
-                    height: 38,
-                    decoration: BoxDecoration(
-                      color: Colors.white,
-                      borderRadius: BorderRadius.circular(14),
-                      border: Border.all(color: KinsuTheme.divider),
-                    ),
-                    child: const Icon(Icons.person_outline_rounded,
-                        size: 20, color: KinsuTheme.textSecondary),
-                  ),
-                ),
-              ],
-            ),
-            const SizedBox(height: 18),
             const Text(
               'DAILY OVERVIEW',
               style: TextStyle(
-                fontSize: 11,
+                fontSize: 10,
                 fontWeight: FontWeight.w800,
                 color: KinsuTheme.primary,
                 letterSpacing: 1.1,
               ),
             ),
             const SizedBox(height: 10),
-            const Text(
-              'Good morning.',
-              style: TextStyle(
-                fontSize: 44,
+            Text(
+              'Good morning, $_displayName.',
+              style: const TextStyle(
+                fontSize: 28,
                 fontWeight: FontWeight.w800,
-                height: 0.95,
+                height: 1.0,
                 color: KinsuTheme.textPrimary,
               ),
             ),
@@ -182,8 +162,8 @@ class _TrackHomeState extends State<TrackHome> {
               'Your wellness markers are stable today. Take a moment to log your morning vitals.',
               style: TextStyle(
                 color: KinsuTheme.textSecondary,
-                fontSize: 16,
-                height: 1.4,
+                fontSize: 14,
+                height: 1.35,
               ),
             ),
             const SizedBox(height: 18),
@@ -221,9 +201,9 @@ class _TrackHomeState extends State<TrackHome> {
                         child: Text(
                           'Vitality Metrics',
                           style: TextStyle(
-                            fontSize: 31,
+                            fontSize: 19,
                             fontWeight: FontWeight.w800,
-                            height: 1,
+                            height: 1.1,
                           ),
                         ),
                       ),
@@ -466,18 +446,18 @@ class _InsightRow extends StatelessWidget {
                 Text(
                   title,
                   style: const TextStyle(
-                    fontSize: 32,
+                    fontSize: 20,
                     fontWeight: FontWeight.w800,
-                    height: 0.95,
+                    height: 1.1,
                   ),
                 ),
                 const SizedBox(height: 6),
                 Text(
                   body,
                   style: const TextStyle(
-                    fontSize: 17,
+                    fontSize: 14,
                     color: KinsuTheme.textSecondary,
-                    height: 1.35,
+                    height: 1.4,
                   ),
                 ),
               ],

@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:kinsu_health/widgets/ios_back_button.dart';
 import 'package:provider/provider.dart';
 
 import '../../../core/theme.dart';
@@ -133,17 +134,10 @@ class _LogVitalScreenState extends State<LogVitalScreen> {
           child: Column(
             children: [
               Padding(
-                padding: const EdgeInsets.fromLTRB(18, 14, 18, 12),
+                padding: const EdgeInsets.fromLTRB(18, 10, 18, 10),
                 child: Row(
                   children: [
-                    GestureDetector(
-                      onTap: () => Navigator.of(context).pop(),
-                      child: const Icon(
-                        Icons.arrow_back_ios_new_rounded,
-                        color: KinsuTheme.primaryDark,
-                        size: 18,
-                      ),
-                    ),
+                    const IosBackButton(),
                     const SizedBox(width: 10),
                     const Expanded(
                       child: Text(
@@ -153,19 +147,6 @@ class _LogVitalScreenState extends State<LogVitalScreen> {
                           fontWeight: FontWeight.w800,
                           color: KinsuTheme.primaryDark,
                         ),
-                      ),
-                    ),
-                    GestureDetector(
-                      onTap: () => Navigator.of(context).pop(),
-                      child: Container(
-                        width: 28,
-                        height: 28,
-                        decoration: const BoxDecoration(
-                          color: Color(0xFFE9EFF2),
-                          shape: BoxShape.circle,
-                        ),
-                        child: const Icon(Icons.person_outline_rounded,
-                            size: 16, color: KinsuTheme.textSecondary),
                       ),
                     ),
                   ],
@@ -262,7 +243,6 @@ class _LogVitalScreenState extends State<LogVitalScreen> {
                     _VitalInputCard(
                       icon: Icons.air_rounded,
                       label: 'SpO2',
-                      highlighted: true,
                       valueBuilder:
                           _PlainInput(controller: _spo2Controller, hint: '98'),
                       unit: '%',
@@ -350,14 +330,12 @@ class _VitalInputCard extends StatelessWidget {
   final String label;
   final Widget valueBuilder;
   final String unit;
-  final bool highlighted;
 
   const _VitalInputCard({
     required this.icon,
     required this.label,
     required this.valueBuilder,
     required this.unit,
-    this.highlighted = false,
   });
 
   @override
@@ -365,7 +343,7 @@ class _VitalInputCard extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.all(14),
       decoration: BoxDecoration(
-        color: highlighted ? const Color(0xFFF4F8D8) : Colors.white,
+        color: Colors.white,
         borderRadius: BorderRadius.circular(16),
         border: Border.all(color: KinsuTheme.divider),
       ),

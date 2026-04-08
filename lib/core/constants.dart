@@ -65,3 +65,17 @@ class ApiConstants {
   static const String vaultLabParameterTrends =
       '$apiV1/vault/lab-parameters/trends';
 }
+
+/// Build-time feature flags.
+class AppFlags {
+  AppFlags._();
+
+  /// Demo mode flag for APK testing without Firebase auth flow.
+  ///
+  /// Enable with:
+  /// `--dart-define=DISABLE_AUTH=true`
+  static const bool disableAuth = bool.fromEnvironment(
+    'DISABLE_AUTH',
+    defaultValue: false,
+  );
+}

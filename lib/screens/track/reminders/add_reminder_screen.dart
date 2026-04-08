@@ -1,9 +1,11 @@
 import 'package:flutter/material.dart';
+import 'package:kinsu_health/widgets/ios_back_button.dart';
 import 'package:provider/provider.dart';
 
 import '../../../core/theme.dart';
 import '../../../models/reminder.dart';
 import '../../../providers/reminders_provider.dart';
+import '../widgets/track_flow_bottom_nav.dart';
 
 class AddReminderScreen extends StatefulWidget {
   final String? initialType;
@@ -281,12 +283,17 @@ class _AddReminderScreenState extends State<AddReminderScreen> {
     }
   }
 
+  double _bottomNavInset(BuildContext context) {
+    final safeBottom = MediaQuery.of(context).padding.bottom;
+    return 156 + safeBottom;
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: Colors.white,
-      bottomNavigationBar: _ReminderBottomNav(
-        selected: _footerSelection(),
+      bottomNavigationBar: const TrackFlowBottomNav(
+        selectedTab: TrackFlowNavTab.track,
       ),
       body: SafeArea(
         child: _selectedType == null ? _buildHub() : _buildFormShell(),
@@ -294,72 +301,51 @@ class _AddReminderScreenState extends State<AddReminderScreen> {
     );
   }
 
-  _ReminderFooterTab _footerSelection() {
-    return _ReminderFooterTab.add;
-  }
-
   Widget _buildHub() {
     return ListView(
-      padding: const EdgeInsets.fromLTRB(20, 18, 20, 24),
+      padding: EdgeInsets.fromLTRB(22, 20, 22, _bottomNavInset(context)),
       children: [
         Row(
           children: [
-            _GhostIconButton(
-              icon: Icons.arrow_back_ios_new_rounded,
-              onTap: _handleBack,
-            ),
-            const SizedBox(width: 14),
-            const Expanded(
-              child: Text(
-                'Add Reminder',
-                style: TextStyle(
-                  fontSize: 30,
-                  fontWeight: FontWeight.w800,
-                  color: KinsuTheme.primaryDark,
-                ),
-              ),
-            ),
-            const Icon(
-              Icons.notifications_none_outlined,
-              color: KinsuTheme.textSecondary,
-              size: 20,
-            ),
+            IosBackButton(onTap: _handleBack),
           ],
         ),
         const SizedBox(height: 12),
         const Text(
-          'What would you like\nto track today?',
+          'What would you like\n'
+          'to track today?',
           style: TextStyle(
             fontSize: 40,
             fontWeight: FontWeight.w800,
-            height: 0.98,
+            height: 1.02,
             color: KinsuTheme.primaryDark,
           ),
         ),
-        const SizedBox(height: 12),
+        const SizedBox(height: 14),
         const Text(
           'Select a category to set your wellness intentions.',
           style: TextStyle(
             color: KinsuTheme.textSecondary,
-            fontSize: 16,
-            height: 1.45,
+            fontSize: 17,
+            fontWeight: FontWeight.w500,
+            height: 1.55,
           ),
         ),
-        const SizedBox(height: 22),
+        const SizedBox(height: 20),
         Wrap(
-          spacing: 12,
-          runSpacing: 12,
+          spacing: 14,
+          runSpacing: 16,
           children: _types.map((type) {
             return SizedBox(
               width: 161,
-              height: 192,
+              height: 184,
               child: InkWell(
                 borderRadius: BorderRadius.circular(22),
                 onTap: () => setState(() => _selectedType = type.key),
                 child: Container(
                   padding: const EdgeInsets.symmetric(
                     horizontal: 14,
-                    vertical: 16,
+                    vertical: 14,
                   ),
                   decoration: BoxDecoration(
                     color: Colors.white,
@@ -378,13 +364,13 @@ class _AddReminderScreenState extends State<AddReminderScreen> {
                         ),
                         child: Icon(type.icon, color: type.color, size: 30),
                       ),
-                      const SizedBox(height: 18),
+                      const SizedBox(height: 14),
                       Text(
                         type.label,
                         textAlign: TextAlign.center,
                         style: const TextStyle(
                           fontSize: 16,
-                          fontWeight: FontWeight.w700,
+                          fontWeight: FontWeight.w800,
                           color: KinsuTheme.primaryDark,
                           height: 1.2,
                         ),
@@ -396,9 +382,9 @@ class _AddReminderScreenState extends State<AddReminderScreen> {
             );
           }).toList(),
         ),
-        const SizedBox(height: 18),
+        const SizedBox(height: 24),
         Container(
-          padding: const EdgeInsets.all(16),
+          padding: const EdgeInsets.fromLTRB(16, 16, 16, 16),
           decoration: BoxDecoration(
             color: const Color(0xFFF8DDA0),
             borderRadius: BorderRadius.circular(16),
@@ -414,14 +400,15 @@ class _AddReminderScreenState extends State<AddReminderScreen> {
                   style: TextStyle(
                     color: Color(0xFF6B4B00),
                     fontWeight: FontWeight.w700,
-                    height: 1.4,
-                    fontSize: 13,
+                    height: 1.45,
+                    fontSize: 15,
                   ),
                 ),
               ),
             ],
           ),
         ),
+        const SizedBox(height: 28),
       ],
     );
   }
@@ -433,16 +420,11 @@ class _AddReminderScreenState extends State<AddReminderScreen> {
     return Form(
       key: _formKey,
       child: ListView(
-        padding: const EdgeInsets.fromLTRB(20, 18, 20, 24),
+        padding: EdgeInsets.fromLTRB(20, 16, 20, _bottomNavInset(context)),
         children: [
           Row(
             children: [
-              _GhostIconButton(
-                icon: widget.initialType != null
-                    ? Icons.close
-                    : Icons.arrow_back_ios_new_rounded,
-                onTap: _handleBack,
-              ),
+              IosBackButton(onTap: _handleBack),
               const SizedBox(width: 14),
               Expanded(
                 child: Text(
@@ -451,14 +433,18 @@ class _AddReminderScreenState extends State<AddReminderScreen> {
                     fontSize: 32,
                     fontWeight: FontWeight.w800,
                     color: KinsuTheme.primaryDark,
+                    height: 1.0,
                   ),
                 ),
               ),
-              const Icon(Icons.notifications_none_rounded,
-                  color: KinsuTheme.textSecondary),
+              const Icon(
+                Icons.notifications_none_rounded,
+                color: KinsuTheme.primary,
+                size: 20,
+              ),
             ],
           ),
-          const SizedBox(height: 14),
+          const SizedBox(height: 16),
           ..._buildBody(type),
           const SizedBox(height: 16),
           ElevatedButton(
@@ -499,33 +485,11 @@ class _AddReminderScreenState extends State<AddReminderScreen> {
       case 'food':
         return _foodBody();
       case 'skin_care':
-        return _careBody(
-          eyebrow: 'WELLNESS PROTOCOL',
-          title: 'Maintain your glow.',
-          subtitle:
-              'Consistency is the secret to cellular regeneration. Set your evening retinol cycle now.',
-          historyTitle: 'Skin Care History',
-          insight: 'Hydrate within for outer glow.',
-        );
+        return _skinBody();
       case 'hair_care':
-        return _careBody(
-          eyebrow: 'WELLNESS PROTOCOL',
-          title: 'Set Hair\nReminder',
-          subtitle:
-              'Curate your personalized routine to maintain optimal scalp health and strand vitality.',
-          historyTitle: 'Hair Care History',
-          insight: 'Invest in your strands, they reflect your health.',
-        );
+        return _hairBody();
       case 'eye_care':
-        return _careBody(
-          eyebrow: 'ROUTINE OPTIMIZATION',
-          title: 'Set Eye\nReminder',
-          subtitle:
-              'Maintain your visual health with precision. Configure your specialized eye care treatments to receive timely alerts.',
-          historyTitle: 'Eye Care History',
-          insight:
-              'Try using drops or consistent timers to improve chronic dry-eye relief.',
-        );
+        return _eyeBody();
       default:
         return const [SizedBox.shrink()];
     }
@@ -533,6 +497,35 @@ class _AddReminderScreenState extends State<AddReminderScreen> {
 
   List<Widget> _doctorBody() {
     return [
+      const Text(
+        'CONSULTATION SCHEDULE',
+        style: TextStyle(
+          color: Color(0xFF98A66B),
+          fontSize: 11,
+          fontWeight: FontWeight.w800,
+          letterSpacing: 1.1,
+        ),
+      ),
+      const SizedBox(height: 10),
+      const Text(
+        'Plan your visit.',
+        style: TextStyle(
+          fontSize: 38,
+          fontWeight: FontWeight.w800,
+          color: KinsuTheme.primary,
+          height: 0.96,
+        ),
+      ),
+      const SizedBox(height: 10),
+      const Text(
+        'Capture doctor, date, and consultation details so your follow-ups never slip.',
+        style: TextStyle(
+          color: KinsuTheme.textPrimary,
+          fontSize: 15,
+          height: 1.45,
+        ),
+      ),
+      const SizedBox(height: 16),
       Container(
         padding: const EdgeInsets.all(22),
         decoration: BoxDecoration(
@@ -600,7 +593,7 @@ class _AddReminderScreenState extends State<AddReminderScreen> {
             child: Text(
               'Previously\nConsulted',
               style: TextStyle(
-                  fontSize: 28, fontWeight: FontWeight.w800, height: 1.0),
+                  fontSize: 24, fontWeight: FontWeight.w800, height: 1.0),
             ),
           ),
           Text(
@@ -638,13 +631,13 @@ class _AddReminderScreenState extends State<AddReminderScreen> {
   List<Widget> _medicineBody() {
     return [
       Container(
-        height: 172,
+        height: 164,
         decoration: BoxDecoration(
           borderRadius: BorderRadius.circular(26),
           gradient: const LinearGradient(
             begin: Alignment.topLeft,
             end: Alignment.bottomRight,
-            colors: [Color(0xFF365B62), Color(0xFF87A2A8)],
+            colors: [Color(0xFF0F9A96), Color(0xFF1B7F7B)],
           ),
         ),
         child: const Stack(
@@ -668,7 +661,7 @@ class _AddReminderScreenState extends State<AddReminderScreen> {
                 'New Medication',
                 style: TextStyle(
                     color: Colors.white,
-                    fontSize: 30,
+                    fontSize: 26,
                     fontWeight: FontWeight.w800),
               ),
             ),
@@ -787,47 +780,47 @@ class _AddReminderScreenState extends State<AddReminderScreen> {
 
   List<Widget> _sleepBody() {
     return [
-      Center(
-        child: Container(
-          width: 170,
-          height: 170,
-          decoration: const BoxDecoration(
-            shape: BoxShape.circle,
-            gradient: LinearGradient(
-              begin: Alignment.topLeft,
-              end: Alignment.bottomRight,
-              colors: [Color(0xFF256C74), Color(0xFF3D7B81)],
-            ),
-            boxShadow: [
-              BoxShadow(
-                  color: Color(0x33256C74),
-                  blurRadius: 30,
-                  offset: Offset(0, 16))
-            ],
+      Container(
+        padding: const EdgeInsets.all(20),
+        decoration: BoxDecoration(
+          borderRadius: BorderRadius.circular(26),
+          gradient: const LinearGradient(
+            begin: Alignment.topLeft,
+            end: Alignment.bottomRight,
+            colors: [Color(0xFF0B5F68), Color(0xFF257E83)],
           ),
-          child: const Icon(Icons.dark_mode_rounded,
-              color: Colors.white, size: 74),
         ),
-      ),
-      const SizedBox(height: 20),
-      const Center(
-        child: Text(
-          'RESTORATION CYCLE',
-          style: TextStyle(
-              color: Color(0xFF7B9486),
-              fontSize: 12,
-              fontWeight: FontWeight.w800,
-              letterSpacing: 1.1),
-        ),
-      ),
-      const SizedBox(height: 8),
-      const Center(
-        child: Text(
-          'Curation of Calm',
-          style: TextStyle(
-              fontSize: 34,
-              fontWeight: FontWeight.w800,
-              color: KinsuTheme.primaryDark),
+        child: const Row(
+          children: [
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    'RESTORATION CYCLE',
+                    style: TextStyle(
+                      color: Colors.white70,
+                      fontSize: 11,
+                      fontWeight: FontWeight.w800,
+                      letterSpacing: 1.1,
+                    ),
+                  ),
+                  SizedBox(height: 8),
+                  Text(
+                    'Curation of Calm',
+                    style: TextStyle(
+                      color: Colors.white,
+                      fontSize: 34,
+                      fontWeight: FontWeight.w800,
+                      height: 0.98,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            SizedBox(width: 12),
+            Icon(Icons.dark_mode_rounded, color: Colors.white, size: 44),
+          ],
         ),
       ),
       const SizedBox(height: 22),
@@ -1071,7 +1064,7 @@ class _AddReminderScreenState extends State<AddReminderScreen> {
   List<Widget> _foodBody() {
     return [
       Container(
-        padding: const EdgeInsets.all(24),
+        padding: const EdgeInsets.fromLTRB(18, 18, 18, 18),
         decoration: BoxDecoration(
           color: KinsuTheme.panel,
           borderRadius: BorderRadius.circular(26),
@@ -1091,15 +1084,16 @@ class _AddReminderScreenState extends State<AddReminderScreen> {
             const Text(
               'Set your rhythm.',
               style: TextStyle(
-                  fontSize: 34,
+                  fontSize: 42,
                   fontWeight: FontWeight.w800,
-                  color: KinsuTheme.primaryDark),
+                  color: KinsuTheme.primary,
+                  height: 0.92),
             ),
             const SizedBox(height: 10),
             const Text(
               'Consistent meal times support metabolic health and mental clarity. Let\'s curate your daily dining experience.',
               style: TextStyle(
-                  color: KinsuTheme.textSecondary, fontSize: 15, height: 1.45),
+                  color: KinsuTheme.textPrimary, fontSize: 16, height: 1.5),
             ),
             const SizedBox(height: 20),
             ..._mealSlots.map((slot) {
@@ -1122,14 +1116,14 @@ class _AddReminderScreenState extends State<AddReminderScreen> {
                     child: Row(
                       children: [
                         Container(
-                          width: 40,
-                          height: 40,
+                          width: 44,
+                          height: 44,
                           decoration: BoxDecoration(
                             color: const Color(0xFFF0F5CA),
                             borderRadius: BorderRadius.circular(14),
                           ),
-                          child:
-                              Icon(slot.icon, color: const Color(0xFF7A8405)),
+                          child: Icon(slot.icon,
+                              color: const Color(0xFF7A8405), size: 22),
                         ),
                         const SizedBox(width: 14),
                         Expanded(
@@ -1138,13 +1132,14 @@ class _AddReminderScreenState extends State<AddReminderScreen> {
                             children: [
                               Text(slot.label,
                                   style: const TextStyle(
-                                      fontSize: 20,
+                                      fontSize: 16,
                                       fontWeight: FontWeight.w800)),
                               const SizedBox(height: 4),
                               Text(slot.time,
                                   style: const TextStyle(
                                       color: KinsuTheme.textSecondary,
-                                      fontWeight: FontWeight.w600)),
+                                      fontWeight: FontWeight.w600,
+                                      fontSize: 12)),
                             ],
                           ),
                         ),
@@ -1163,22 +1158,29 @@ class _AddReminderScreenState extends State<AddReminderScreen> {
             const SizedBox(height: 8),
             const _SectionKicker('REMINDER DEPTH'),
             const SizedBox(height: 10),
-            Row(
-              children: [
-                Expanded(
-                    child: _PillToggle(
-                        label: 'Generic Alert',
-                        selected: _reminderDepth == 'generic_alert',
-                        onTap: () =>
-                            setState(() => _reminderDepth = 'generic_alert'))),
-                const SizedBox(width: 10),
-                Expanded(
-                    child: _PillToggle(
-                        label: 'Specific Meals',
-                        selected: _reminderDepth == 'specific_meals',
-                        onTap: () =>
-                            setState(() => _reminderDepth = 'specific_meals'))),
-              ],
+            Container(
+              padding: const EdgeInsets.all(6),
+              decoration: BoxDecoration(
+                color: const Color(0xFFE9EEEF),
+                borderRadius: BorderRadius.circular(14),
+              ),
+              child: Row(
+                children: [
+                  Expanded(
+                      child: _PillToggle(
+                          label: 'Generic Alert',
+                          selected: _reminderDepth == 'generic_alert',
+                          onTap: () => setState(
+                              () => _reminderDepth = 'generic_alert'))),
+                  const SizedBox(width: 8),
+                  Expanded(
+                      child: _PillToggle(
+                          label: 'Specific Meals',
+                          selected: _reminderDepth == 'specific_meals',
+                          onTap: () => setState(
+                              () => _reminderDepth = 'specific_meals'))),
+                ],
+              ),
             ),
             const SizedBox(height: 12),
             Container(
@@ -1199,7 +1201,7 @@ class _AddReminderScreenState extends State<AddReminderScreen> {
                         Text('Notify 15 mins before',
                             style: TextStyle(fontWeight: FontWeight.w800)),
                         SizedBox(height: 2),
-                        Text('Prepare your mind and intentions',
+                        Text('Prepare your mind and ingredients',
                             style: TextStyle(
                                 color: KinsuTheme.textSecondary, fontSize: 13)),
                       ],
@@ -1226,53 +1228,55 @@ class _AddReminderScreenState extends State<AddReminderScreen> {
       ),
       const SizedBox(height: 16),
       const _InsightCard(
-          text: 'AI Suggestion: Dinner at 7:30 PM optimizes your sleep cycle.'),
+          text: 'AI Suggestion: Dinner at 7:30 PM optimizes your sleep cycle'),
     ];
   }
 
-  List<Widget> _careBody({
-    required String eyebrow,
-    required String title,
-    required String subtitle,
-    required String historyTitle,
-    required String insight,
-  }) {
+  List<Widget> _skinBody() {
     return [
       Container(
-        padding: const EdgeInsets.all(22),
+        padding: const EdgeInsets.fromLTRB(20, 18, 20, 18),
         decoration: BoxDecoration(
           borderRadius: BorderRadius.circular(26),
           gradient: const LinearGradient(
             begin: Alignment.topLeft,
             end: Alignment.bottomRight,
-            colors: [Color(0xFF0D5961), Color(0xFF1B7077)],
+            colors: [Color(0xFF1CA69E), Color(0xFF2F9A88)],
           ),
         ),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text(eyebrow,
-                style: const TextStyle(
-                    color: Colors.white70,
-                    fontSize: 11,
-                    fontWeight: FontWeight.w800,
-                    letterSpacing: 1.0)),
+            const Text(
+              'DAILY INSIGHT',
+              style: TextStyle(
+                color: Color(0xFFFFF2C9),
+                fontSize: 11,
+                fontWeight: FontWeight.w800,
+                letterSpacing: 1.0,
+              ),
+            ),
             const SizedBox(height: 10),
-            Text(title,
-                style: const TextStyle(
-                    color: Colors.white,
-                    fontSize: 34,
-                    fontWeight: FontWeight.w800,
-                    height: 1.0)),
+            const Text(
+              'Maintain your glow.',
+              style: TextStyle(
+                color: Colors.white,
+                fontSize: 36,
+                fontWeight: FontWeight.w800,
+                height: 1.0,
+              ),
+            ),
             const SizedBox(height: 10),
-            Text(subtitle,
-                style: const TextStyle(color: Colors.white70, height: 1.45)),
+            const Text(
+              'Consistency is the secret to cellular regeneration. Set your evening retinol cycle now.',
+              style: TextStyle(color: Colors.white70, height: 1.45),
+            ),
           ],
         ),
       ),
       const SizedBox(height: 18),
       Container(
-        padding: const EdgeInsets.all(22),
+        padding: const EdgeInsets.all(20),
         decoration: BoxDecoration(
           color: Colors.white,
           borderRadius: BorderRadius.circular(26),
@@ -1285,31 +1289,22 @@ class _AddReminderScreenState extends State<AddReminderScreen> {
           children: [
             _LabeledField(
                 controller: _titleController,
-                label: _selectedType == 'hair_care'
-                    ? 'ROUTINE NAME'
-                    : 'TREATMENT NAME',
-                hintText: _selectedType == 'eye_care'
-                    ? 'e.g. Hydrating Drops'
-                    : 'e.g. Retinol',
+                label: 'TREATMENT NAME',
+                hintText: 'e.g. Retinol',
                 required: true),
             const SizedBox(height: 14),
             _DropdownShell(
-              label:
-                  _selectedType == 'hair_care' ? 'TOOL / PRODUCT' : 'PRODUCT',
+              label: 'PRODUCT',
               value: _productController.text.isEmpty
-                  ? _defaultProductValue()
+                  ? 'Night Serum'
                   : _productController.text,
-              values: _careProductChoices(),
+              values: const ['Night Serum', 'Hydrating Cream', 'SPF Gel'],
               onChanged: (value) =>
                   setState(() => _productController.text = value ?? ''),
             ),
             const SizedBox(height: 14),
             _PickerField(
-              label: _selectedType == 'eye_care'
-                  ? 'START TIME'
-                  : _selectedType == 'hair_care'
-                      ? 'SCHEDULE TIME'
-                      : 'TIME',
+              label: 'TIME',
               value: _displayTime(_scheduledTime),
               icon: Icons.schedule_outlined,
               onTap: () => _pickTime(
@@ -1327,32 +1322,36 @@ class _AddReminderScreenState extends State<AddReminderScreen> {
         ),
       ),
       const SizedBox(height: 20),
-      Row(
+      const Row(
         children: [
           Expanded(
             child: Text(
-              historyTitle,
-              style: const TextStyle(fontSize: 28, fontWeight: FontWeight.w800),
+              'Skin Care History',
+              style: TextStyle(fontSize: 26, fontWeight: FontWeight.w800),
             ),
           ),
-          const Text('View All',
-              style: TextStyle(
-                  color: KinsuTheme.primary, fontWeight: FontWeight.w700)),
+          Text(
+            'View All',
+            style: TextStyle(
+                color: KinsuTheme.primary, fontWeight: FontWeight.w700),
+          ),
         ],
       ),
       const SizedBox(height: 12),
       const _CareHistoryCard(
-          title: 'Hydrating Drops',
-          subtitle: 'Applied on time',
+          title: 'Hyaluronic Acid',
+          subtitle: 'Applied · Oct 24, 08:30 AM',
           tag: 'COMPLETED'),
       const SizedBox(height: 12),
       const _CareHistoryCard(
-          title: 'Night Ointment',
-          subtitle: 'Routine care session',
+          title: 'Chemical Peel',
+          subtitle: 'Scheduled · Oct 22, 09:00 PM',
           tag: 'MISSED'),
       const SizedBox(height: 12),
       const _CareHistoryCard(
-          title: 'Lid Wipes', subtitle: 'Deep cleanse', tag: 'COMPLETED'),
+          title: 'Sunscreen 50+',
+          subtitle: 'Applied · Oct 21, 07:15 AM',
+          tag: 'COMPLETED'),
       const SizedBox(height: 18),
       Container(
         height: 140,
@@ -1368,7 +1367,7 @@ class _AddReminderScreenState extends State<AddReminderScreen> {
           child: Padding(
             padding: const EdgeInsets.symmetric(horizontal: 18),
             child: Text(
-              insight,
+              'Hydrate within for outer glow.',
               textAlign: TextAlign.center,
               style: const TextStyle(
                   color: Colors.white,
@@ -1378,6 +1377,203 @@ class _AddReminderScreenState extends State<AddReminderScreen> {
           ),
         ),
       ),
+    ];
+  }
+
+  List<Widget> _hairBody() {
+    return [
+      const Padding(
+        padding: EdgeInsets.only(bottom: 10),
+        child: Text(
+          'WELLNESS PROTOCOL',
+          style: TextStyle(
+            color: Color(0xFF98A66B),
+            fontSize: 11,
+            fontWeight: FontWeight.w800,
+            letterSpacing: 1.1,
+          ),
+        ),
+      ),
+      const Text(
+        'Curate your personalized routine to maintain optimal scalp health and strand vitality.',
+        style: TextStyle(
+          fontSize: 15,
+          color: KinsuTheme.textSecondary,
+          height: 1.45,
+        ),
+      ),
+      const SizedBox(height: 18),
+      _LabeledField(
+        controller: _titleController,
+        label: 'ROUTINE NAME',
+        hintText: 'e.g., Deep Conditioning',
+      ),
+      const SizedBox(height: 14),
+      _DropdownShell(
+        label: 'TOOL/PRODUCT',
+        value: _productController.text.isEmpty
+            ? 'Comb/Oil'
+            : _productController.text,
+        values: const ['Comb/Oil', 'Scalp Serum', 'Hydration Mask'],
+        onChanged: (value) =>
+            setState(() => _productController.text = value ?? ''),
+      ),
+      const SizedBox(height: 14),
+      _DropdownShell(
+        label: 'FREQUENCY',
+        value: _recurrence[0].toUpperCase() + _recurrence.substring(1),
+        values: const ['Daily', 'Weekly', 'Monthly'],
+        onChanged: (value) =>
+            setState(() => _recurrence = (value ?? 'Weekly').toLowerCase()),
+      ),
+      const SizedBox(height: 14),
+      _PickerField(
+        label: 'SCHEDULE TIME',
+        value: _displayTime(_scheduledTime),
+        icon: Icons.access_time_outlined,
+        onTap: () => _pickTime(
+            onPicked: (time) => setState(() => _scheduledTime = time)),
+      ),
+      const SizedBox(height: 16),
+      const _InsightCard(
+        text:
+            'AI Insight: Deep conditioning is most effective after using a scalp serum on Monday nights.',
+      ),
+      const SizedBox(height: 18),
+      const Row(
+        children: [
+          Expanded(
+            child: Text(
+              'Hair Care History',
+              style: TextStyle(fontSize: 26, fontWeight: FontWeight.w800),
+            ),
+          ),
+          Text(
+            'View All',
+            style: TextStyle(
+                color: KinsuTheme.primary, fontWeight: FontWeight.w700),
+          ),
+        ],
+      ),
+      const SizedBox(height: 12),
+      const _CareHistoryCard(
+          title: 'Trim & Treatment', subtitle: 'Oct 24, 10:00 AM', tag: 'VIEW'),
+      const SizedBox(height: 12),
+      const _CareHistoryCard(
+          title: 'Scalp Oil Therapy',
+          subtitle: 'Oct 18, 09:15 PM',
+          tag: 'VIEW'),
+      const SizedBox(height: 12),
+      const _CareHistoryCard(
+          title: 'Hydration Mask', subtitle: 'Oct 11, 08:30 PM', tag: 'VIEW'),
+    ];
+  }
+
+  List<Widget> _eyeBody() {
+    return [
+      const Padding(
+        padding: EdgeInsets.only(bottom: 10),
+        child: Text(
+          'ROUTINE OPTIMIZATION',
+          style: TextStyle(
+            color: Color(0xFF98A66B),
+            fontSize: 11,
+            fontWeight: FontWeight.w800,
+            letterSpacing: 1.1,
+          ),
+        ),
+      ),
+      const Text(
+        'Maintain your visual health with precision. Configure your specialized eye care treatments to receive timely alerts.',
+        style: TextStyle(
+          fontSize: 15,
+          color: KinsuTheme.textSecondary,
+          height: 1.45,
+        ),
+      ),
+      const SizedBox(height: 18),
+      Container(
+        padding: const EdgeInsets.all(20),
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(24),
+          border: Border.all(color: KinsuTheme.divider),
+        ),
+        child: Column(
+          children: [
+            _LabeledField(
+              controller: _titleController,
+              label: 'TREATMENT NAME',
+              hintText: 'e.g., Hydrating Drops',
+            ),
+            const SizedBox(height: 14),
+            _DropdownShell(
+              label: 'PRODUCT',
+              value: _productController.text.isEmpty
+                  ? 'Dropper'
+                  : _productController.text,
+              values: const ['Dropper', 'Night Ointment', 'Lid Wipes'],
+              onChanged: (value) =>
+                  setState(() => _productController.text = value ?? ''),
+            ),
+            const SizedBox(height: 14),
+            _PickerField(
+              label: 'START TIME',
+              value: _displayTime(_scheduledTime),
+              icon: Icons.access_time_outlined,
+              onTap: () => _pickTime(
+                onPicked: (time) => setState(() => _scheduledTime = time),
+              ),
+            ),
+            const SizedBox(height: 14),
+            _DropdownShell(
+              label: 'FREQUENCY',
+              value: _recurrence == 'daily'
+                  ? '3x Daily'
+                  : _recurrence[0].toUpperCase() + _recurrence.substring(1),
+              values: const ['3x Daily', 'Daily', 'Weekly'],
+              onChanged: (value) => setState(() {
+                _recurrence =
+                    (value ?? 'daily').toLowerCase().replaceAll('3x ', '');
+              }),
+            ),
+            const SizedBox(height: 14),
+            const _InsightCard(
+              text:
+                  'Tip: Using drops at consistent times each day improves absorption and effectiveness for chronic dryness.',
+            ),
+          ],
+        ),
+      ),
+      const SizedBox(height: 18),
+      const Row(
+        children: [
+          Expanded(
+            child: Text(
+              'Eye Care History',
+              style: TextStyle(fontSize: 26, fontWeight: FontWeight.w800),
+            ),
+          ),
+          Text(
+            'View Full Log',
+            style: TextStyle(
+                color: KinsuTheme.primary, fontWeight: FontWeight.w700),
+          ),
+        ],
+      ),
+      const SizedBox(height: 12),
+      const _CareHistoryCard(
+          title: 'Hydrating Drops',
+          subtitle: 'Applied on time',
+          tag: 'COMPLETED'),
+      const SizedBox(height: 12),
+      const _CareHistoryCard(
+          title: 'Night Ointment',
+          subtitle: 'Routine care session',
+          tag: 'YESTERDAY'),
+      const SizedBox(height: 12),
+      const _CareHistoryCard(
+          title: 'Lid Wipes', subtitle: 'Deep cleanse', tag: 'COMPLETED'),
     ];
   }
 
@@ -1398,9 +1594,11 @@ class _AddReminderScreenState extends State<AddReminderScreen> {
       case 'food':
         return 'Food reminder';
       case 'skin_care':
+        return 'Set Skin\nReminder';
       case 'hair_care':
+        return 'Set Hair\nReminder';
       case 'eye_care':
-        return 'Care Reminders';
+        return 'Set Eye\nReminder';
       default:
         return 'Add Reminder';
     }
@@ -1408,28 +1606,6 @@ class _AddReminderScreenState extends State<AddReminderScreen> {
 
   String _submitLabel(String type) =>
       type == 'medicine' ? 'Set Reminder' : 'Set Reminder';
-
-  List<String> _careProductChoices() {
-    switch (_selectedType) {
-      case 'hair_care':
-        return const ['Comb/Oil', 'Serum', 'Mask'];
-      case 'eye_care':
-        return const ['Dropper', 'Night Ointment', 'Wipes'];
-      default:
-        return const ['Night Serum', 'Cream', 'Mask'];
-    }
-  }
-
-  String _defaultProductValue() {
-    switch (_selectedType) {
-      case 'hair_care':
-        return 'Comb/Oil';
-      case 'eye_care':
-        return 'Dropper';
-      default:
-        return 'Night Serum';
-    }
-  }
 }
 
 class _ReminderType {
@@ -1449,158 +1625,6 @@ class _MealSlot {
   final IconData icon;
 
   const _MealSlot(this.label, this.time, this.icon);
-}
-
-class _GhostIconButton extends StatelessWidget {
-  final IconData icon;
-  final VoidCallback onTap;
-
-  const _GhostIconButton({required this.icon, required this.onTap});
-
-  @override
-  Widget build(BuildContext context) {
-    return InkWell(
-      borderRadius: BorderRadius.circular(999),
-      onTap: onTap,
-      child: Container(
-        width: 34,
-        height: 34,
-        decoration: BoxDecoration(
-          color: const Color(0xFFF1F4F5),
-          shape: BoxShape.circle,
-        ),
-        child: Icon(icon, color: KinsuTheme.primaryDark, size: 18),
-      ),
-    );
-  }
-}
-
-enum _ReminderFooterTab { home, track, add, ai, profile }
-
-class _ReminderBottomNav extends StatelessWidget {
-  final _ReminderFooterTab selected;
-
-  const _ReminderBottomNav({required this.selected});
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.fromLTRB(10, 8, 10, 10),
-      decoration: const BoxDecoration(
-        color: Colors.white,
-        border: Border(top: BorderSide(color: KinsuTheme.divider)),
-        boxShadow: [
-          BoxShadow(
-            color: Color(0x080F172A),
-            blurRadius: 12,
-            offset: Offset(0, -2),
-          ),
-        ],
-      ),
-      child: SafeArea(
-        top: false,
-        child: Row(
-          mainAxisAlignment: MainAxisAlignment.spaceAround,
-          children: [
-            _FooterItem(
-              icon: Icons.home_outlined,
-              label: 'HOME',
-              selected: selected == _ReminderFooterTab.home,
-            ),
-            _FooterItem(
-              icon: Icons.alt_route_rounded,
-              label: 'TRACK',
-              selected: selected == _ReminderFooterTab.track,
-            ),
-            _FooterAddItem(selected: selected == _ReminderFooterTab.add),
-            _FooterItem(
-              icon: Icons.auto_awesome_outlined,
-              label: 'AI',
-              selected: selected == _ReminderFooterTab.ai,
-            ),
-            _FooterItem(
-              icon: Icons.person_outline_rounded,
-              label: 'PROFILE',
-              selected: selected == _ReminderFooterTab.profile,
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-}
-
-class _FooterItem extends StatelessWidget {
-  final IconData icon;
-  final String label;
-  final bool selected;
-
-  const _FooterItem({
-    required this.icon,
-    required this.label,
-    this.selected = false,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    final color = selected ? KinsuTheme.primaryDark : const Color(0xFF9AA4B2);
-    return SizedBox(
-      width: 56,
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          AnimatedContainer(
-            duration: const Duration(milliseconds: 180),
-            width: 36,
-            height: 36,
-            decoration: BoxDecoration(
-              color: selected ? KinsuTheme.primaryLight : Colors.transparent,
-              borderRadius: BorderRadius.circular(14),
-            ),
-            child: Icon(icon, size: 18, color: color),
-          ),
-          const SizedBox(height: 2),
-          Text(
-            label,
-            style: TextStyle(
-              fontSize: 9,
-              fontWeight: FontWeight.w700,
-              color: color,
-              letterSpacing: 0.6,
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-class _FooterAddItem extends StatelessWidget {
-  final bool selected;
-
-  const _FooterAddItem({this.selected = false});
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      width: 52,
-      height: 52,
-      decoration: BoxDecoration(
-        color: KinsuTheme.primaryDark,
-        shape: BoxShape.circle,
-        boxShadow: [
-          BoxShadow(
-            color: KinsuTheme.primaryDark.withValues(
-              alpha: selected ? 0.30 : 0.22,
-            ),
-            blurRadius: selected ? 22 : 18,
-            offset: const Offset(0, 10),
-          ),
-        ],
-      ),
-      child: const Icon(Icons.add_rounded, color: Colors.white, size: 28),
-    );
-  }
 }
 
 class _LabeledField extends StatelessWidget {
@@ -1747,7 +1771,7 @@ class _SectionKicker extends StatelessWidget {
     return Text(
       text,
       style: const TextStyle(
-        color: Color(0xFF94A3B8),
+        color: Color(0xFF79820A),
         fontSize: 12,
         fontWeight: FontWeight.w800,
         letterSpacing: 1.0,
@@ -2058,21 +2082,23 @@ class _PillToggle extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return InkWell(
-      borderRadius: BorderRadius.circular(16),
+      borderRadius: BorderRadius.circular(12),
       onTap: onTap,
       child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
         decoration: BoxDecoration(
-          color: selected ? Colors.white : const Color(0xFFF7FAFB),
-          borderRadius: BorderRadius.circular(16),
+          color: selected ? Colors.white : Colors.transparent,
+          borderRadius: BorderRadius.circular(12),
           border: Border.all(
-              color: selected ? KinsuTheme.primary : KinsuTheme.divider),
+            color: selected ? KinsuTheme.divider : Colors.transparent,
+          ),
         ),
         child: Center(
           child: Text(
             label,
             style: TextStyle(
-              fontWeight: FontWeight.w800,
+              fontWeight: FontWeight.w700,
+              fontSize: 14,
               color:
                   selected ? KinsuTheme.primaryDark : KinsuTheme.textSecondary,
             ),
@@ -2158,10 +2184,19 @@ class _CareHistoryCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final tagColor =
-        tag == 'MISSED' ? const Color(0xFFFDA4AF) : const Color(0xFFCDE8A6);
-    final textColor =
-        tag == 'MISSED' ? const Color(0xFFB91C1C) : const Color(0xFF5C7C12);
+    final normalizedTag = tag.toUpperCase();
+    final (tagColor, textColor) = switch (normalizedTag) {
+      'MISSED' => (const Color(0xFFFDE2E5), const Color(0xFFB91C1C)),
+      'YESTERDAY' => (const Color(0xFFEAEFF5), const Color(0xFF64748B)),
+      'VIEW' => (const Color(0xFFEAF2F3), const Color(0xFF0F766E)),
+      _ => (const Color(0xFFE3F2D0), const Color(0xFF5C7C12)),
+    };
+
+    final leadingIcon = switch (normalizedTag) {
+      'MISSED' => Icons.watch_later_outlined,
+      'YESTERDAY' => Icons.calendar_today_outlined,
+      _ => Icons.spa_outlined,
+    };
 
     return Container(
       padding: const EdgeInsets.all(16),
@@ -2176,8 +2211,7 @@ class _CareHistoryCard extends StatelessWidget {
             height: 44,
             decoration: const BoxDecoration(
                 color: Color(0xFFF2F7DB), shape: BoxShape.circle),
-            child:
-                const Icon(Icons.checkroom_outlined, color: Color(0xFF86A01D)),
+            child: Icon(leadingIcon, color: const Color(0xFF86A01D), size: 20),
           ),
           const SizedBox(width: 12),
           Expanded(
@@ -2195,8 +2229,7 @@ class _CareHistoryCard extends StatelessWidget {
           Container(
             padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
             decoration: BoxDecoration(
-                color: tagColor.withValues(alpha: 0.4),
-                borderRadius: BorderRadius.circular(999)),
+                color: tagColor, borderRadius: BorderRadius.circular(999)),
             child: Text(tag,
                 style: TextStyle(
                     color: textColor,

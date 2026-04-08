@@ -15,6 +15,7 @@ import 'providers/symptoms_provider.dart';
 import 'providers/vault_provider.dart';
 import 'providers/vitals_provider.dart';
 import 'screens/auth/auth_gate.dart';
+import 'screens/shell/main_shell.dart';
 import 'services/exercise_service.dart';
 import 'services/family_service.dart';
 import 'services/home_service.dart';
@@ -27,9 +28,11 @@ import 'services/vitals_service.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
-  await Firebase.initializeApp(
-    options: DefaultFirebaseOptions.currentPlatform,
-  );
+  if (!AppFlags.disableAuth) {
+    await Firebase.initializeApp(
+      options: DefaultFirebaseOptions.currentPlatform,
+    );
+  }
 
   final dio = DioClient.create(baseUrl: ApiConstants.baseUrl);
   runApp(KinsuHealthApp(dio: dio));
@@ -72,7 +75,7 @@ class KinsuHealthApp extends StatelessWidget {
         title: 'Kinsu Health',
         debugShowCheckedModeBanner: false,
         theme: KinsuTheme.lightTheme,
-        home: const AuthGate(),
+        home: AppFlags.disableAuth ? const MainShell() : const AuthGate(),
       ),
     );
   }

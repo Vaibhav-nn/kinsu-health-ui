@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 
 import '../../core/theme.dart';
 import '../ai/ai_screen.dart';
-import '../family/family_screen.dart';
 import '../home/home_screen.dart';
 import '../track/medications/add_medication_screen.dart';
 import '../track/reminders/add_reminder_screen.dart';
@@ -14,22 +13,29 @@ import 'app_shell_bottom_nav.dart';
 
 /// Main app shell with bottom navigation bar.
 class MainShell extends StatefulWidget {
-  const MainShell({super.key});
+  final int initialIndex;
+
+  const MainShell({super.key, this.initialIndex = 0});
 
   @override
   State<MainShell> createState() => _MainShellState();
 }
 
 class _MainShellState extends State<MainShell> {
-  int _currentIndex = 0;
+  late int _currentIndex;
 
   final List<Widget> _pages = [
     const HomeScreen(),
-    const VaultScreen(),
     const TrackHome(),
-    const FamilyScreen(),
+    const VaultScreen(),
     const AiScreen(),
   ];
+
+  @override
+  void initState() {
+    super.initState();
+    _currentIndex = widget.initialIndex.clamp(0, _pages.length - 1);
+  }
 
   void _openAddMenu() {
     showModalBottomSheet<void>(
@@ -68,7 +74,8 @@ class _MainShellState extends State<MainShell> {
                   onTap: () {
                     Navigator.of(sheetContext).pop();
                     Navigator.of(context).push(
-                      MaterialPageRoute(builder: (_) => const AddMedicationScreen()),
+                      MaterialPageRoute(
+                          builder: (_) => const AddMedicationScreen()),
                     );
                   },
                 ),
@@ -78,7 +85,8 @@ class _MainShellState extends State<MainShell> {
                   onTap: () {
                     Navigator.of(sheetContext).pop();
                     Navigator.of(context).push(
-                      MaterialPageRoute(builder: (_) => const QuickSymptomLogScreen()),
+                      MaterialPageRoute(
+                          builder: (_) => const QuickSymptomLogScreen()),
                     );
                   },
                 ),
@@ -88,7 +96,8 @@ class _MainShellState extends State<MainShell> {
                   onTap: () {
                     Navigator.of(sheetContext).pop();
                     Navigator.of(context).push(
-                      MaterialPageRoute(builder: (_) => const AddReminderScreen()),
+                      MaterialPageRoute(
+                          builder: (_) => const AddReminderScreen()),
                     );
                   },
                 ),
@@ -132,10 +141,12 @@ class _MainShellState extends State<MainShell> {
               Expanded(
                 child: Text(
                   label,
-                  style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w700),
+                  style: const TextStyle(
+                      fontSize: 16, fontWeight: FontWeight.w700),
                 ),
               ),
-              const Icon(Icons.chevron_right_rounded, color: KinsuTheme.textSecondary),
+              const Icon(Icons.chevron_right_rounded,
+                  color: KinsuTheme.textSecondary),
             ],
           ),
         ),

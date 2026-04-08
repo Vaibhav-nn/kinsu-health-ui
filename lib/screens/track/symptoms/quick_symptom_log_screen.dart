@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:kinsu_health/widgets/ios_back_button.dart';
 import 'package:provider/provider.dart';
 
 import '../../../core/theme.dart';
@@ -147,8 +148,7 @@ class _QuickSymptomLogScreenState extends State<QuickSymptomLogScreen> {
               padding: const EdgeInsets.fromLTRB(18, 14, 18, 12),
               child: Row(
                 children: [
-                  const Icon(Icons.menu_rounded,
-                      color: KinsuTheme.textSecondary, size: 20),
+                  IosBackButton(onTap: () => Navigator.of(context).pop()),
                   const SizedBox(width: 12),
                   const Expanded(
                     child: Text(

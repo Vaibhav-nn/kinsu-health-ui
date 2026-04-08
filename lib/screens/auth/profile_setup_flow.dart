@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:kinsu_health/widgets/ios_back_button.dart';
 
 import '../../core/theme.dart';
 import '../../models/user_profile.dart';
@@ -193,6 +194,8 @@ class _ProfileSetupFlowState extends State<ProfileSetupFlow> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
+        leading: const IosBackButton(),
+        automaticallyImplyLeading: false,
         title: const Text('Set Up Your Profile'),
       ),
       body: SafeArea(

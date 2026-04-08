@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:kinsu_health/widgets/ios_back_button.dart';
 import 'package:provider/provider.dart';
 
 import '../../../core/theme.dart';
@@ -174,8 +175,7 @@ class _AddMedicationScreenState extends State<AddMedicationScreen> {
             children: [
               Row(
                 children: [
-                  const Icon(Icons.close,
-                      size: 20, color: KinsuTheme.textSecondary),
+                  IosBackButton(onTap: () => Navigator.of(context).pop()),
                   const SizedBox(width: 10),
                   const Expanded(
                     child: Text(

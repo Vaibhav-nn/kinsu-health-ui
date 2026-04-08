@@ -1,11 +1,13 @@
 import 'package:dio/dio.dart';
 import 'package:flutter/material.dart';
+import 'package:kinsu_health/widgets/ios_back_button.dart';
 import 'package:provider/provider.dart';
 
 import '../../core/constants.dart';
 import '../../core/theme.dart';
 import '../../models/home_models.dart';
 import '../../screens/track/medications/medications_list_screen.dart';
+import '../../screens/track/widgets/track_flow_bottom_nav.dart';
 import '../../screens/vault_screen.dart';
 import '../../services/home_service.dart';
 
@@ -191,7 +193,9 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
     final grouped = _groupedItems();
     return Scaffold(
       backgroundColor: KinsuTheme.background,
-      bottomNavigationBar: const _NotificationsBottomNav(),
+      bottomNavigationBar: const TrackFlowBottomNav(
+        selectedTab: TrackFlowNavTab.home,
+      ),
       body: SafeArea(
         child: RefreshIndicator(
           onRefresh: _loadNotifications,
@@ -200,10 +204,7 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
             children: [
               Row(
                 children: [
-                  _RoundIconButton(
-                    icon: Icons.arrow_back_ios_new_rounded,
-                    onTap: () => Navigator.of(context).pop(),
-                  ),
+                  const IosBackButton(),
                   const SizedBox(width: 14),
                   const Expanded(
                     child: Text(
@@ -672,98 +673,6 @@ class _RoundIconButton extends StatelessWidget {
           shape: BoxShape.circle,
         ),
         child: Icon(icon, color: KinsuTheme.primaryDark, size: 18),
-      ),
-    );
-  }
-}
-
-class _NotificationsBottomNav extends StatelessWidget {
-  const _NotificationsBottomNav();
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.fromLTRB(10, 8, 10, 10),
-      decoration: const BoxDecoration(
-        color: Colors.white,
-        border: Border(top: BorderSide(color: Color(0xFFE8ECEE))),
-        boxShadow: [
-          BoxShadow(
-            color: Color(0x080F172A),
-            blurRadius: 12,
-            offset: Offset(0, -2),
-          ),
-        ],
-      ),
-      child: const SafeArea(
-        top: false,
-        child: Row(
-          mainAxisAlignment: MainAxisAlignment.spaceAround,
-          children: [
-            _NotificationFooterItem(
-              icon: Icons.home_outlined,
-              label: 'HOME',
-            ),
-            _NotificationFooterItem(
-              icon: Icons.medical_information_outlined,
-              label: 'HEALTH',
-            ),
-            _NotificationFooterItem(
-              icon: Icons.notifications_none_rounded,
-              label: 'INBOX',
-              selected: true,
-            ),
-            _NotificationFooterItem(
-              icon: Icons.person_outline_rounded,
-              label: 'PROFILE',
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-}
-
-class _NotificationFooterItem extends StatelessWidget {
-  final IconData icon;
-  final String label;
-  final bool selected;
-
-  const _NotificationFooterItem({
-    required this.icon,
-    required this.label,
-    this.selected = false,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    final color = selected ? KinsuTheme.primaryDark : const Color(0xFF9AA4B2);
-    return SizedBox(
-      width: 62,
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          AnimatedContainer(
-            duration: const Duration(milliseconds: 180),
-            width: 38,
-            height: 38,
-            decoration: BoxDecoration(
-              color: selected ? const Color(0xFFDFF1EC) : Colors.transparent,
-              borderRadius: BorderRadius.circular(14),
-            ),
-            child: Icon(icon, size: 20, color: color),
-          ),
-          const SizedBox(height: 3),
-          Text(
-            label,
-            style: TextStyle(
-              fontSize: 9,
-              fontWeight: FontWeight.w800,
-              color: color,
-              letterSpacing: 0.6,
-            ),
-          ),
-        ],
       ),
     );
   }

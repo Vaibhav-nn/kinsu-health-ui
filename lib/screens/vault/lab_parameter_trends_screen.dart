@@ -1,5 +1,6 @@
 import 'package:fl_chart/fl_chart.dart';
 import 'package:flutter/material.dart';
+import 'package:kinsu_health/widgets/ios_back_button.dart';
 import 'package:provider/provider.dart';
 
 import '../../core/theme.dart';
@@ -125,10 +126,7 @@ class _LabParameterTrendsScreenState extends State<LabParameterTrendsScreen> {
               padding: const EdgeInsets.fromLTRB(16, 12, 16, 10),
               child: Row(
                 children: [
-                  IconButton(
-                    onPressed: () => Navigator.of(context).pop(),
-                    icon: const Icon(Icons.close),
-                  ),
+                  const IosBackButton(),
                   const SizedBox(width: 8),
                   const Expanded(
                     child: Text(

@@ -1,6 +1,7 @@
 import 'dart:math' as math;
 
 import 'package:flutter/material.dart';
+import 'package:kinsu_health/widgets/ios_back_button.dart';
 import 'package:provider/provider.dart';
 
 import '../../../core/theme.dart';
@@ -154,10 +155,8 @@ class _MedicationsListScreenState extends State<MedicationsListScreen> {
     return Scaffold(
       appBar: AppBar(
         title: const Text('Medications'),
-        leading: IconButton(
-          icon: const Icon(Icons.arrow_back_ios_new_rounded),
-          onPressed: () => Navigator.pop(context),
-        ),
+        leading: const IosBackButton(),
+        automaticallyImplyLeading: false,
         actions: [
           IconButton(
             icon: const Icon(Icons.add, color: KinsuTheme.primary),

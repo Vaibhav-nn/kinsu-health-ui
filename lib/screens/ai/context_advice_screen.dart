@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:kinsu_health/widgets/ios_back_button.dart';
 
 import '../../core/theme.dart';
 
@@ -8,7 +9,11 @@ class ContextAdviceScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: const Text('Context Advice')),
+      appBar: AppBar(
+        leading: const IosBackButton(),
+        automaticallyImplyLeading: false,
+        title: const Text('Context Advice'),
+      ),
       body: ListView(
         padding: const EdgeInsets.all(16),
         children: const [

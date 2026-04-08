@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:kinsu_health/widgets/ios_back_button.dart';
 import 'package:provider/provider.dart';
 
 import '../../core/theme.dart';
@@ -165,6 +166,8 @@ class _ExerciseScreenState extends State<ExerciseScreen> {
 
     return Scaffold(
       appBar: AppBar(
+        leading: const IosBackButton(),
+        automaticallyImplyLeading: false,
         title: const Text('Exercise & Activity'),
         actions: const [
           Padding(

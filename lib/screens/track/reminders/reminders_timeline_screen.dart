@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:kinsu_health/widgets/ios_back_button.dart';
 import 'package:provider/provider.dart';
 
 import '../../../core/theme.dart';
@@ -185,10 +186,8 @@ class _RemindersTimelineScreenState extends State<RemindersTimelineScreen> {
     return Scaffold(
       appBar: AppBar(
         title: const Text('Reminders'),
-        leading: IconButton(
-          icon: const Icon(Icons.close),
-          onPressed: () => Navigator.pop(context),
-        ),
+        leading: const IosBackButton(),
+        automaticallyImplyLeading: false,
         actions: [
           TextButton.icon(
             onPressed: () {

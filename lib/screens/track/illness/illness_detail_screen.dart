@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:kinsu_health/widgets/ios_back_button.dart';
 import 'package:provider/provider.dart';
 import '../../../core/theme.dart';
 import '../../../models/illness.dart';
@@ -57,10 +58,8 @@ class _IllnessDetailScreenState extends State<IllnessDetailScreen> {
     return Scaffold(
       appBar: AppBar(
         title: const Text('Episode Details'),
-        leading: IconButton(
-          icon: const Icon(Icons.arrow_back),
-          onPressed: () => Navigator.pop(context),
-        ),
+        leading: const IosBackButton(),
+        automaticallyImplyLeading: false,
       ),
       floatingActionButton: FloatingActionButton(
         onPressed: () => _showAddDetailDialog(context),
@@ -209,8 +208,8 @@ class _IllnessDetailScreenState extends State<IllnessDetailScreen> {
                                           style: TextStyle(
                                             fontSize: 11,
                                             fontWeight: FontWeight.w600,
-                                            color: _detailColor(
-                                                detail.detailType),
+                                            color:
+                                                _detailColor(detail.detailType),
                                           ),
                                         ),
                                       ),
@@ -269,14 +268,13 @@ class _IllnessDetailScreenState extends State<IllnessDetailScreen> {
                 children: [
                   const Text(
                     'Add Detail',
-                    style:
-                        TextStyle(fontSize: 18, fontWeight: FontWeight.w600),
+                    style: TextStyle(fontSize: 18, fontWeight: FontWeight.w600),
                   ),
                   const SizedBox(height: 12),
                   Wrap(
                     spacing: 8,
-                    children: ['symptom', 'diagnosis', 'treatment', 'note']
-                        .map((t) {
+                    children:
+                        ['symptom', 'diagnosis', 'treatment', 'note'].map((t) {
                       final isSelected = selectedType == t;
                       return ChoiceChip(
                         label: Text(t[0].toUpperCase() + t.substring(1)),

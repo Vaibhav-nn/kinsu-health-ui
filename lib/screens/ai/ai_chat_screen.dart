@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:kinsu_health/widgets/ios_back_button.dart';
 
 import '../../core/theme.dart';
 import 'ai_refusal_screen.dart';
@@ -75,6 +76,8 @@ class _AiChatScreenState extends State<AiChatScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
+        leading: const IosBackButton(),
+        automaticallyImplyLeading: false,
         title: const Text('Kinsu AI Chat'),
       ),
       body: Column(

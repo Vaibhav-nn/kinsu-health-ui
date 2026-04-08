@@ -2,6 +2,7 @@ import 'dart:async';
 
 import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
+import 'package:kinsu_health/widgets/ios_back_button.dart';
 import 'package:provider/provider.dart';
 import 'package:syncfusion_flutter_pdfviewer/pdfviewer.dart';
 import 'package:url_launcher/url_launcher.dart';
@@ -1545,6 +1546,8 @@ class _FullScreenViewer extends StatelessWidget {
 
     return Scaffold(
       appBar: AppBar(
+        leading: const IosBackButton(),
+        automaticallyImplyLeading: false,
         title: Text(record.title),
       ),
       body: record.isPdf
