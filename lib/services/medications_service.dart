@@ -67,6 +67,39 @@ class MedicationsService {
     });
   }
 
+  Future<MedicationDashboard> fetchDashboard({DateTime? targetDate}) async {
+    final params = <String, dynamic>{};
+    if (targetDate != null) {
+      params['target_date'] = _dateOnly(targetDate);
+    }
+
+    return _withBootstrapRetry(() async {
+      final response = await _dio.get(
+        ApiConstants.medicationsDashboard,
+        queryParameters: params.isEmpty ? null : params,
+      );
+      return MedicationDashboard.fromJson(response.data as Map<String, dynamic>);
+    });
+  }
+
+  Future<MedicationAdherence> fetchAdherence({
+    required String view,
+    DateTime? referenceDate,
+  }) async {
+    final params = <String, dynamic>{'view': view};
+    if (referenceDate != null) {
+      params['reference_date'] = _dateOnly(referenceDate);
+    }
+
+    return _withBootstrapRetry(() async {
+      final response = await _dio.get(
+        ApiConstants.medicationsAdherence,
+        queryParameters: params,
+      );
+      return MedicationAdherence.fromJson(response.data as Map<String, dynamic>);
+    });
+  }
+
   Future<Medication> getMedication(int id) async {
     final response = await _dio.get('${ApiConstants.medications}/$id');
     return Medication.fromJson(response.data);
@@ -82,5 +115,34 @@ class MedicationsService {
 
   Future<void> deleteMedication(int id) async {
     await _dio.delete('${ApiConstants.medications}/$id');
+  }
+
+  Future<void> logDose(
+    int medicationId, {
+    required String status,
+    DateTime? scheduledFor,
+    DateTime? takenAt,
+    String? notes,
+  }) async {
+    final effectiveDate = scheduledFor ?? DateTime.now();
+
+    await _withBootstrapRetry(() async {
+      await _dio.post(
+        '${ApiConstants.medications}/$medicationId/doses',
+        data: {
+          'scheduled_for': _dateOnly(effectiveDate),
+          'status': status,
+          if (takenAt != null) 'taken_at': takenAt.toUtc().toIso8601String(),
+          if (notes != null && notes.trim().isNotEmpty) 'notes': notes.trim(),
+        },
+      );
+    });
+  }
+
+  String _dateOnly(DateTime value) {
+    final yyyy = value.year.toString().padLeft(4, '0');
+    final mm = value.month.toString().padLeft(2, '0');
+    final dd = value.day.toString().padLeft(2, '0');
+    return '$yyyy-$mm-$dd';
   }
 }

@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:kinsu_health/widgets/ios_back_button.dart';
 
 class AiRefusalScreen extends StatelessWidget {
   const AiRefusalScreen({super.key});
@@ -6,7 +7,11 @@ class AiRefusalScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: const Text('Safety Response')),
+      appBar: AppBar(
+        leading: const IosBackButton(),
+        automaticallyImplyLeading: false,
+        title: const Text('Safety Response'),
+      ),
       body: Center(
         child: Padding(
           padding: const EdgeInsets.all(20),

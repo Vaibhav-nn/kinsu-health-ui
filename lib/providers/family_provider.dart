@@ -15,6 +15,9 @@ class FamilyProvider extends ChangeNotifier {
   List<AccountProfileOption> _profiles = [];
   List<AccountProfileOption> get profiles => _profiles;
 
+  List<FamilyDashboardCard> _dashboardCards = [];
+  List<FamilyDashboardCard> get dashboardCards => _dashboardCards;
+
   int? _activeFamilyProfileId;
   int? get activeFamilyProfileId => _activeFamilyProfileId;
 
@@ -24,6 +27,19 @@ class FamilyProvider extends ChangeNotifier {
   String? _error;
   String? get error => _error;
 
+  FamilyDashboardCard? get activeDashboardCard {
+    for (final card in _dashboardCards) {
+      if (_activeFamilyProfileId == null && card.isSelf) {
+        return card;
+      }
+      if (_activeFamilyProfileId != null &&
+          card.profileId == _activeFamilyProfileId) {
+        return card;
+      }
+    }
+    return _dashboardCards.isNotEmpty ? _dashboardCards.first : null;
+  }
+
   Future<void> loadFamilyData() async {
     _isLoading = true;
     _error = null;
@@ -32,6 +48,7 @@ class FamilyProvider extends ChangeNotifier {
     try {
       _members = await _service.listMembers();
       _profiles = await _service.listProfiles();
+      _dashboardCards = await _service.fetchDashboard();
       final hasCurrent =
           _profiles.any((p) => p.profileId == _activeFamilyProfileId);
       if (!hasCurrent) {
@@ -51,6 +68,8 @@ class FamilyProvider extends ChangeNotifier {
     required String phoneE164,
     String? relation,
     DateTime? dateOfBirth,
+    String? bloodGroup,
+    List<String>? healthConditions,
     String? notes,
   }) async {
     try {
@@ -59,6 +78,8 @@ class FamilyProvider extends ChangeNotifier {
         phoneE164: phoneE164,
         relation: relation,
         dateOfBirth: dateOfBirth,
+        bloodGroup: bloodGroup,
+        healthConditions: healthConditions,
         notes: notes,
       );
       await loadFamilyData();

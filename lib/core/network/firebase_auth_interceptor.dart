@@ -3,6 +3,8 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter/foundation.dart';
 
+import '../constants.dart';
+
 /// Dio [Interceptor] that automatically attaches the current Firebase
 /// user's ID token to every outgoing request.
 class FirebaseAuthInterceptor extends Interceptor {
@@ -12,6 +14,12 @@ class FirebaseAuthInterceptor extends Interceptor {
     RequestInterceptorHandler handler,
   ) async {
     try {
+      if (AppFlags.disableAuth) {
+        options.headers.remove('Authorization');
+        handler.next(options);
+        return;
+      }
+
       if (Firebase.apps.isEmpty) {
         handler.next(options);
         return;

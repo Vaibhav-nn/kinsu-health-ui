@@ -1,6 +1,7 @@
 import 'package:dio/dio.dart';
 import 'package:flutter/foundation.dart';
 
+import '../core/constants.dart';
 import '../models/medication.dart';
 import '../services/medications_service.dart';
 
@@ -12,11 +13,29 @@ class MedicationsProvider extends ChangeNotifier {
   List<Medication> _medications = [];
   List<Medication> get medications => _medications;
 
+  MedicationDashboard? _dashboard;
+  MedicationDashboard? get dashboard => _dashboard;
+
+  MedicationAdherence? _adherence;
+  MedicationAdherence? get adherence => _adherence;
+
   bool _isLoading = false;
   bool get isLoading => _isLoading;
 
+  bool _isLoadingDashboard = false;
+  bool get isLoadingDashboard => _isLoadingDashboard;
+
+  bool _isLoadingAdherence = false;
+  bool get isLoadingAdherence => _isLoadingAdherence;
+
   String? _error;
   String? get error => _error;
+
+  String? _dashboardError;
+  String? get dashboardError => _dashboardError;
+
+  String? _adherenceError;
+  String? get adherenceError => _adherenceError;
 
   String _formatError(Object error) {
     if (error is DioException) {
@@ -63,7 +82,7 @@ class MedicationsProvider extends ChangeNotifier {
           error.type == DioExceptionType.connectionTimeout ||
           error.type == DioExceptionType.receiveTimeout ||
           error.type == DioExceptionType.sendTimeout) {
-        return 'Cannot reach server. Make sure backend is running on 127.0.0.1:8000.';
+        return 'Cannot reach server at ${ApiConstants.baseUrl}.';
       }
     }
 
@@ -81,6 +100,42 @@ class MedicationsProvider extends ChangeNotifier {
       _error = _formatError(error);
     } finally {
       _isLoading = false;
+      notifyListeners();
+    }
+  }
+
+  Future<void> loadDashboard({DateTime? targetDate}) async {
+    _isLoadingDashboard = true;
+    _dashboardError = null;
+    notifyListeners();
+
+    try {
+      _dashboard = await _service.fetchDashboard(targetDate: targetDate);
+    } catch (error) {
+      _dashboardError = _formatError(error);
+    } finally {
+      _isLoadingDashboard = false;
+      notifyListeners();
+    }
+  }
+
+  Future<void> loadAdherence({
+    required String view,
+    DateTime? referenceDate,
+  }) async {
+    _isLoadingAdherence = true;
+    _adherenceError = null;
+    notifyListeners();
+
+    try {
+      _adherence = await _service.fetchAdherence(
+        view: view,
+        referenceDate: referenceDate,
+      );
+    } catch (error) {
+      _adherenceError = _formatError(error);
+    } finally {
+      _isLoadingAdherence = false;
       notifyListeners();
     }
   }
@@ -140,6 +195,39 @@ class MedicationsProvider extends ChangeNotifier {
     } finally {
       _isLoading = false;
       notifyListeners();
+    }
+  }
+
+  Future<bool> logDose(
+    int medicationId, {
+    required String status,
+    DateTime? scheduledFor,
+    DateTime? takenAt,
+    String? notes,
+  }) async {
+    _isLoading = true;
+    _error = null;
+    notifyListeners();
+
+    try {
+      await _service.logDose(
+        medicationId,
+        status: status,
+        scheduledFor: scheduledFor,
+        takenAt: takenAt,
+        notes: notes,
+      );
+      await loadMedications(isActive: true);
+      await loadDashboard();
+      if (_adherence != null) {
+        await loadAdherence(view: _adherence!.view);
+      }
+      return true;
+    } catch (error) {
+      _error = _formatError(error);
+      _isLoading = false;
+      notifyListeners();
+      return false;
     }
   }
 }

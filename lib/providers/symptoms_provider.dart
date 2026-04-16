@@ -1,6 +1,7 @@
 import 'package:dio/dio.dart';
 import 'package:flutter/foundation.dart';
 
+import '../core/constants.dart';
 import '../models/symptom.dart';
 import '../services/symptoms_service.dart';
 
@@ -63,7 +64,7 @@ class SymptomsProvider extends ChangeNotifier {
           error.type == DioExceptionType.connectionTimeout ||
           error.type == DioExceptionType.receiveTimeout ||
           error.type == DioExceptionType.sendTimeout) {
-        return 'Cannot reach server. Make sure backend is running on 127.0.0.1:8000.';
+        return 'Cannot reach server at ${ApiConstants.baseUrl}.';
       }
     }
 
@@ -79,6 +80,70 @@ class SymptomsProvider extends ChangeNotifier {
       _symptoms = await _service.listSymptoms(isActive: isActive);
     } catch (error) {
       _error = _formatError(error);
+    } finally {
+      _isLoading = false;
+      notifyListeners();
+    }
+  }
+
+  Future<bool> quickLogSymptom({
+    required String symptomName,
+    required int severity,
+    String? notes,
+    Map<String, dynamic>? details,
+  }) async {
+    _isLoading = true;
+    _error = null;
+    notifyListeners();
+
+    try {
+      await _service.quickLogSymptom(
+        symptomName: symptomName,
+        severity: severity,
+        notes: notes,
+        details: details,
+      );
+      return true;
+    } catch (error) {
+      _error = _formatError(error);
+      return false;
+    } finally {
+      _isLoading = false;
+      notifyListeners();
+    }
+  }
+
+  Future<bool> submitDailyCheckIn({
+    String? primaryFeeling,
+    List<String> moodTags = const [],
+    List<String> digestionTags = const [],
+    List<String> painTags = const [],
+    List<String> activityTags = const [],
+    List<String> cycleTags = const [],
+    List<String> otherTags = const [],
+    String? notes,
+    int severity = 5,
+  }) async {
+    _isLoading = true;
+    _error = null;
+    notifyListeners();
+
+    try {
+      await _service.dailyCheckIn(
+        primaryFeeling: primaryFeeling,
+        moodTags: moodTags,
+        digestionTags: digestionTags,
+        painTags: painTags,
+        activityTags: activityTags,
+        cycleTags: cycleTags,
+        otherTags: otherTags,
+        notes: notes,
+        severity: severity,
+      );
+      return true;
+    } catch (error) {
+      _error = _formatError(error);
+      return false;
     } finally {
       _isLoading = false;
       notifyListeners();

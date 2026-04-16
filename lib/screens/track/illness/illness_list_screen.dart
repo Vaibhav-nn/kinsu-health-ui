@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:kinsu_health/widgets/ios_back_button.dart';
 import 'package:provider/provider.dart';
 import '../../../core/theme.dart';
 import '../../../models/illness.dart';
@@ -40,10 +41,8 @@ class _IllnessListScreenState extends State<IllnessListScreen> {
     return Scaffold(
       appBar: AppBar(
         title: const Text('Illness Episodes'),
-        leading: IconButton(
-          icon: const Icon(Icons.close),
-          onPressed: () => Navigator.pop(context),
-        ),
+        leading: const IosBackButton(),
+        automaticallyImplyLeading: false,
       ),
       floatingActionButton: FloatingActionButton.extended(
         onPressed: () => _showAddDialog(context),
@@ -227,10 +226,10 @@ class _IllnessListScreenState extends State<IllnessListScreen> {
                         : null,
                     startDate: DateTime.now(),
                   );
-                  await context
-                      .read<IllnessProvider>()
-                      .createEpisode(episode);
-                  if (mounted) Navigator.pop(ctx);
+                  final illnessProvider = context.read<IllnessProvider>();
+                  await illnessProvider.createEpisode(episode);
+                  if (!ctx.mounted) return;
+                  Navigator.pop(ctx);
                 },
                 child: const Text('Create Episode'),
               ),

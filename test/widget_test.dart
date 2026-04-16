@@ -3,6 +3,8 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:dio/dio.dart';
 import 'package:provider/provider.dart';
 
+import 'package:kinsu_health/models/home_models.dart';
+import 'package:kinsu_health/providers/family_provider.dart';
 import 'package:kinsu_health/providers/illness_provider.dart';
 import 'package:kinsu_health/providers/medications_provider.dart';
 import 'package:kinsu_health/providers/reminders_provider.dart';
@@ -15,6 +17,8 @@ import 'package:kinsu_health/screens/track/illness/illness_list_screen.dart';
 import 'package:kinsu_health/screens/track/medications/add_medication_screen.dart';
 import 'package:kinsu_health/screens/track/reminders/add_reminder_screen.dart';
 import 'package:kinsu_health/screens/track/vitals/vitals_trends_screen.dart';
+import 'package:kinsu_health/services/family_service.dart';
+import 'package:kinsu_health/services/home_service.dart';
 import 'package:kinsu_health/services/illness_service.dart';
 import 'package:kinsu_health/services/medications_service.dart';
 import 'package:kinsu_health/services/reminders_service.dart';
@@ -32,6 +36,53 @@ Dio _testDio() {
   );
 }
 
+class _FakeHomeService extends HomeService {
+  _FakeHomeService() : super(_testDio());
+
+  @override
+  Future<HomeOverviewData> fetchOverview() async {
+    return const HomeOverviewData(
+      searchPlaceholder: 'Search records...',
+      notificationUnreadCount: 1,
+      themeMode: 'light',
+      profile: HomeTopBarProfileData(
+        displayName: 'QA User',
+        email: 'qa@test.com',
+        initials: 'QU',
+      ),
+      activeProfileType: 'self',
+      activeProfileId: null,
+      activeProfileLabel: null,
+    );
+  }
+
+  @override
+  Future<HomeDashboardData> fetchDashboard() async {
+    return HomeDashboardData(
+      streakDay: 4,
+      aiAlert: null,
+      appointments: <HomeAppointmentCardData>[
+        HomeAppointmentCardData(
+          id: 1,
+          doctorName: 'Dr. QA Kapoor',
+          specialty: 'Cardiologist',
+          appointmentAt: DateTime(2026, 4, 11, 10, 30),
+          location: 'Apollo Hospital',
+          status: 'scheduled',
+          notes: 'Bring reports',
+        ),
+      ],
+      medicationsTaken: 0,
+      medicationsMissed: 0,
+      medicationsLeft: 0,
+      medicationItems: const <HomeMedicationStatusItem>[],
+      insights: const <HomeInsightCardData>[],
+      recentRecords: const <HomeRecentRecordData>[],
+      notifications: const <HomeNotificationItem>[],
+    );
+  }
+}
+
 void main() {
   testWidgets('Main shell renders all bottom tabs',
       (WidgetTester tester) async {
@@ -45,16 +96,17 @@ void main() {
         ChangeNotifierProvider(
             create: (_) => MedicationsProvider(MedicationsService(dio))),
         ChangeNotifierProvider(create: (_) => VaultProvider(VaultService(dio))),
+        ChangeNotifierProvider(
+            create: (_) => FamilyProvider(FamilyService(dio))),
       ],
       child: const MaterialApp(home: MainShell()),
     ));
 
     await tester.pump(const Duration(milliseconds: 100));
 
-    expect(find.text('Home'), findsWidgets);
-    expect(find.text('Vault'), findsWidgets);
-    expect(find.text('Track'), findsWidgets);
-    expect(find.text('Family'), findsWidgets);
+    expect(find.text('HOME'), findsWidgets);
+    expect(find.text('VAULT'), findsWidgets);
+    expect(find.text('TRACK'), findsWidgets);
     expect(find.text('AI'), findsWidgets);
   });
 
@@ -76,8 +128,8 @@ void main() {
     await tester.tap(find.widgetWithText(FloatingActionButton, 'Log Vital'));
     await tester.pumpAndSettle();
 
-    expect(find.text('Log Vital'), findsWidgets);
-    expect(find.text('Save Vital'), findsOneWidget);
+    expect(find.text('Log Vitals'), findsWidgets);
+    expect(find.text('Blood Pressure'), findsOneWidget);
   });
 
   testWidgets('Illness list shows add episode inner sheet',
@@ -109,16 +161,16 @@ void main() {
     await tester.pumpWidget(const MaterialApp(home: AddMedicationScreen()));
     await tester.pump();
 
-    expect(find.text('Add Medication'), findsOneWidget);
-    expect(find.text('Medication Name'), findsOneWidget);
-    expect(find.text('Add another date & time'), findsOneWidget);
+    expect(find.text('Log Medicine'), findsOneWidget);
+    expect(find.text('MEDICINE NAME'), findsOneWidget);
+    expect(find.text('WHEN TO TAKE'), findsOneWidget);
 
     await tester.pumpWidget(const MaterialApp(home: AddReminderScreen()));
     await tester.pump();
 
-    expect(find.text('Add Reminder'), findsOneWidget);
-    expect(find.text('Reminder Title'), findsOneWidget);
-    expect(find.text('Repeat'), findsOneWidget);
+    expect(find.textContaining('What would you like'), findsOneWidget);
+    expect(find.text('Doctor\nConsultation'), findsOneWidget);
+    expect(find.text('Medicine'), findsOneWidget);
   });
 
   testWidgets('Home appointments open inner overview sheet',
@@ -130,6 +182,7 @@ void main() {
     await tester.pumpWidget(
       MultiProvider(
         providers: [
+          Provider<HomeService>.value(value: _FakeHomeService()),
           ChangeNotifierProvider(create: (_) => AppThemeProvider()),
           ChangeNotifierProvider(
               create: (_) => VitalsProvider(VitalsService(dio))),
@@ -137,6 +190,8 @@ void main() {
               create: (_) => MedicationsProvider(MedicationsService(dio))),
           ChangeNotifierProvider(
               create: (_) => RemindersProvider(RemindersService(dio))),
+          ChangeNotifierProvider(
+              create: (_) => FamilyProvider(FamilyService(dio))),
         ],
         child: const MaterialApp(home: HomeScreen()),
       ),
@@ -153,7 +208,7 @@ void main() {
     await tester.pump(const Duration(milliseconds: 400));
 
     expect(find.text('Upcoming Appointments'), findsOneWidget);
-    await tester.tap(find.text('Dr. R. Kapoor').first);
+    await tester.tap(find.text('Dr. QA Kapoor').first);
     await tester.pump(const Duration(milliseconds: 500));
 
     expect(find.text('Cardiologist'), findsWidgets);

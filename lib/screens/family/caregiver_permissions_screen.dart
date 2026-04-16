@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:kinsu_health/widgets/ios_back_button.dart';
 
 import '../../core/theme.dart';
 import 'family_models.dart';
@@ -30,6 +31,8 @@ class _CaregiverPermissionsScreenState
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
+        leading: const IosBackButton(),
+        automaticallyImplyLeading: false,
         title: const Text('Caregiver Controls'),
       ),
       body: ListView(

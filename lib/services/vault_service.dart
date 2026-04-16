@@ -5,6 +5,7 @@ import 'package:file_picker/file_picker.dart';
 
 import '../core/constants.dart';
 import '../models/health_record.dart';
+import '../models/vault_models.dart';
 
 /// API service for vault endpoints using Dio.
 class VaultService {
@@ -12,9 +13,36 @@ class VaultService {
 
   VaultService(this._dio);
 
+  bool _isUserBootstrapError(DioException error) {
+    final statusCode = error.response?.statusCode;
+    final data = error.response?.data;
+    final detail =
+        data is Map<String, dynamic> ? data['detail']?.toString() ?? '' : '';
+    return statusCode == 404 && detail.contains('User not found');
+  }
+
+  Future<void> _bootstrapUser() async {
+    await _dio.post(ApiConstants.authLogin);
+  }
+
+  Future<T> _withBootstrapRetry<T>(Future<T> Function() operation) async {
+    try {
+      return await operation();
+    } on DioException catch (error) {
+      if (_isUserBootstrapError(error)) {
+        await _bootstrapUser();
+        return await operation();
+      }
+      rethrow;
+    }
+  }
+
   /// Fetch health records with optional filters.
   Future<List<HealthRecord>> fetchRecords({
     String? recordType,
+    String? documentSubtype,
+    String? providerName,
+    String? tag,
     String? query,
     DateTime? startDate,
     DateTime? endDate,
@@ -33,6 +61,15 @@ class VaultService {
     if (recordType != null) {
       params['record_type'] = recordType;
     }
+    if (documentSubtype != null && documentSubtype.trim().isNotEmpty) {
+      params['document_subtype'] = documentSubtype.trim();
+    }
+    if (providerName != null && providerName.trim().isNotEmpty) {
+      params['provider_name'] = providerName.trim();
+    }
+    if (tag != null && tag.trim().isNotEmpty) {
+      params['tag'] = tag.trim();
+    }
     if (query != null && query.trim().isNotEmpty) {
       params['q'] = query.trim();
     }
@@ -46,15 +83,37 @@ class VaultService {
       params['has_file'] = hasFile;
     }
 
-    final response = await _dio.get(
-      ApiConstants.vaultRecords,
-      queryParameters: params,
-    );
+    return _withBootstrapRetry(() async {
+      final response = await _dio.get(
+        ApiConstants.vaultRecords,
+        queryParameters: params,
+      );
 
-    final records = (response.data['records'] as List)
-        .map((json) => HealthRecord.fromJson(json))
-        .toList();
-    return records;
+      final records = (response.data['records'] as List)
+          .map((json) => HealthRecord.fromJson(json))
+          .toList();
+      return records;
+    });
+  }
+
+  Future<List<VaultConnectedService>> fetchConnectedServices() async {
+    return _withBootstrapRetry(() async {
+      final response = await _dio.get(ApiConstants.vaultConnectedServices);
+      return (response.data as List<dynamic>)
+          .map((item) =>
+              VaultConnectedService.fromJson(item as Map<String, dynamic>))
+          .toList();
+    });
+  }
+
+  Future<VaultLabTrend> fetchLabTrend(String parameterKey) async {
+    return _withBootstrapRetry(() async {
+      final response = await _dio.get(
+        ApiConstants.vaultLabParameterTrends,
+        queryParameters: {'parameter_key': parameterKey},
+      );
+      return VaultLabTrend.fromJson(response.data as Map<String, dynamic>);
+    });
   }
 
   /// Create a new health record
@@ -64,21 +123,23 @@ class VaultService {
     required String title,
     String? notes,
   }) async {
-    final response = await _dio.post(
-      ApiConstants.vaultRecords,
-      data: {
-        'records': [
-          {
-            'record_type': recordType,
-            'record_date': recordDate.toIso8601String().split('T')[0],
-            'title': title,
-            if (notes != null) 'notes': notes,
-          }
-        ]
-      },
-    );
+    return _withBootstrapRetry(() async {
+      final response = await _dio.post(
+        ApiConstants.vaultRecords,
+        data: {
+          'records': [
+            {
+              'record_type': recordType,
+              'record_date': recordDate.toIso8601String().split('T')[0],
+              'title': title,
+              if (notes != null) 'notes': notes,
+            }
+          ]
+        },
+      );
 
-    return response.data['record_ids'][0].toString();
+      return response.data['record_ids'][0].toString();
+    });
   }
 
   /// Upload file directly (for mobile/desktop with multipart)
@@ -89,7 +150,6 @@ class VaultService {
     FormData formData;
 
     if (file.bytes != null) {
-      // Web: use bytes directly
       formData = FormData.fromMap({
         'file': MultipartFile.fromBytes(
           file.bytes!,
@@ -97,7 +157,6 @@ class VaultService {
         ),
       });
     } else if (file.path != null) {
-      // Mobile/Desktop: read from path
       formData = FormData.fromMap({
         'file': await MultipartFile.fromFile(
           file.path!,
@@ -108,10 +167,12 @@ class VaultService {
       throw Exception('File has no bytes or path');
     }
 
-    await _dio.post(
-      '${ApiConstants.vaultRecords}/$recordId/upload',
-      data: formData,
-    );
+    await _withBootstrapRetry(() async {
+      await _dio.post(
+        '${ApiConstants.vaultRecords}/$recordId/upload',
+        data: formData,
+      );
+    });
   }
 
   /// Get presigned URL for direct S3 upload
@@ -120,16 +181,18 @@ class VaultService {
     required String fileName,
     required String contentType,
   }) async {
-    final response = await _dio.post(
-      ApiConstants.vaultUploadUrl,
-      data: {
-        'record_id': recordId,
-        'file_name': fileName,
-        'content_type': contentType,
-      },
-    );
+    return _withBootstrapRetry(() async {
+      final response = await _dio.post(
+        ApiConstants.vaultUploadUrl,
+        data: {
+          'record_id': recordId,
+          'file_name': fileName,
+          'content_type': contentType,
+        },
+      );
 
-    return response.data as Map<String, dynamic>;
+      return response.data as Map<String, dynamic>;
+    });
   }
 
   /// Upload file to S3 using presigned URL
@@ -147,7 +210,6 @@ class VaultService {
       throw Exception('File has no bytes or path');
     }
 
-    // Use a separate Dio instance for S3 upload (no auth headers)
     final s3Dio = Dio();
     await s3Dio.put(
       presignedUrl,
@@ -164,25 +226,31 @@ class VaultService {
     required String s3Key,
     required String fileName,
   }) async {
-    await _dio.post(
-      ApiConstants.vaultConfirmUpload,
-      data: {
-        'record_id': recordId,
-        's3_key': s3Key,
-        'file_name': fileName,
-      },
-    );
+    await _withBootstrapRetry(() async {
+      await _dio.post(
+        ApiConstants.vaultConfirmUpload,
+        data: {
+          'record_id': recordId,
+          's3_key': s3Key,
+          'file_name': fileName,
+        },
+      );
+    });
   }
 
   /// Get a specific record by ID
   Future<HealthRecord> getRecord(String id) async {
-    final response = await _dio.get('${ApiConstants.vaultRecords}/$id');
-    return HealthRecord.fromJson(response.data);
+    return _withBootstrapRetry(() async {
+      final response = await _dio.get('${ApiConstants.vaultRecords}/$id');
+      return HealthRecord.fromJson(response.data);
+    });
   }
 
   /// Delete a record
   Future<void> deleteRecord(String id) async {
-    await _dio.delete('${ApiConstants.vaultRecords}/$id');
+    await _withBootstrapRetry(() async {
+      await _dio.delete('${ApiConstants.vaultRecords}/$id');
+    });
   }
 
   String _dateOnly(DateTime value) {

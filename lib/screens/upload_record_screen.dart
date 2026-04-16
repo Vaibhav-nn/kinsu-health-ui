@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:kinsu_health/widgets/ios_back_button.dart';
 import 'package:file_picker/file_picker.dart';
 import 'package:intl/intl.dart';
 import 'package:provider/provider.dart';
@@ -184,6 +185,8 @@ class _UploadRecordScreenState extends State<UploadRecordScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
+        leading: const IosBackButton(),
+        automaticallyImplyLeading: false,
         title: const Text('Upload Record'),
         centerTitle: true,
       ),
@@ -245,7 +248,8 @@ class _UploadRecordScreenState extends State<UploadRecordScreen> {
                           type['label'],
                           style: TextStyle(
                             fontSize: 13,
-                            fontWeight: isSelected ? FontWeight.w600 : FontWeight.w500,
+                            fontWeight:
+                                isSelected ? FontWeight.w600 : FontWeight.w500,
                             color: isSelected
                                 ? (type['color'] as Color)
                                 : KinsuTheme.textPrimary,

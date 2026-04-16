@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:kinsu_health/widgets/ios_back_button.dart';
 import 'package:provider/provider.dart';
 
 import '../../core/theme.dart';
@@ -77,6 +78,8 @@ class _AddFamilyMemberScreenState extends State<AddFamilyMemberScreen> {
 
     return Scaffold(
       appBar: AppBar(
+        leading: const IosBackButton(),
+        automaticallyImplyLeading: false,
         title: const Text('Add Family Member'),
       ),
       body: ListView(
