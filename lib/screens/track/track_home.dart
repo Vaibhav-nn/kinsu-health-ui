@@ -47,9 +47,16 @@ class _TrackHomeState extends State<TrackHome> {
   }
 
   List<VitalLog> _entriesForType(List<VitalLog> vitals, String type) {
-    final list = vitals.where((item) => item.vitalType == type).toList()
+    final expectedType = _normalizeVitalType(type);
+    final list = vitals
+        .where((item) => _normalizeVitalType(item.vitalType) == expectedType)
+        .toList()
       ..sort((a, b) => a.recordedAt.compareTo(b.recordedAt));
     return list;
+  }
+
+  String _normalizeVitalType(String value) {
+    return value.trim().toLowerCase().replaceAll(' ', '_');
   }
 
   String _formatNumber(double value) {
@@ -103,6 +110,27 @@ class _TrackHomeState extends State<TrackHome> {
     );
   }
 
+  String _latestInsightBody(List<VitalLog> vitals) {
+    if (vitals.isEmpty) {
+      return 'Start logging vitals to unlock your latest trend insights.';
+    }
+
+    final sorted = [...vitals]
+      ..sort((a, b) => b.recordedAt.compareTo(a.recordedAt));
+    final latest = sorted.first;
+    final label = latest.vitalType.trim().replaceAll('_', ' ');
+    final titleCase = label
+        .split(' ')
+        .where((part) => part.isNotEmpty)
+        .map((part) => '${part[0].toUpperCase()}${part.substring(1)}')
+        .join(' ');
+    final value = latest.valueSecondary != null
+        ? '${_formatNumber(latest.value)}/${_formatNumber(latest.valueSecondary!)}'
+        : _formatNumber(latest.value);
+    return 'Latest saved: $titleCase $value ${latest.unit} at '
+        '${latest.recordedAt.hour.toString().padLeft(2, '0')}:${latest.recordedAt.minute.toString().padLeft(2, '0')}.';
+  }
+
   @override
   Widget build(BuildContext context) {
     final vitalsProvider = context.watch<VitalsProvider>();
@@ -117,19 +145,18 @@ class _TrackHomeState extends State<TrackHome> {
 
     final hr = _buildTrendStat(
       vitals: vitalsProvider.vitals,
-      type: 'Heart Rate',
+      type: 'heart_rate',
       label: 'HR',
       fallbackUnit: 'bpm',
       color: const Color(0xFF0F9A96),
     );
 
-    final chartValues = vitalsProvider.vitals.isEmpty
+    final hrEntries = _entriesForType(vitalsProvider.vitals, 'heart_rate');
+    final chartValues = hrEntries.isEmpty
         ? const [70.0, 74.0, 73.0, 82.0, 79.0, 76.0, 84.0]
-        : vitalsProvider.vitals
-            .take(7)
+        : hrEntries
+            .skip(math.max(0, hrEntries.length - 7))
             .map((item) => item.value)
-            .toList()
-            .reversed
             .toList();
 
     return Scaffold(
@@ -183,15 +210,15 @@ class _TrackHomeState extends State<TrackHome> {
                         padding: const EdgeInsets.symmetric(
                             horizontal: 8, vertical: 4),
                         decoration: BoxDecoration(
-                          color: const Color(0xFFF9E9A6),
+                          color: KinsuTheme.primaryLight,
                           borderRadius: BorderRadius.circular(999),
                         ),
                         child: const Text(
-                          'INSIGHT',
+                          'VITALS',
                           style: TextStyle(
                             fontSize: 10,
                             fontWeight: FontWeight.w800,
-                            color: Color(0xFF7B6420),
+                            color: KinsuTheme.primaryDark,
                             letterSpacing: 0.8,
                           ),
                         ),
@@ -303,12 +330,15 @@ class _TrackHomeState extends State<TrackHome> {
                   MaterialPageRoute(builder: (_) => const VitalsTrendsScreen()),
                 );
               },
-              child: const _InsightRow(
-                icon: Icons.bubble_chart_outlined,
-                title: 'Community Insight',
-                body:
-                    'Users reported a 15% decrease in stress after 5-minute focused breathing daily.',
+              child: _InsightRow(
+                icon: Icons.history_rounded,
+                title: 'Last Saved Vitals',
+                body: _latestInsightBody(vitalsProvider.vitals),
                 accent: Color(0xFF8B5CF6),
+                trailing: const Icon(
+                  Icons.chevron_right_rounded,
+                  color: KinsuTheme.textSecondary,
+                ),
               ),
             ),
           ],
@@ -409,12 +439,14 @@ class _InsightRow extends StatelessWidget {
   final String title;
   final String body;
   final Color accent;
+  final Widget? trailing;
 
   const _InsightRow({
     required this.icon,
     required this.title,
     required this.body,
     required this.accent,
+    this.trailing,
   });
 
   @override
@@ -427,7 +459,7 @@ class _InsightRow extends StatelessWidget {
         border: Border.all(color: KinsuTheme.divider),
       ),
       child: Row(
-        crossAxisAlignment: CrossAxisAlignment.start,
+        crossAxisAlignment: CrossAxisAlignment.center,
         children: [
           Container(
             width: 52,
@@ -446,7 +478,7 @@ class _InsightRow extends StatelessWidget {
                 Text(
                   title,
                   style: const TextStyle(
-                    fontSize: 20,
+                    fontSize: 16,
                     fontWeight: FontWeight.w800,
                     height: 1.1,
                   ),
@@ -463,6 +495,10 @@ class _InsightRow extends StatelessWidget {
               ],
             ),
           ),
+          if (trailing != null) ...[
+            const SizedBox(width: 8),
+            trailing!,
+          ],
         ],
       ),
     );

@@ -35,8 +35,10 @@ class AppShellBottomNav extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final bottomInset = MediaQuery.of(context).padding.bottom;
+    final totalHeight = 88.0 + bottomInset;
     return SizedBox(
-      height: 108,
+      height: totalHeight,
       child: Stack(
         alignment: Alignment.topCenter,
         clipBehavior: Clip.none,
@@ -44,15 +46,14 @@ class AppShellBottomNav extends StatelessWidget {
           Positioned.fill(
             top: 10,
             child: Container(
-              padding: const EdgeInsets.fromLTRB(14, 10, 14, 10),
-              decoration: BoxDecoration(
+              padding: EdgeInsets.fromLTRB(14, 10, 14, 10 + bottomInset),
+              decoration: const BoxDecoration(
                 color: Colors.white,
-                border:
-                    const Border(top: BorderSide(color: KinsuTheme.divider)),
-                borderRadius: const BorderRadius.vertical(
+                border: Border(top: BorderSide(color: KinsuTheme.divider)),
+                borderRadius: BorderRadius.vertical(
                   top: Radius.circular(28),
                 ),
-                boxShadow: const [
+                boxShadow: [
                   BoxShadow(
                     color: Color(0x140F172A),
                     blurRadius: 16,
@@ -60,22 +61,19 @@ class AppShellBottomNav extends StatelessWidget {
                   ),
                 ],
               ),
-              child: SafeArea(
-                top: false,
-                child: Row(
-                  children: [
-                    Expanded(child: _buildItem(0)),
-                    Expanded(child: _buildItem(1)),
-                    const SizedBox(width: 78),
-                    Expanded(child: _buildItem(2)),
-                    Expanded(child: _buildItem(3)),
-                  ],
-                ),
+              child: Row(
+                children: [
+                  Expanded(child: _buildItem(context, 0)),
+                  Expanded(child: _buildItem(context, 1)),
+                  const SizedBox(width: 78),
+                  Expanded(child: _buildItem(context, 2)),
+                  Expanded(child: _buildItem(context, 3)),
+                ],
               ),
             ),
           ),
           Positioned(
-            top: -12,
+            top: 6,
             child: GestureDetector(
               onTap: onAddTap,
               child: Container(
@@ -105,10 +103,12 @@ class AppShellBottomNav extends StatelessWidget {
     );
   }
 
-  Widget _buildItem(int index) {
+  Widget _buildItem(BuildContext context, int index) {
     final item = _items[index];
     final selected = index == currentIndex;
     final isTrack = item.label == 'TRACK';
+    final isAndroid = Theme.of(context).platform == TargetPlatform.android;
+    final compactTrack = isTrack && selected && isAndroid;
     final color = isTrack
         ? const Color(0xFF91A0B4)
         : selected
@@ -144,33 +144,34 @@ class AppShellBottomNav extends StatelessWidget {
         : Icon(
             iconData,
             color: color,
-            size: 28,
+            size: compactTrack ? 26 : 28,
           );
 
     return InkWell(
       borderRadius: BorderRadius.circular(16),
       onTap: () => onTap(index),
       child: Padding(
-        padding: const EdgeInsets.symmetric(vertical: 6),
+        padding: EdgeInsets.symmetric(vertical: compactTrack ? 4 : 6),
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
             iconWidget,
-            const SizedBox(height: 5),
+            SizedBox(height: compactTrack ? 3 : 5),
             Text(
               item.label,
+              maxLines: 1,
               style: TextStyle(
-                fontSize: isTrack ? 10 : 11,
+                fontSize: isTrack ? (compactTrack ? 9.5 : 10) : 11,
                 fontWeight: FontWeight.w700,
                 color: color,
-                letterSpacing: isTrack ? 1.8 : 1.2,
+                letterSpacing: isTrack ? (compactTrack ? 1.5 : 1.8) : 1.2,
               ),
             ),
             if (isTrack && selected) ...[
-              const SizedBox(height: 2),
+              SizedBox(height: compactTrack ? 1 : 2),
               Container(
-                width: 42,
-                height: 3,
+                width: compactTrack ? 38 : 42,
+                height: compactTrack ? 2 : 3,
                 decoration: BoxDecoration(
                   color: const Color(0xFF3B82F6),
                   borderRadius: BorderRadius.circular(2),

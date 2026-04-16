@@ -334,7 +334,6 @@ class _QuickSymptomLogScreenState extends State<QuickSymptomLogScreen> {
                         return _EmojiChip(
                           data: option,
                           selected: isSelected,
-                          highlightSelected: true,
                           onTap: () => _toggle(_otherTags, option.label),
                         );
                       }).toList(),
@@ -460,22 +459,17 @@ class _EmojiChip extends StatelessWidget {
   final _EmojiChipData data;
   final bool selected;
   final VoidCallback onTap;
-  final bool highlightSelected;
 
   const _EmojiChip({
     required this.data,
     required this.selected,
     required this.onTap,
-    this.highlightSelected = false,
   });
 
   @override
   Widget build(BuildContext context) {
-    final background = selected
-        ? (highlightSelected
-            ? const Color(0xFFE6EF87)
-            : const Color(0xFFF1F5F8))
-        : const Color(0xFFF1F5F8);
+    final background =
+        selected ? const Color(0xFFF1F5F8) : const Color(0xFFF1F5F8);
     return GestureDetector(
       onTap: onTap,
       child: AnimatedContainer(
@@ -485,11 +479,7 @@ class _EmojiChip extends StatelessWidget {
           color: background,
           borderRadius: BorderRadius.circular(999),
           border: Border.all(
-            color: selected
-                ? (highlightSelected
-                    ? const Color(0xFFD7DF65)
-                    : KinsuTheme.divider)
-                : Colors.transparent,
+            color: selected ? KinsuTheme.divider : Colors.transparent,
           ),
         ),
         child: Text(

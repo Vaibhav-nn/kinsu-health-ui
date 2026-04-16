@@ -5,8 +5,131 @@ import 'package:kinsu_health/widgets/ios_back_button.dart';
 
 import '../../core/theme.dart';
 
-class SosScreen extends StatelessWidget {
+class _SosContact {
+  final String name;
+  final String phone;
+  final String relation;
+
+  const _SosContact({
+    required this.name,
+    required this.phone,
+    required this.relation,
+  });
+}
+
+class SosScreen extends StatefulWidget {
   const SosScreen({super.key});
+
+  @override
+  State<SosScreen> createState() => _SosScreenState();
+}
+
+class _SosScreenState extends State<SosScreen> {
+  final List<_SosContact> _contacts = [
+    const _SosContact(
+      name: 'Primary Caregiver',
+      phone: '+91 98XXXXXXXX',
+      relation: 'Family',
+    ),
+    const _SosContact(
+      name: 'Ambulance',
+      phone: '102',
+      relation: 'Emergency Service',
+    ),
+  ];
+
+  Future<void> _showAddContactDialog() async {
+    final nameController = TextEditingController();
+    final phoneController = TextEditingController();
+    final relationController = TextEditingController();
+
+    await showDialog<void>(
+      context: context,
+      builder: (dialogContext) => AlertDialog(
+        title: const Text('Add Emergency Contact'),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            TextField(
+              controller: nameController,
+              decoration: const InputDecoration(labelText: 'Name *'),
+              textCapitalization: TextCapitalization.words,
+            ),
+            const SizedBox(height: 8),
+            TextField(
+              controller: phoneController,
+              keyboardType: TextInputType.phone,
+              decoration: const InputDecoration(labelText: 'Phone number *'),
+            ),
+            const SizedBox(height: 8),
+            TextField(
+              controller: relationController,
+              decoration: const InputDecoration(
+                labelText: 'Relation',
+                hintText: 'e.g. Family, Friend',
+              ),
+              textCapitalization: TextCapitalization.words,
+            ),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(dialogContext),
+            child: const Text('Cancel'),
+          ),
+          FilledButton(
+            onPressed: () {
+              final name = nameController.text.trim();
+              final phone = phoneController.text.trim();
+              if (name.isEmpty || phone.isEmpty) {
+                return;
+              }
+              setState(() {
+                _contacts.add(_SosContact(
+                  name: name,
+                  phone: phone,
+                  relation: relationController.text.trim().isEmpty
+                      ? 'Contact'
+                      : relationController.text.trim(),
+                ));
+              });
+              Navigator.pop(dialogContext);
+            },
+            child: const Text('Add'),
+          ),
+        ],
+      ),
+    );
+
+    nameController.dispose();
+    phoneController.dispose();
+    relationController.dispose();
+  }
+
+  void _removeContact(int index) {
+    showDialog<void>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('Remove Contact'),
+        content: Text(
+            'Remove "${_contacts[index].name}" from emergency contacts?'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx),
+            child: const Text('Cancel'),
+          ),
+          TextButton(
+            onPressed: () {
+              setState(() => _contacts.removeAt(index));
+              Navigator.pop(ctx);
+            },
+            style: TextButton.styleFrom(foregroundColor: const Color(0xFFDC2626)),
+            child: const Text('Remove'),
+          ),
+        ],
+      ),
+    );
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -15,6 +138,13 @@ class SosScreen extends StatelessWidget {
         leading: const IosBackButton(),
         automaticallyImplyLeading: false,
         title: const Text('SOS'),
+        actions: [
+          IconButton(
+            icon: const Icon(Icons.person_add_outlined),
+            tooltip: 'Add Contact',
+            onPressed: _showAddContactDialog,
+          ),
+        ],
       ),
       body: ListView(
         padding: const EdgeInsets.all(16),
@@ -32,18 +162,56 @@ class SosScreen extends StatelessWidget {
             ),
           ),
           const SizedBox(height: 12),
-          const _EmergencyContactCard(
-            name: 'Primary Caregiver',
-            phone: '+91 98XXXXXXXX',
-            relation: 'Family',
+          if (_contacts.isEmpty)
+            Container(
+              padding: const EdgeInsets.all(14),
+              decoration: BoxDecoration(
+                color: const Color(0xFFF9FAFB),
+                borderRadius: BorderRadius.circular(12),
+                border: Border.all(color: const Color(0xFFE5E7EB)),
+              ),
+              child: const Text(
+                'No emergency contacts yet. Tap the + button above to add one.',
+                style: TextStyle(color: Color(0xFF6B7280)),
+              ),
+            )
+          else
+            ...List.generate(_contacts.length, (index) {
+              final contact = _contacts[index];
+              return Padding(
+                padding: const EdgeInsets.only(bottom: 10),
+                child: Container(
+                  decoration: BoxDecoration(
+                    color: Colors.white,
+                    borderRadius: BorderRadius.circular(14),
+                    border: Border.all(color: const Color(0xFFE5E7EB)),
+                  ),
+                  child: ListTile(
+                    leading: const Icon(Icons.contact_phone_outlined),
+                    title: Text(contact.name),
+                    subtitle: Text('${contact.relation} · ${contact.phone}'),
+                    trailing: IconButton(
+                      icon: const Icon(
+                        Icons.remove_circle_outline,
+                        color: Color(0xFFDC2626),
+                      ),
+                      tooltip: 'Remove',
+                      onPressed: () => _removeContact(index),
+                    ),
+                  ),
+                ),
+              );
+            }),
+          const SizedBox(height: 12),
+          OutlinedButton.icon(
+            onPressed: _showAddContactDialog,
+            icon: const Icon(Icons.add),
+            label: const Text('Add Emergency Contact'),
+            style: OutlinedButton.styleFrom(
+              minimumSize: const Size.fromHeight(48),
+            ),
           ),
-          const SizedBox(height: 10),
-          const _EmergencyContactCard(
-            name: 'Ambulance',
-            phone: '102',
-            relation: 'Emergency Service',
-          ),
-          const SizedBox(height: 24),
+          const SizedBox(height: 16),
           ElevatedButton.icon(
             style: ElevatedButton.styleFrom(
               backgroundColor: const Color(0xFFDC2626),
@@ -498,30 +666,6 @@ class _SettingsScreenState extends State<SettingsScreen> {
             title: const Text('Weekly health digest'),
           ),
         ],
-      ),
-    );
-  }
-}
-
-class _EmergencyContactCard extends StatelessWidget {
-  final String name;
-  final String phone;
-  final String relation;
-
-  const _EmergencyContactCard({
-    required this.name,
-    required this.phone,
-    required this.relation,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      decoration: KinsuTheme.cardDecoration,
-      child: ListTile(
-        leading: const Icon(Icons.contact_phone_outlined),
-        title: Text(name),
-        subtitle: Text('$relation · $phone'),
       ),
     );
   }

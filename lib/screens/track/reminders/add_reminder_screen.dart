@@ -283,9 +283,9 @@ class _AddReminderScreenState extends State<AddReminderScreen> {
     }
   }
 
-  double _bottomNavInset(BuildContext context) {
+  double _bottomNavInset(BuildContext context, {bool forHub = false}) {
     final safeBottom = MediaQuery.of(context).padding.bottom;
-    return 156 + safeBottom;
+    return (forHub ? 288 : 220) + safeBottom;
   }
 
   @override
@@ -303,7 +303,12 @@ class _AddReminderScreenState extends State<AddReminderScreen> {
 
   Widget _buildHub() {
     return ListView(
-      padding: EdgeInsets.fromLTRB(22, 20, 22, _bottomNavInset(context)),
+      padding: EdgeInsets.fromLTRB(
+        22,
+        20,
+        22,
+        _bottomNavInset(context, forHub: true),
+      ),
       children: [
         Row(
           children: [
@@ -331,14 +336,14 @@ class _AddReminderScreenState extends State<AddReminderScreen> {
             height: 1.55,
           ),
         ),
-        const SizedBox(height: 20),
+        const SizedBox(height: 22),
         Wrap(
-          spacing: 14,
+          spacing: 16,
           runSpacing: 16,
           children: _types.map((type) {
             return SizedBox(
               width: 161,
-              height: 184,
+              height: 192,
               child: InkWell(
                 borderRadius: BorderRadius.circular(22),
                 onTap: () => setState(() => _selectedType = type.key),
@@ -382,7 +387,7 @@ class _AddReminderScreenState extends State<AddReminderScreen> {
             );
           }).toList(),
         ),
-        const SizedBox(height: 24),
+        const SizedBox(height: 30),
         Container(
           padding: const EdgeInsets.fromLTRB(16, 16, 16, 16),
           decoration: BoxDecoration(
@@ -408,7 +413,7 @@ class _AddReminderScreenState extends State<AddReminderScreen> {
             ],
           ),
         ),
-        const SizedBox(height: 28),
+        const SizedBox(height: 38),
       ],
     );
   }

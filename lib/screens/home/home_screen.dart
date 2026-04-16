@@ -13,6 +13,8 @@ import '../../providers/family_provider.dart';
 import '../../providers/medications_provider.dart';
 import '../../providers/vitals_provider.dart';
 import '../../services/home_service.dart';
+import '../family/add_family_member_screen.dart';
+import '../family/family_screen.dart';
 import '../ai/ai_screen.dart';
 import '../track/medications/medications_list_screen.dart';
 import '../track/symptoms/symptoms_list_screen.dart';
@@ -385,6 +387,197 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
     );
   }
 
+  Future<void> _openAddAppointmentSheet() async {
+    final doctorController = TextEditingController();
+    final specialtyController = TextEditingController();
+    final locationController = TextEditingController();
+    final notesController = TextEditingController();
+
+    DateTime selectedAt = DateTime.now().add(const Duration(days: 1));
+    bool isSaving = false;
+
+    if (!mounted) {
+      return;
+    }
+
+    await showModalBottomSheet<void>(
+      context: context,
+      isScrollControlled: true,
+      showDragHandle: true,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      ),
+      builder: (sheetContext) {
+        return StatefulBuilder(
+          builder: (context, setModalState) {
+            Future<void> pickDateTime() async {
+              final pickedDate = await showDatePicker(
+                context: context,
+                initialDate: selectedAt,
+                firstDate: DateTime.now().subtract(const Duration(days: 365)),
+                lastDate: DateTime.now().add(const Duration(days: 3650)),
+              );
+              if (pickedDate == null) {
+                return;
+              }
+              if (!context.mounted) {
+                return;
+              }
+              final pickedTime = await showTimePicker(
+                context: context,
+                initialTime: TimeOfDay.fromDateTime(selectedAt),
+              );
+              if (pickedTime == null) {
+                return;
+              }
+              setModalState(() {
+                selectedAt = DateTime(
+                  pickedDate.year,
+                  pickedDate.month,
+                  pickedDate.day,
+                  pickedTime.hour,
+                  pickedTime.minute,
+                );
+              });
+            }
+
+            Future<void> saveAppointment() async {
+              final doctorName = doctorController.text.trim();
+              if (doctorName.isEmpty) {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(content: Text('Doctor name is required.')),
+                );
+                return;
+              }
+
+              setModalState(() {
+                isSaving = true;
+              });
+
+              try {
+                await context.read<HomeService>().createAppointment(
+                      doctorName: doctorName,
+                      specialty: specialtyController.text,
+                      appointmentAt: selectedAt,
+                      location: locationController.text,
+                      notes: notesController.text,
+                    );
+                if (!context.mounted) {
+                  return;
+                }
+                Navigator.of(context).pop();
+                await _loadHomeData(showSpinner: false);
+                if (!mounted) {
+                  return;
+                }
+                ScaffoldMessenger.of(this.context).showSnackBar(
+                  const SnackBar(content: Text('Appointment added.')),
+                );
+              } catch (error) {
+                if (!context.mounted) {
+                  return;
+                }
+                setModalState(() {
+                  isSaving = false;
+                });
+                ScaffoldMessenger.of(context).showSnackBar(
+                  SnackBar(
+                    content: Text(
+                      _friendlyError(
+                        error,
+                        fallback: 'Unable to add appointment.',
+                      ),
+                    ),
+                  ),
+                );
+              }
+            }
+
+            final dateLabel = _formatAppointmentDateTime(selectedAt);
+            final bottomInset = MediaQuery.of(context).viewInsets.bottom;
+            return SafeArea(
+              child: Padding(
+                padding: EdgeInsets.fromLTRB(16, 8, 16, 16 + bottomInset),
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const Text(
+                      'Add Appointment',
+                      style: TextStyle(
+                        fontSize: 20,
+                        fontWeight: FontWeight.w700,
+                      ),
+                    ),
+                    const SizedBox(height: 12),
+                    TextField(
+                      controller: doctorController,
+                      textCapitalization: TextCapitalization.words,
+                      decoration:
+                          const InputDecoration(labelText: 'Doctor name *'),
+                    ),
+                    const SizedBox(height: 10),
+                    TextField(
+                      controller: specialtyController,
+                      textCapitalization: TextCapitalization.words,
+                      decoration: const InputDecoration(labelText: 'Specialty'),
+                    ),
+                    const SizedBox(height: 10),
+                    TextField(
+                      controller: locationController,
+                      textCapitalization: TextCapitalization.words,
+                      decoration: const InputDecoration(labelText: 'Location'),
+                    ),
+                    const SizedBox(height: 10),
+                    TextField(
+                      controller: notesController,
+                      minLines: 2,
+                      maxLines: 3,
+                      decoration: const InputDecoration(labelText: 'Notes'),
+                    ),
+                    const SizedBox(height: 10),
+                    ListTile(
+                      contentPadding: EdgeInsets.zero,
+                      leading:
+                          const Icon(Icons.calendar_today_outlined, size: 18),
+                      title: Text(dateLabel),
+                      trailing: TextButton(
+                        onPressed: isSaving ? null : pickDateTime,
+                        child: const Text('Pick'),
+                      ),
+                    ),
+                    const SizedBox(height: 10),
+                    SizedBox(
+                      width: double.infinity,
+                      child: ElevatedButton(
+                        onPressed: isSaving ? null : saveAppointment,
+                        child: isSaving
+                            ? const SizedBox(
+                                height: 18,
+                                width: 18,
+                                child: CircularProgressIndicator(
+                                  strokeWidth: 2,
+                                  color: Colors.white,
+                                ),
+                              )
+                            : const Text('Save Appointment'),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            );
+          },
+        );
+      },
+    );
+
+    doctorController.dispose();
+    specialtyController.dispose();
+    locationController.dispose();
+    notesController.dispose();
+  }
+
   String _formatAppointmentDateTime(DateTime dateTime) {
     final localizations = MaterialLocalizations.of(context);
     final dateLabel = localizations.formatMediumDate(dateTime);
@@ -521,6 +714,250 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
         profileId == null ? 'Self profile active' : 'Family profile switched';
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(content: Text(label)),
+    );
+  }
+
+  Future<void> _createFamilyProfile() async {
+    await Navigator.push(
+      context,
+      MaterialPageRoute(builder: (_) => const AddFamilyMemberScreen()),
+    );
+    if (!mounted) {
+      return;
+    }
+    await context.read<FamilyProvider>().loadFamilyData();
+    await _loadHomeData(showSpinner: false);
+  }
+
+  Future<void> _showQuickLinkSheet() async {
+    final nameController = TextEditingController();
+    final phoneController = TextEditingController();
+    String toE164(String input) {
+      final digits = input.replaceAll(RegExp(r'[^0-9+]'), '');
+      if (digits.startsWith('+')) return digits;
+      if (digits.startsWith('0')) return '+91${digits.substring(1)}';
+      if (digits.length == 10) return '+91$digits';
+      return '+$digits';
+    }
+
+    await showModalBottomSheet<void>(
+      context: context,
+      isScrollControlled: true,
+      useSafeArea: true,
+      showDragHandle: true,
+      builder: (ctx) {
+        return Padding(
+          padding: EdgeInsets.fromLTRB(
+            16,
+            8,
+            16,
+            16 + MediaQuery.of(ctx).viewInsets.bottom,
+          ),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              const Text(
+                'Link account by phone',
+                style: TextStyle(fontSize: 18, fontWeight: FontWeight.w700),
+              ),
+              const SizedBox(height: 10),
+              TextField(
+                controller: nameController,
+                decoration: const InputDecoration(
+                  labelText: 'Display name',
+                  hintText: 'Family member name',
+                ),
+              ),
+              const SizedBox(height: 10),
+              TextField(
+                controller: phoneController,
+                keyboardType: TextInputType.phone,
+                decoration: const InputDecoration(
+                  labelText: 'Phone number',
+                  hintText: '+919876543210',
+                ),
+              ),
+              const SizedBox(height: 14),
+              FilledButton(
+                onPressed: () async {
+                  final name = nameController.text.trim();
+                  final phone = phoneController.text.trim();
+                  if (name.isEmpty || phone.isEmpty) {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      const SnackBar(
+                        content: Text('Please enter name and phone number.'),
+                      ),
+                    );
+                    return;
+                  }
+                  final ok = await context.read<FamilyProvider>().addMember(
+                        displayName: name,
+                        phoneE164: toE164(phone),
+                        relation: 'Linked account',
+                      );
+                  if (!mounted) {
+                    return;
+                  }
+                  if (ok) {
+                    Navigator.pop(ctx);
+                    await _loadHomeData(showSpinner: false);
+                    if (!mounted) {
+                      return;
+                    }
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      const SnackBar(content: Text('Linked successfully.')),
+                    );
+                  } else {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      SnackBar(
+                        content: Text(
+                          context.read<FamilyProvider>().error ??
+                              'Unable to link account.',
+                        ),
+                      ),
+                    );
+                  }
+                },
+                style: FilledButton.styleFrom(
+                  minimumSize: const Size.fromHeight(46),
+                ),
+                child: const Text('Link account'),
+              ),
+            ],
+          ),
+        );
+      },
+    );
+    nameController.dispose();
+    phoneController.dispose();
+  }
+
+  Future<void> _showSwitchAccountSheet(FamilyProvider familyProvider) async {
+    await showModalBottomSheet<void>(
+      context: context,
+      useSafeArea: true,
+      showDragHandle: true,
+      builder: (ctx) {
+        final profiles = familyProvider.profiles;
+        return SizedBox(
+          height: 360,
+          child: Padding(
+            padding: const EdgeInsets.fromLTRB(16, 8, 16, 16),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const Text(
+                  'Switch account',
+                  style: TextStyle(fontSize: 18, fontWeight: FontWeight.w700),
+                ),
+                const SizedBox(height: 12),
+                Expanded(
+                  child: profiles.isEmpty
+                      ? const Center(
+                          child: Text(
+                            'No linked accounts yet.',
+                            style: TextStyle(color: KinsuTheme.textSecondary),
+                          ),
+                        )
+                      : ListView.builder(
+                          itemCount: profiles.length,
+                          itemBuilder: (context, index) {
+                            final profile = profiles[index];
+                            final isActive = profile.profileId ==
+                                familyProvider.activeFamilyProfileId;
+                            return ListTile(
+                              contentPadding: EdgeInsets.zero,
+                              leading: CircleAvatar(
+                                backgroundColor:
+                                    KinsuTheme.primaryLight.withValues(alpha: 0.3),
+                                child: Text(_initialsFromName(profile.displayName)),
+                              ),
+                              title: Text(profile.displayName),
+                              subtitle: profile.subtitle == null
+                                  ? null
+                                  : Text(profile.subtitle!),
+                              trailing: Icon(
+                                isActive
+                                    ? Icons.check_circle
+                                    : Icons.radio_button_unchecked,
+                                color: isActive
+                                    ? KinsuTheme.primary
+                                    : KinsuTheme.textSecondary,
+                              ),
+                              onTap: () async {
+                                Navigator.pop(ctx);
+                                await _switchProfile(profile.profileId);
+                              },
+                            );
+                          },
+                        ),
+                ),
+              ],
+            ),
+          ),
+        );
+      },
+    );
+  }
+
+  Future<void> _showAccountActionsSheet(FamilyProvider familyProvider) async {
+    await showModalBottomSheet<void>(
+      context: context,
+      useSafeArea: true,
+      showDragHandle: true,
+      builder: (ctx) {
+        return Padding(
+          padding: const EdgeInsets.fromLTRB(16, 8, 16, 20),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              ListTile(
+                contentPadding: EdgeInsets.zero,
+                leading: const Icon(Icons.person_add_alt_1_rounded),
+                title: const Text('Create profile'),
+                subtitle: const Text('Add a new family profile'),
+                onTap: () async {
+                  Navigator.pop(ctx);
+                  await _createFamilyProfile();
+                },
+              ),
+              ListTile(
+                contentPadding: EdgeInsets.zero,
+                leading: const Icon(Icons.link_rounded),
+                title: const Text('Link account'),
+                subtitle: const Text('Link by phone number'),
+                onTap: () async {
+                  Navigator.pop(ctx);
+                  await _showQuickLinkSheet();
+                },
+              ),
+              ListTile(
+                contentPadding: EdgeInsets.zero,
+                leading: const Icon(Icons.switch_account_rounded),
+                title: const Text('Switch account'),
+                subtitle: const Text('Change active profile context'),
+                onTap: () async {
+                  Navigator.pop(ctx);
+                  await _showSwitchAccountSheet(familyProvider);
+                },
+              ),
+              ListTile(
+                contentPadding: EdgeInsets.zero,
+                leading: const Icon(Icons.groups_rounded),
+                title: const Text('Open family dashboard'),
+                onTap: () {
+                  Navigator.pop(ctx);
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(builder: (_) => const FamilyScreen()),
+                  );
+                },
+              ),
+            ],
+          ),
+        );
+      },
     );
   }
 
@@ -781,89 +1218,99 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
         borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
       ),
       builder: (context) {
-        return Padding(
-          padding: const EdgeInsets.fromLTRB(16, 6, 16, 24),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              const Text(
-                'Notifications',
-                style: TextStyle(fontSize: 20, fontWeight: FontWeight.w700),
-              ),
-              const SizedBox(height: 10),
-              if (items.isEmpty)
-                const Padding(
-                  padding: EdgeInsets.symmetric(vertical: 12),
-                  child: Text(
-                    'No notifications yet.',
-                    style: TextStyle(color: KinsuTheme.textSecondary),
-                  ),
-                )
-              else
-                ...items.map(
-                  (item) => Container(
-                    margin: const EdgeInsets.only(bottom: 8),
-                    padding: const EdgeInsets.all(12),
-                    decoration: BoxDecoration(
-                      color: item.alert
-                          ? const Color(0xFFFFFBEB)
-                          : KinsuTheme.surface,
-                      borderRadius: BorderRadius.circular(12),
-                      border: Border.all(
-                        color: item.alert
-                            ? const Color(0xFFFDE68A)
-                            : KinsuTheme.divider,
-                      ),
-                    ),
-                    child: Row(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Container(
-                          width: 8,
-                          height: 8,
-                          margin: const EdgeInsets.only(top: 6),
-                          decoration: BoxDecoration(
-                            shape: BoxShape.circle,
-                            color: item.unread
-                                ? KinsuTheme.primary
-                                : Colors.transparent,
-                          ),
-                        ),
-                        const SizedBox(width: 10),
-                        Expanded(
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Text(
-                                item.title,
-                                style: const TextStyle(
-                                    fontWeight: FontWeight.w700),
-                              ),
-                              const SizedBox(height: 2),
-                              Text(
-                                item.description,
-                                style: const TextStyle(
-                                  color: KinsuTheme.textSecondary,
-                                  fontSize: 13,
-                                ),
-                              ),
-                              const SizedBox(height: 2),
-                              Text(
-                                item.time,
-                                style: const TextStyle(
-                                  color: KinsuTheme.textSecondary,
-                                  fontSize: 11,
-                                ),
-                              ),
-                            ],
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
+        final screenHeight = MediaQuery.of(context).size.height;
+        return SizedBox(
+          height: screenHeight * 0.88,
+          child: Padding(
+            padding: const EdgeInsets.fromLTRB(16, 6, 16, 24),
+            child: Column(
+              mainAxisSize: MainAxisSize.max,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const Text(
+                  'Notifications',
+                  style: TextStyle(fontSize: 20, fontWeight: FontWeight.w700),
                 ),
-            ],
+                const SizedBox(height: 10),
+                Expanded(
+                  child: items.isEmpty
+                      ? const Center(
+                          child: Text(
+                            'No notifications yet.',
+                            style: TextStyle(color: KinsuTheme.textSecondary),
+                          ),
+                        )
+                      : ListView.builder(
+                          itemCount: items.length,
+                          itemBuilder: (context, index) {
+                            final item = items[index];
+                            return Container(
+                              margin: const EdgeInsets.only(bottom: 8),
+                              padding: const EdgeInsets.all(12),
+                              decoration: BoxDecoration(
+                                color: item.alert
+                                    ? const Color(0xFFFFFBEB)
+                                    : KinsuTheme.surface,
+                                borderRadius: BorderRadius.circular(12),
+                                border: Border.all(
+                                  color: item.alert
+                                      ? const Color(0xFFFDE68A)
+                                      : KinsuTheme.divider,
+                                ),
+                              ),
+                              child: Row(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Container(
+                                    width: 8,
+                                    height: 8,
+                                    margin: const EdgeInsets.only(top: 6),
+                                    decoration: BoxDecoration(
+                                      shape: BoxShape.circle,
+                                      color: item.unread
+                                          ? KinsuTheme.primary
+                                          : Colors.transparent,
+                                    ),
+                                  ),
+                                  const SizedBox(width: 10),
+                                  Expanded(
+                                    child: Column(
+                                      crossAxisAlignment:
+                                          CrossAxisAlignment.start,
+                                      children: [
+                                        Text(
+                                          item.title,
+                                          style: const TextStyle(
+                                            fontWeight: FontWeight.w700,
+                                          ),
+                                        ),
+                                        const SizedBox(height: 2),
+                                        Text(
+                                          item.description,
+                                          style: const TextStyle(
+                                            color: KinsuTheme.textSecondary,
+                                            fontSize: 13,
+                                          ),
+                                        ),
+                                        const SizedBox(height: 2),
+                                        Text(
+                                          item.time,
+                                          style: const TextStyle(
+                                            color: KinsuTheme.textSecondary,
+                                            fontSize: 11,
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            );
+                          },
+                        ),
+                ),
+              ],
+            ),
           ),
         );
       },
@@ -939,53 +1386,8 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                     children: [
                       Row(
                         children: [
-                          PopupMenuButton<int?>(
-                            tooltip: 'Switch account',
-                            padding: EdgeInsets.zero,
-                            onSelected: _switchProfile,
-                            itemBuilder: (context) {
-                              final profiles = familyProvider.profiles;
-                              if (profiles.isEmpty) {
-                                return const [
-                                  PopupMenuItem<int>(
-                                    value: -1,
-                                    enabled: false,
-                                    child: Text('No linked accounts'),
-                                  ),
-                                ];
-                              }
-                              return profiles.map((profile) {
-                                final isActive = profile.profileId ==
-                                    familyProvider.activeFamilyProfileId;
-                                final label = profile.subtitle == null ||
-                                        profile.subtitle!.trim().isEmpty
-                                    ? profile.displayName
-                                    : '${profile.displayName} (${profile.subtitle})';
-                                return PopupMenuItem<int?>(
-                                  value: profile.profileId,
-                                  child: Row(
-                                    children: [
-                                      Icon(
-                                        isActive
-                                            ? Icons.check_circle
-                                            : Icons.radio_button_unchecked,
-                                        size: 16,
-                                        color: isActive
-                                            ? KinsuTheme.primary
-                                            : KinsuTheme.textSecondary,
-                                      ),
-                                      const SizedBox(width: 8),
-                                      Expanded(
-                                        child: Text(
-                                          label,
-                                          overflow: TextOverflow.ellipsis,
-                                        ),
-                                      ),
-                                    ],
-                                  ),
-                                );
-                              }).toList();
-                            },
+                          GestureDetector(
+                            onTap: () => _showAccountActionsSheet(familyProvider),
                             child: CircleAvatar(
                               radius: 20,
                               backgroundColor:
@@ -1138,17 +1540,36 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
               const SizedBox(height: 12),
               _reveal(
                 index: 2,
-                child: _AnimatedHeroCard(
-                  controller: _heroController,
-                  dayNumber: _dashboard?.streakDay ?? 1,
-                  slide: _heroSlides[_heroSlideIndex],
-                  currentSlide: _heroSlideIndex,
-                  totalSlides: _heroSlides.length,
-                  onDotTap: (index) {
-                    setState(() {
-                      _heroSlideIndex = index;
-                    });
+                child: GestureDetector(
+                  onHorizontalDragEnd: (details) {
+                    if (details.primaryVelocity == null) return;
+                    if (details.primaryVelocity! < -200) {
+                      // Swipe left → next slide
+                      setState(() {
+                        _heroSlideIndex =
+                            (_heroSlideIndex + 1) % _heroSlides.length;
+                      });
+                    } else if (details.primaryVelocity! > 200) {
+                      // Swipe right → previous slide
+                      setState(() {
+                        _heroSlideIndex =
+                            (_heroSlideIndex - 1 + _heroSlides.length) %
+                                _heroSlides.length;
+                      });
+                    }
                   },
+                  child: _AnimatedHeroCard(
+                    controller: _heroController,
+                    dayNumber: _dashboard?.streakDay ?? 1,
+                    slide: _heroSlides[_heroSlideIndex],
+                    currentSlide: _heroSlideIndex,
+                    totalSlides: _heroSlides.length,
+                    onDotTap: (index) {
+                      setState(() {
+                        _heroSlideIndex = index;
+                      });
+                    },
+                  ),
                 ),
               ),
               if (_showAiAlert && _dashboard?.aiAlert != null) ...[
@@ -1241,12 +1662,12 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                       ),
                       const SizedBox(height: 8),
                       GridView.count(
-                        crossAxisCount: 6,
+                        crossAxisCount: 3,
                         shrinkWrap: true,
                         physics: const NeverScrollableScrollPhysics(),
                         mainAxisSpacing: 8,
-                        crossAxisSpacing: 6,
-                        childAspectRatio: 0.78,
+                        crossAxisSpacing: 8,
+                        childAspectRatio: 1.5,
                         children: [
                           _MiniActionTile(
                             icon: Icons.fitness_center,
@@ -1305,14 +1726,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                       child: _SectionTitle(title: 'Upcoming Appointments'),
                     ),
                     TextButton(
-                      onPressed: () {
-                        ScaffoldMessenger.of(context).showSnackBar(
-                          const SnackBar(
-                            content: Text(
-                                'Appointment creation will be added next.'),
-                          ),
-                        );
-                      },
+                      onPressed: _openAddAppointmentSheet,
                       child: const Text('Add +'),
                     ),
                   ],
@@ -1995,33 +2409,34 @@ class _MedicationProgressCard extends StatelessWidget {
     final missedBars = missed.clamp(0, barCount - filledBars);
 
     Widget statPill(String label, int value, Color tint) {
-      return Container(
-        width: 84,
-        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
-        decoration: BoxDecoration(
-          color: tint,
-          borderRadius: BorderRadius.circular(22),
-        ),
-        child: Column(
-          children: [
-            Text(
-              label,
-              style: const TextStyle(
-                color: Colors.white70,
-                fontSize: 12,
-                fontWeight: FontWeight.w600,
+      return Expanded(
+        child: Container(
+          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 10),
+          decoration: BoxDecoration(
+            color: tint,
+            borderRadius: BorderRadius.circular(22),
+          ),
+          child: Column(
+            children: [
+              Text(
+                label,
+                style: const TextStyle(
+                  color: Colors.white70,
+                  fontSize: 11,
+                  fontWeight: FontWeight.w600,
+                ),
               ),
-            ),
-            const SizedBox(height: 4),
-            Text(
-              '$value',
-              style: const TextStyle(
-                color: Colors.white,
-                fontSize: 22,
-                fontWeight: FontWeight.w800,
+              const SizedBox(height: 4),
+              Text(
+                '$value',
+                style: const TextStyle(
+                  color: Colors.white,
+                  fontSize: 22,
+                  fontWeight: FontWeight.w800,
+                ),
               ),
-            ),
-          ],
+            ],
+          ),
         ),
       );
     }
@@ -2046,33 +2461,28 @@ class _MedicationProgressCard extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
+          // Title row with label and percentage
+          const Text(
+            "Today's Progress",
+            style: TextStyle(
+              color: Colors.white70,
+              fontSize: 14,
+              fontWeight: FontWeight.w500,
+            ),
+          ),
+          const SizedBox(height: 6),
+          Text(
+            '$percent%',
+            style: const TextStyle(
+              color: Colors.white,
+              fontSize: 36,
+              fontWeight: FontWeight.w800,
+            ),
+          ),
+          const SizedBox(height: 14),
+          // Stat pills laid out horizontally across full width
           Row(
-            crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    const Text(
-                      "Today's Progress",
-                      style: TextStyle(
-                        color: Colors.white70,
-                        fontSize: 14,
-                        fontWeight: FontWeight.w500,
-                      ),
-                    ),
-                    const SizedBox(height: 8),
-                    Text(
-                      '$percent%',
-                      style: const TextStyle(
-                        color: Colors.white,
-                        fontSize: 34,
-                        fontWeight: FontWeight.w800,
-                      ),
-                    ),
-                  ],
-                ),
-              ),
               statPill('Taken', taken, Colors.white.withValues(alpha: 0.20)),
               const SizedBox(width: 8),
               statPill('Missed', missed, Colors.black.withValues(alpha: 0.16)),
@@ -2161,7 +2571,7 @@ class _AppointmentCard extends StatelessWidget {
         onTap: onTap,
         child: Container(
           width: 260,
-          padding: const EdgeInsets.all(16),
+          padding: const EdgeInsets.all(14),
           decoration: KinsuTheme.cardDecoration,
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
@@ -2169,8 +2579,8 @@ class _AppointmentCard extends StatelessWidget {
               Row(
                 children: [
                   Container(
-                    width: 52,
-                    height: 52,
+                    width: 48,
+                    height: 48,
                     decoration: BoxDecoration(
                       color: const Color(0xFFEFF6FF),
                       borderRadius: BorderRadius.circular(18),
@@ -2187,16 +2597,20 @@ class _AppointmentCard extends StatelessWidget {
                       children: [
                         Text(
                           appointment.doctor,
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
                           style: const TextStyle(
-                            fontSize: 15,
+                            fontSize: 14,
                             fontWeight: FontWeight.w700,
                           ),
                         ),
                         Text(
                           appointment.specialty,
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
                           style: const TextStyle(
                             color: KinsuTheme.textSecondary,
-                            fontSize: 12,
+                            fontSize: 11,
                           ),
                         ),
                       ],
@@ -2204,21 +2618,25 @@ class _AppointmentCard extends StatelessWidget {
                   ),
                 ],
               ),
-              const Spacer(),
+              const SizedBox(height: 6),
               Text(
                 dateTimeLabel,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
                 style: const TextStyle(
                   color: KinsuTheme.primary,
-                  fontSize: 12,
+                  fontSize: 11,
                   fontWeight: FontWeight.w700,
                 ),
               ),
               const SizedBox(height: 2),
               Text(
                 appointment.place,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
                 style: const TextStyle(
                   color: KinsuTheme.textSecondary,
-                  fontSize: 12,
+                  fontSize: 11,
                 ),
               ),
             ],

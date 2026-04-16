@@ -1,6 +1,7 @@
 import 'package:dio/dio.dart';
 import 'package:flutter/foundation.dart';
 
+import '../core/constants.dart';
 import '../models/symptom.dart';
 import '../services/symptoms_service.dart';
 
@@ -63,7 +64,7 @@ class SymptomsProvider extends ChangeNotifier {
           error.type == DioExceptionType.connectionTimeout ||
           error.type == DioExceptionType.receiveTimeout ||
           error.type == DioExceptionType.sendTimeout) {
-        return 'Cannot reach server. Make sure backend is running on 127.0.0.1:8000.';
+        return 'Cannot reach server at ${ApiConstants.baseUrl}.';
       }
     }
 

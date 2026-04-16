@@ -309,10 +309,10 @@ class _IllnessDetailScreenState extends State<IllnessDetailScreen> {
                         content: contentController.text,
                         recordedAt: DateTime.now(),
                       );
-                      await context
-                          .read<IllnessProvider>()
-                          .addDetail(widget.episodeId, detail);
-                      if (mounted) Navigator.pop(ctx);
+                      final illnessProvider = context.read<IllnessProvider>();
+                      await illnessProvider.addDetail(widget.episodeId, detail);
+                      if (!ctx.mounted) return;
+                      Navigator.pop(ctx);
                     },
                     child: const Text('Add'),
                   ),

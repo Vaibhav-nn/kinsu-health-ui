@@ -49,6 +49,26 @@ class _LogVitalScreenState extends State<LogVitalScreen> {
     return double.tryParse(trimmed);
   }
 
+  String? _rangeValidator(
+    String? value, {
+    required String field,
+    required double min,
+    required double max,
+  }) {
+    final trimmed = value?.trim() ?? '';
+    if (trimmed.isEmpty) {
+      return null;
+    }
+    final number = double.tryParse(trimmed);
+    if (number == null) {
+      return 'Enter a valid $field value.';
+    }
+    if (number < min || number > max) {
+      return '$field must be between ${min.toStringAsFixed(min % 1 == 0 ? 0 : 1)} and ${max.toStringAsFixed(max % 1 == 0 ? 0 : 1)}.';
+    }
+    return null;
+  }
+
   Future<void> _submit() async {
     final hasAnyValue = [
       _bpSystolicController,
@@ -194,6 +214,12 @@ class _LogVitalScreenState extends State<LogVitalScreen> {
                             child: _PlainInput(
                               controller: _bpSystolicController,
                               hint: '120',
+                              validator: (value) => _rangeValidator(
+                                value,
+                                field: 'Systolic BP',
+                                min: 70,
+                                max: 240,
+                              ),
                             ),
                           ),
                           const SizedBox(width: 10),
@@ -201,6 +227,12 @@ class _LogVitalScreenState extends State<LogVitalScreen> {
                             child: _PlainInput(
                               controller: _bpDiastolicController,
                               hint: '80',
+                              validator: (value) => _rangeValidator(
+                                value,
+                                field: 'Diastolic BP',
+                                min: 40,
+                                max: 140,
+                              ),
                             ),
                           ),
                         ],
@@ -212,7 +244,15 @@ class _LogVitalScreenState extends State<LogVitalScreen> {
                       icon: Icons.monitor_weight_outlined,
                       label: 'Weight',
                       valueBuilder: _PlainInput(
-                          controller: _weightController, hint: '0.0'),
+                        controller: _weightController,
+                        hint: '65.0',
+                        validator: (value) => _rangeValidator(
+                          value,
+                          field: 'Weight',
+                          min: 1,
+                          max: 200,
+                        ),
+                      ),
                       unit: 'KG',
                     ),
                     const SizedBox(height: 10),
@@ -220,15 +260,31 @@ class _LogVitalScreenState extends State<LogVitalScreen> {
                       icon: Icons.thermostat_outlined,
                       label: 'Temperature',
                       valueBuilder: _PlainInput(
-                          controller: _temperatureController, hint: '98.4'),
-                      unit: '°F',
+                        controller: _temperatureController,
+                        hint: '36.8',
+                        validator: (value) => _rangeValidator(
+                          value,
+                          field: 'Temperature (°C)',
+                          min: 30,
+                          max: 45,
+                        ),
+                      ),
+                      unit: '°C',
                     ),
                     const SizedBox(height: 10),
                     _VitalInputCard(
                       icon: Icons.favorite_outline_rounded,
                       label: 'Heart Rate',
                       valueBuilder: _PlainInput(
-                          controller: _heartRateController, hint: '72'),
+                        controller: _heartRateController,
+                        hint: '72',
+                        validator: (value) => _rangeValidator(
+                          value,
+                          field: 'Heart rate',
+                          min: 30,
+                          max: 220,
+                        ),
+                      ),
                       unit: 'BPM',
                     ),
                     const SizedBox(height: 10),
@@ -236,15 +292,31 @@ class _LogVitalScreenState extends State<LogVitalScreen> {
                       icon: Icons.bloodtype_outlined,
                       label: 'Blood Sugar',
                       valueBuilder: _PlainInput(
-                          controller: _bloodSugarController, hint: '100'),
+                        controller: _bloodSugarController,
+                        hint: '100',
+                        validator: (value) => _rangeValidator(
+                          value,
+                          field: 'Blood sugar',
+                          min: 40,
+                          max: 500,
+                        ),
+                      ),
                       unit: 'MG/DL',
                     ),
                     const SizedBox(height: 10),
                     _VitalInputCard(
                       icon: Icons.air_rounded,
                       label: 'SpO2',
-                      valueBuilder:
-                          _PlainInput(controller: _spo2Controller, hint: '98'),
+                      valueBuilder: _PlainInput(
+                        controller: _spo2Controller,
+                        hint: '98',
+                        validator: (value) => _rangeValidator(
+                          value,
+                          field: 'SpO2',
+                          min: 70,
+                          max: 100,
+                        ),
+                      ),
                       unit: '%',
                     ),
                     const SizedBox(height: 10),
@@ -385,8 +457,13 @@ class _VitalInputCard extends StatelessWidget {
 class _PlainInput extends StatelessWidget {
   final TextEditingController controller;
   final String hint;
+  final String? Function(String?)? validator;
 
-  const _PlainInput({required this.controller, required this.hint});
+  const _PlainInput({
+    required this.controller,
+    required this.hint,
+    this.validator,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -399,6 +476,7 @@ class _PlainInput extends StatelessWidget {
         contentPadding:
             const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
       ),
+      validator: validator,
     );
   }
 }

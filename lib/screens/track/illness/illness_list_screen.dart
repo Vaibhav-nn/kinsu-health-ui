@@ -226,8 +226,10 @@ class _IllnessListScreenState extends State<IllnessListScreen> {
                         : null,
                     startDate: DateTime.now(),
                   );
-                  await context.read<IllnessProvider>().createEpisode(episode);
-                  if (mounted) Navigator.pop(ctx);
+                  final illnessProvider = context.read<IllnessProvider>();
+                  await illnessProvider.createEpisode(episode);
+                  if (!ctx.mounted) return;
+                  Navigator.pop(ctx);
                 },
                 child: const Text('Create Episode'),
               ),

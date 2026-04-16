@@ -1,3 +1,5 @@
+import 'package:flutter/foundation.dart';
+
 /// API configuration constants for Kinsu Health.
 class ApiConstants {
   ApiConstants._();
@@ -5,12 +7,29 @@ class ApiConstants {
   /// Backend base URL.
   ///
   /// Local default targets FastAPI on port 8000.
+  /// Android emulator default uses `10.0.2.2` to reach host localhost.
   /// Override at run time using:
-  /// `flutter run --dart-define=API_BASE_URL=http://127.0.0.1:8000`
-  static const String baseUrl = String.fromEnvironment(
+  /// `flutter run --dart-define=API_BASE_URL=http://<host-ip>:8000`
+  static const String _definedBaseUrl = String.fromEnvironment(
     'API_BASE_URL',
-    defaultValue: 'http://127.0.0.1:8000',
+    defaultValue: '',
   );
+
+  static String get baseUrl {
+    if (_definedBaseUrl.isNotEmpty) {
+      return _definedBaseUrl;
+    }
+
+    if (kIsWeb) {
+      return 'http://127.0.0.1:8000';
+    }
+
+    if (defaultTargetPlatform == TargetPlatform.android) {
+      return 'http://10.0.2.2:8000';
+    }
+
+    return 'http://127.0.0.1:8000';
+  }
 
   /// API version prefix.
   static const String apiV1 = '/api/v1';

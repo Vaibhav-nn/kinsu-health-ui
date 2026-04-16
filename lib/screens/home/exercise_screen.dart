@@ -169,12 +169,6 @@ class _ExerciseScreenState extends State<ExerciseScreen> {
         leading: const IosBackButton(),
         automaticallyImplyLeading: false,
         title: const Text('Exercise & Activity'),
-        actions: const [
-          Padding(
-            padding: EdgeInsets.only(right: 12),
-            child: Icon(Icons.favorite_border, color: Color(0xFFE11D48)),
-          ),
-        ],
       ),
       body: RefreshIndicator(
         onRefresh: _loadData,
@@ -213,7 +207,7 @@ class _ExerciseScreenState extends State<ExerciseScreen> {
                   const SizedBox(width: 10),
                   Expanded(
                     child: _MetricCard(
-                      icon: Icons.monitor_heart_outlined,
+                      icon: Icons.sports_score_outlined,
                       value: '${summary?.activitiesDone ?? 0}',
                       unit: 'done',
                       label: 'Activities',

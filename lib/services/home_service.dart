@@ -60,6 +60,33 @@ class HomeService {
     });
   }
 
+  Future<HomeAppointmentCardData> createAppointment({
+    required String doctorName,
+    required DateTime appointmentAt,
+    String? specialty,
+    String? location,
+    String? notes,
+  }) async {
+    return _withBootstrapRetry(() async {
+      final response = await _dio.post(
+        ApiConstants.appointments,
+        data: {
+          'doctor_name': doctorName.trim(),
+          'appointment_at': appointmentAt.toIso8601String(),
+          if (specialty != null && specialty.trim().isNotEmpty)
+            'specialty': specialty.trim(),
+          if (location != null && location.trim().isNotEmpty)
+            'location': location.trim(),
+          if (notes != null && notes.trim().isNotEmpty) 'notes': notes.trim(),
+          'status': 'scheduled',
+        },
+      );
+      return HomeAppointmentCardData.fromJson(
+        response.data as Map<String, dynamic>,
+      );
+    });
+  }
+
   Future<List<HomeSearchResultItemData>> search(String query) async {
     final trimmed = query.trim();
     if (trimmed.isEmpty) {
