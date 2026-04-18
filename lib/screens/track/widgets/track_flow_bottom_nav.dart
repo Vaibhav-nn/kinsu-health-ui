@@ -1,7 +1,8 @@
 import 'package:flutter/material.dart';
+import 'package:go_router/go_router.dart';
 
+import '../../../core/router.dart';
 import '../../../screens/shell/app_shell_bottom_nav.dart';
-import '../../../screens/shell/main_shell.dart';
 import '../medications/add_medication_screen.dart';
 import '../reminders/add_reminder_screen.dart';
 import '../symptoms/quick_symptom_log_screen.dart';
@@ -41,14 +42,16 @@ class TrackFlowBottomNav extends StatelessWidget {
   }
 
   void _navigateToRoot(BuildContext context, int index) {
-    if (index == _selectedRootIndex()) {
-      return;
-    }
+    if (index == _selectedRootIndex()) return;
 
-    Navigator.of(context).pushAndRemoveUntil(
-      MaterialPageRoute(builder: (_) => MainShell(initialIndex: index)),
-      (route) => false,
-    );
+    // Map 4-tab mobile nav index to route path.
+    const routes = [
+      KinsuRoutes.home,
+      KinsuRoutes.track,
+      KinsuRoutes.vault,
+      KinsuRoutes.ai,
+    ];
+    context.go(routes[index]);
   }
 
   void _openAddMenu(BuildContext context) {

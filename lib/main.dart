@@ -5,6 +5,7 @@ import 'package:provider/provider.dart';
 
 import 'core/constants.dart';
 import 'core/network/dio_client.dart';
+import 'core/router.dart';
 import 'core/theme.dart';
 import 'firebase_options.dart';
 import 'providers/family_provider.dart';
@@ -14,8 +15,6 @@ import 'providers/reminders_provider.dart';
 import 'providers/symptoms_provider.dart';
 import 'providers/vault_provider.dart';
 import 'providers/vitals_provider.dart';
-import 'screens/auth/auth_gate.dart';
-import 'screens/shell/main_shell.dart';
 import 'services/exercise_service.dart';
 import 'services/family_service.dart';
 import 'services/home_service.dart';
@@ -71,11 +70,11 @@ class KinsuHealthApp extends StatelessWidget {
           create: (_) => FamilyProvider(FamilyService(dio))..loadFamilyData(),
         ),
       ],
-      child: MaterialApp(
+      child: MaterialApp.router(
         title: 'Kinsu Health',
         debugShowCheckedModeBanner: false,
         theme: KinsuTheme.lightTheme,
-        home: AppFlags.disableAuth ? const MainShell() : const AuthGate(),
+        routerConfig: appRouter,
       ),
     );
   }
