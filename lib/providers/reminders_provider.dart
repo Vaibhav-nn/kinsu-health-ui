@@ -1,4 +1,5 @@
 import 'package:flutter/foundation.dart';
+import '../core/error_formatter.dart';
 import '../models/reminder.dart';
 import '../services/reminders_service.dart';
 
@@ -30,7 +31,7 @@ class RemindersProvider extends ChangeNotifier {
         isEnabled: isEnabled,
       );
     } catch (e) {
-      _error = e.toString();
+      _error = formatProviderError(e);
     }
 
     _isLoading = false;
@@ -45,7 +46,7 @@ class RemindersProvider extends ChangeNotifier {
     try {
       _timeline = await _service.getTimeline();
     } catch (e) {
-      _error = e.toString();
+      _error = formatProviderError(e);
     }
 
     _isLoading = false;
@@ -59,7 +60,7 @@ class RemindersProvider extends ChangeNotifier {
       notifyListeners();
       return true;
     } catch (e) {
-      _error = e.toString();
+      _error = formatProviderError(e);
       notifyListeners();
       return false;
     }
@@ -73,7 +74,7 @@ class RemindersProvider extends ChangeNotifier {
       notifyListeners();
       return true;
     } catch (e) {
-      _error = e.toString();
+      _error = formatProviderError(e);
       notifyListeners();
       return false;
     }
@@ -86,7 +87,7 @@ class RemindersProvider extends ChangeNotifier {
       notifyListeners();
       return true;
     } catch (e) {
-      _error = e.toString();
+      _error = formatProviderError(e);
       notifyListeners();
       return false;
     }

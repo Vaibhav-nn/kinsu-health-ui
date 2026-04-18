@@ -135,7 +135,7 @@ class _ExerciseScreenState extends State<ExerciseScreen> {
       matched = ActivityCatalogItem(
         category: category,
         activityName: item.title,
-        estimatedCalories: item.durationMinutes * 5,
+        estimatedCalories: _estimateCalories(category, item.durationMinutes),
         durationMinutes: item.durationMinutes,
         fields: const ['duration_minutes'],
       );
@@ -152,10 +152,39 @@ class _ExerciseScreenState extends State<ExerciseScreen> {
     if (normalized.contains('yoga') || normalized.contains('vilom')) {
       return 'yoga';
     }
-    if (normalized.contains('cycle')) {
+    if (normalized.contains('cycle') || normalized.contains('cycling')) {
       return 'cycling';
     }
+    if (normalized.contains('swim')) return 'swimming';
+    if (normalized.contains('strength') || normalized.contains('weight') || normalized.contains('gym')) {
+      return 'strength';
+    }
+    if (normalized.contains('dance') || normalized.contains('zumba')) return 'dance';
+    if (normalized.contains('sport') || normalized.contains('football') ||
+        normalized.contains('basketball') || normalized.contains('tennis')) {
+      return 'sports';
+    }
     return 'other';
+  }
+
+  /// MET values per activity category (standard compendium approximations).
+  /// Calories ≈ MET × body_weight_kg × hours.
+  /// We assume a nominal 70 kg body weight for estimation when actual weight is unknown.
+  static const Map<String, double> _categoryMet = {
+    'walk_run': 7.0,   // brisk walk ~4, run ~8 — averaged
+    'yoga': 3.0,
+    'cycling': 7.5,
+    'swimming': 6.0,
+    'strength': 5.0,
+    'dance': 5.5,
+    'sports': 7.0,
+    'other': 4.0,
+  };
+
+  /// Estimate calories burned: MET × 70 kg × (minutes / 60).
+  int _estimateCalories(String category, int durationMinutes) {
+    final met = _categoryMet[category] ?? _categoryMet['other']!;
+    return (met * 70 * durationMinutes / 60).round();
   }
 
   @override

@@ -1,5 +1,6 @@
 import 'package:flutter/foundation.dart';
 
+import '../core/error_formatter.dart';
 import '../core/network/profile_context.dart';
 import '../models/family_member_profile.dart';
 import '../services/family_service.dart';
@@ -56,7 +57,7 @@ class FamilyProvider extends ChangeNotifier {
         ProfileContext.setActiveFamilyProfileId(null);
       }
     } catch (e) {
-      _error = e.toString();
+      _error = formatProviderError(e);
     }
 
     _isLoading = false;
@@ -85,7 +86,7 @@ class FamilyProvider extends ChangeNotifier {
       await loadFamilyData();
       return true;
     } catch (e) {
-      _error = e.toString();
+      _error = formatProviderError(e);
       notifyListeners();
       return false;
     }
@@ -95,5 +96,10 @@ class FamilyProvider extends ChangeNotifier {
     _activeFamilyProfileId = profileId;
     ProfileContext.setActiveFamilyProfileId(profileId);
     notifyListeners();
+  }
+
+  @override
+  void dispose() {
+    super.dispose();
   }
 }

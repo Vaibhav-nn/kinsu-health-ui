@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:kinsu_health/widgets/ios_back_button.dart';
+import 'package:kinsu_health/widgets/shimmer_placeholders.dart';
 import 'package:provider/provider.dart';
 
 import '../../core/theme.dart';
@@ -34,22 +35,112 @@ class _ProfileScreenState extends State<ProfileScreen> {
 
     try {
       final profile = await context.read<AuthService>().getProfile();
-      if (!mounted) {
-        return;
-      }
+      if (!mounted) return;
       setState(() {
         _profile = profile;
         _isLoading = false;
       });
     } catch (error) {
-      if (!mounted) {
-        return;
-      }
+      if (!mounted) return;
       setState(() {
         _error = error.toString();
         _isLoading = false;
       });
     }
+  }
+
+  Future<void> _openEditSheet() async {
+    final profile = _profile;
+    if (profile == null) return;
+
+    final nameCtrl = TextEditingController(text: profile.displayName ?? '');
+    final professionCtrl = TextEditingController(text: profile.profession ?? '');
+    final heightCtrl = TextEditingController(
+        text: profile.heightCm != null ? profile.heightCm!.toStringAsFixed(0) : '');
+    final weightCtrl = TextEditingController(
+        text: profile.weightKg != null ? profile.weightKg!.toStringAsFixed(0) : '');
+
+    await showModalBottomSheet<void>(
+      context: context,
+      isScrollControlled: true,
+      useSafeArea: true,
+      showDragHandle: true,
+      builder: (ctx) {
+        return Padding(
+          padding: EdgeInsets.fromLTRB(20, 8, 20, 20 + MediaQuery.of(ctx).viewInsets.bottom),
+          child: SingleChildScrollView(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const Text('Edit Profile',
+                    style: TextStyle(fontSize: 18, fontWeight: FontWeight.w700)),
+                const SizedBox(height: 16),
+                TextField(
+                  controller: nameCtrl,
+                  decoration: const InputDecoration(labelText: 'Display name'),
+                ),
+                const SizedBox(height: 12),
+                TextField(
+                  controller: professionCtrl,
+                  decoration: const InputDecoration(labelText: 'Profession'),
+                ),
+                const SizedBox(height: 12),
+                Row(
+                  children: [
+                    Expanded(
+                      child: TextField(
+                        controller: heightCtrl,
+                        keyboardType: TextInputType.number,
+                        decoration: const InputDecoration(labelText: 'Height (cm)'),
+                      ),
+                    ),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: TextField(
+                        controller: weightCtrl,
+                        keyboardType: TextInputType.number,
+                        decoration: const InputDecoration(labelText: 'Weight (kg)'),
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 20),
+                SizedBox(
+                  width: double.infinity,
+                  child: FilledButton(
+                    onPressed: () async {
+                      Navigator.pop(ctx);
+                      try {
+                        await context.read<AuthService>().updateProfile(
+                          displayName: nameCtrl.text.trim().isEmpty ? null : nameCtrl.text.trim(),
+                          profession: professionCtrl.text.trim().isEmpty ? null : professionCtrl.text.trim(),
+                          heightCm: double.tryParse(heightCtrl.text.trim()),
+                          weightKg: double.tryParse(weightCtrl.text.trim()),
+                        );
+                        if (mounted) await _loadProfile();
+                      } catch (e) {
+                        if (mounted) {
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            SnackBar(content: Text('Failed to update profile: $e')),
+                          );
+                        }
+                      }
+                    },
+                    child: const Text('Save changes'),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        );
+      },
+    );
+
+    nameCtrl.dispose();
+    professionCtrl.dispose();
+    heightCtrl.dispose();
+    weightCtrl.dispose();
   }
 
   String _initials() {
@@ -106,6 +197,14 @@ class _ProfileScreenState extends State<ProfileScreen> {
         leading: const IosBackButton(),
         automaticallyImplyLeading: false,
         title: const Text('Profile'),
+        actions: [
+          if (_profile != null)
+            IconButton(
+              icon: const Icon(Icons.edit_outlined),
+              tooltip: 'Edit profile',
+              onPressed: _openEditSheet,
+            ),
+        ],
       ),
       body: RefreshIndicator(
         onRefresh: _loadProfile,
@@ -114,8 +213,14 @@ class _ProfileScreenState extends State<ProfileScreen> {
           children: [
             if (_isLoading)
               const Padding(
-                padding: EdgeInsets.symmetric(vertical: 48),
-                child: Center(child: CircularProgressIndicator()),
+                padding: EdgeInsets.symmetric(vertical: 8),
+                child: Column(
+                  children: [
+                    ShimmerProfileHeader(),
+                    SizedBox(height: 16),
+                    ShimmerCardList(count: 2, cardHeight: 72),
+                  ],
+                ),
               )
             else if (_error != null)
               _ProfileErrorCard(message: _error!, onRetry: _loadProfile)

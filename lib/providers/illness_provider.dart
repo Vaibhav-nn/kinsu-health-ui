@@ -1,4 +1,5 @@
 import 'package:flutter/foundation.dart';
+import '../core/error_formatter.dart';
 import '../models/illness.dart';
 import '../services/illness_service.dart';
 
@@ -27,7 +28,7 @@ class IllnessProvider extends ChangeNotifier {
     try {
       _episodes = await _service.listEpisodes(status: status);
     } catch (e) {
-      _error = e.toString();
+      _error = formatProviderError(e);
     }
 
     _isLoading = false;
@@ -42,7 +43,7 @@ class IllnessProvider extends ChangeNotifier {
     try {
       _selectedEpisode = await _service.getEpisodeDetailed(id);
     } catch (e) {
-      _error = e.toString();
+      _error = formatProviderError(e);
     }
 
     _isLoading = false;
@@ -56,7 +57,7 @@ class IllnessProvider extends ChangeNotifier {
       notifyListeners();
       return true;
     } catch (e) {
-      _error = e.toString();
+      _error = formatProviderError(e);
       notifyListeners();
       return false;
     }
@@ -69,7 +70,7 @@ class IllnessProvider extends ChangeNotifier {
       await loadEpisodeDetails(episodeId);
       return true;
     } catch (e) {
-      _error = e.toString();
+      _error = formatProviderError(e);
       notifyListeners();
       return false;
     }
@@ -82,7 +83,7 @@ class IllnessProvider extends ChangeNotifier {
       notifyListeners();
       return true;
     } catch (e) {
-      _error = e.toString();
+      _error = formatProviderError(e);
       notifyListeners();
       return false;
     }

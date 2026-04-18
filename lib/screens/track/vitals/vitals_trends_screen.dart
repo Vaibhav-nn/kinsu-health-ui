@@ -3,6 +3,7 @@ import 'dart:math' as math;
 import 'package:fl_chart/fl_chart.dart';
 import 'package:flutter/material.dart';
 import 'package:kinsu_health/widgets/ios_back_button.dart';
+import 'package:kinsu_health/widgets/shimmer_placeholders.dart';
 import 'package:provider/provider.dart';
 
 import '../../../core/theme.dart';
@@ -319,7 +320,7 @@ class _VitalsTrendsScreenState extends State<VitalsTrendsScreen> {
               ((bpChart.maxY - bpChart.minY) / 4).clamp(5, 40).toDouble();
 
           if (provider.isLoading && provider.vitals.isEmpty) {
-            return const Center(child: CircularProgressIndicator());
+            return const ShimmerVitalGrid();
           }
 
           return ListView(

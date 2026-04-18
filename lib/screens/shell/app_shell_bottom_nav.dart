@@ -36,7 +36,9 @@ class AppShellBottomNav extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final bottomInset = MediaQuery.of(context).padding.bottom;
-    final totalHeight = 88.0 + bottomInset;
+    // 96px base gives 70px of inner content space — enough for all tab states
+    // on both mobile (bottomInset handled via padding) and web/Mac (bottomInset≈0).
+    final totalHeight = 96.0 + bottomInset;
     return SizedBox(
       height: totalHeight,
       child: Stack(
@@ -46,7 +48,7 @@ class AppShellBottomNav extends StatelessWidget {
           Positioned.fill(
             top: 10,
             child: Container(
-              padding: EdgeInsets.fromLTRB(14, 10, 14, 10 + bottomInset),
+              padding: EdgeInsets.fromLTRB(14, 8, 14, 8 + bottomInset),
               decoration: const BoxDecoration(
                 color: Colors.white,
                 border: Border(top: BorderSide(color: KinsuTheme.divider)),
@@ -107,8 +109,9 @@ class AppShellBottomNav extends StatelessWidget {
     final item = _items[index];
     final selected = index == currentIndex;
     final isTrack = item.label == 'TRACK';
-    final isAndroid = Theme.of(context).platform == TargetPlatform.android;
-    final compactTrack = isTrack && selected && isAndroid;
+    // Use compact layout for TRACK tab on all platforms — keeps height consistent
+    // and prevents overflow on web/Mac Chrome where the indicator adds extra pixels.
+    final compactTrack = isTrack && selected;
     final color = isTrack
         ? const Color(0xFF91A0B4)
         : selected

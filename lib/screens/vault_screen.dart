@@ -2,18 +2,18 @@ import 'dart:async';
 
 import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
+import 'package:go_router/go_router.dart';
 import 'package:kinsu_health/widgets/ios_back_button.dart';
 import 'package:provider/provider.dart';
 import 'package:syncfusion_flutter_pdfviewer/pdfviewer.dart';
 import 'package:url_launcher/url_launcher.dart';
 
+import '../core/router.dart';
 import '../core/theme.dart';
 import '../models/health_record.dart';
 import '../models/vault_models.dart';
 import '../providers/family_provider.dart';
 import '../providers/vault_provider.dart';
-import 'upload_record_screen.dart';
-import 'vault/lab_parameter_trends_screen.dart';
 
 import 'vault_screen_web_helper_stub.dart'
     if (dart.library.html) 'vault_screen_web_helper.dart';
@@ -124,11 +124,7 @@ class _VaultScreenState extends State<VaultScreen> {
   }
 
   Future<void> _navigateToUpload() async {
-    final result = await Navigator.of(context).push<bool>(
-      MaterialPageRoute(
-        builder: (context) => const UploadRecordScreen(),
-      ),
-    );
+    final result = await context.push<bool>(KinsuRoutes.vaultUpload);
     if (result == true && mounted) {
       await _loadVaultData();
     }
@@ -144,13 +140,7 @@ class _VaultScreenState extends State<VaultScreen> {
   }
 
   Future<void> _openLabTrend([String parameterKey = 'hemoglobin']) async {
-    await Navigator.of(context).push(
-      MaterialPageRoute(
-        builder: (_) => LabParameterTrendsScreen(
-          initialParameterKey: parameterKey,
-        ),
-      ),
-    );
+    await context.push('/vault/lab/$parameterKey');
   }
 
   Future<void> _showConnectedServicesSheet() async {

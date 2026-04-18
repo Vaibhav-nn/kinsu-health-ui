@@ -732,12 +732,24 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
   Future<void> _showQuickLinkSheet() async {
     final nameController = TextEditingController();
     final phoneController = TextEditingController();
-    String toE164(String input) {
+    /// Converts a raw phone input to E.164 format (+countrycode digits).
+    /// Returns null if the result is clearly invalid (< 7 or > 15 digits).
+    String? toE164(String input) {
       final digits = input.replaceAll(RegExp(r'[^0-9+]'), '');
-      if (digits.startsWith('+')) return digits;
-      if (digits.startsWith('0')) return '+91${digits.substring(1)}';
-      if (digits.length == 10) return '+91$digits';
-      return '+$digits';
+      String e164;
+      if (digits.startsWith('+')) {
+        e164 = digits;
+      } else if (digits.startsWith('0')) {
+        e164 = '+91${digits.substring(1)}';
+      } else if (digits.length == 10) {
+        e164 = '+91$digits';
+      } else {
+        e164 = '+$digits';
+      }
+      // E.164: '+' followed by 7–15 digits
+      final digitOnly = e164.substring(1); // strip leading '+'
+      if (!RegExp(r'^\d{7,15}$').hasMatch(digitOnly)) return null;
+      return e164;
     }
 
     await showModalBottomSheet<void>(
@@ -775,7 +787,8 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                 keyboardType: TextInputType.phone,
                 decoration: const InputDecoration(
                   labelText: 'Phone number',
-                  hintText: '+919876543210',
+                  hintText: '+91 98765 43210',
+                  helperText: 'Include country code, e.g. +91 for India',
                 ),
               ),
               const SizedBox(height: 14),
@@ -791,9 +804,18 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                     );
                     return;
                   }
+                  final e164 = toE164(phone);
+                  if (e164 == null) {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      const SnackBar(
+                        content: Text('Please enter a valid phone number (7–15 digits with country code).'),
+                      ),
+                    );
+                    return;
+                  }
                   final ok = await context.read<FamilyProvider>().addMember(
                         displayName: name,
-                        phoneE164: toE164(phone),
+                        phoneE164: e164,
                         relation: 'Linked account',
                       );
                   if (!mounted) {

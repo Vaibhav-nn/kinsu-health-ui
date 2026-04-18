@@ -1,16 +1,14 @@
 import 'dart:math' as math;
 
 import 'package:flutter/material.dart';
+import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
 
+import '../../core/router.dart';
 import '../../core/theme.dart';
 import '../../models/vital.dart';
 import '../../providers/vitals_provider.dart';
 import '../../services/home_service.dart';
-import 'medications/add_medication_screen.dart';
-import 'symptoms/quick_symptom_log_screen.dart';
-import 'vitals/log_vital_screen.dart';
-import 'vitals/vitals_trends_screen.dart';
 
 class TrackHome extends StatefulWidget {
   const TrackHome({super.key});
@@ -46,13 +44,13 @@ class _TrackHomeState extends State<TrackHome> {
     }
   }
 
-  List<VitalLog> _entriesForType(List<VitalLog> vitals, String type) {
+  /// Returns entries of [type] from an **already-sorted** [vitals] list.
+  /// Callers must pass a list sorted by [VitalLog.recordedAt] ascending.
+  List<VitalLog> _entriesForType(List<VitalLog> sortedVitals, String type) {
     final expectedType = _normalizeVitalType(type);
-    final list = vitals
+    return sortedVitals
         .where((item) => _normalizeVitalType(item.vitalType) == expectedType)
-        .toList()
-      ..sort((a, b) => a.recordedAt.compareTo(b.recordedAt));
-    return list;
+        .toList();
   }
 
   String _normalizeVitalType(String value) {
@@ -115,9 +113,8 @@ class _TrackHomeState extends State<TrackHome> {
       return 'Start logging vitals to unlock your latest trend insights.';
     }
 
-    final sorted = [...vitals]
-      ..sort((a, b) => b.recordedAt.compareTo(a.recordedAt));
-    final latest = sorted.first;
+    // vitals is expected to be pre-sorted ascending; latest is therefore last.
+    final latest = vitals.last;
     final label = latest.vitalType.trim().replaceAll('_', ' ');
     final titleCase = label
         .split(' ')
@@ -135,8 +132,13 @@ class _TrackHomeState extends State<TrackHome> {
   Widget build(BuildContext context) {
     final vitalsProvider = context.watch<VitalsProvider>();
 
+    // Sort once per build so all helpers receive a pre-sorted list and
+    // don't need to re-sort internally (avoids O(n log n) × number of callers).
+    final sortedVitals = [...vitalsProvider.vitals]
+      ..sort((a, b) => a.recordedAt.compareTo(b.recordedAt));
+
     final bp = _buildTrendStat(
-      vitals: vitalsProvider.vitals,
+      vitals: sortedVitals,
       type: 'blood_pressure',
       label: 'BP',
       fallbackUnit: 'mmHg',
@@ -144,14 +146,14 @@ class _TrackHomeState extends State<TrackHome> {
     );
 
     final hr = _buildTrendStat(
-      vitals: vitalsProvider.vitals,
+      vitals: sortedVitals,
       type: 'heart_rate',
       label: 'HR',
       fallbackUnit: 'bpm',
       color: const Color(0xFF0F9A96),
     );
 
-    final hrEntries = _entriesForType(vitalsProvider.vitals, 'heart_rate');
+    final hrEntries = _entriesForType(sortedVitals, 'heart_rate');
     final chartValues = hrEntries.isEmpty
         ? const [70.0, 74.0, 73.0, 82.0, 79.0, 76.0, 84.0]
         : hrEntries
@@ -270,13 +272,7 @@ class _TrackHomeState extends State<TrackHome> {
                     label: 'Log Vitals',
                     iconBg: const Color(0xFFE8F5F7),
                     iconColor: const Color(0xFF3D7281),
-                    onTap: () {
-                      Navigator.push(
-                        context,
-                        MaterialPageRoute(
-                            builder: (_) => const LogVitalScreen()),
-                      );
-                    },
+                    onTap: () => context.push(KinsuRoutes.vitalLog),
                   ),
                 ),
                 const SizedBox(width: 10),
@@ -286,13 +282,7 @@ class _TrackHomeState extends State<TrackHome> {
                     label: 'Log Meds',
                     iconBg: const Color(0xFFF7EFC8),
                     iconColor: const Color(0xFF7D7418),
-                    onTap: () {
-                      Navigator.push(
-                        context,
-                        MaterialPageRoute(
-                            builder: (_) => const AddMedicationScreen()),
-                      );
-                    },
+                    onTap: () => context.push(KinsuRoutes.medicationsAdd),
                   ),
                 ),
                 const SizedBox(width: 10),
@@ -303,13 +293,7 @@ class _TrackHomeState extends State<TrackHome> {
                     iconBg: const Color(0xFFE6F5E4),
                     iconColor: const Color(0xFF648932),
                     highlight: true,
-                    onTap: () {
-                      Navigator.push(
-                        context,
-                        MaterialPageRoute(
-                            builder: (_) => const QuickSymptomLogScreen()),
-                      );
-                    },
+                    onTap: () => context.push(KinsuRoutes.symptomsQuick),
                   ),
                 ),
               ],
@@ -324,16 +308,11 @@ class _TrackHomeState extends State<TrackHome> {
             ),
             const SizedBox(height: 12),
             GestureDetector(
-              onTap: () {
-                Navigator.push(
-                  context,
-                  MaterialPageRoute(builder: (_) => const VitalsTrendsScreen()),
-                );
-              },
+              onTap: () => context.push(KinsuRoutes.vitals),
               child: _InsightRow(
                 icon: Icons.history_rounded,
                 title: 'Last Saved Vitals',
-                body: _latestInsightBody(vitalsProvider.vitals),
+                body: _latestInsightBody(sortedVitals),
                 accent: Color(0xFF8B5CF6),
                 trailing: const Icon(
                   Icons.chevron_right_rounded,

@@ -2,6 +2,7 @@ import 'dart:math' as math;
 
 import 'package:flutter/material.dart';
 import 'package:kinsu_health/widgets/ios_back_button.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 import '../../core/theme.dart';
 
@@ -366,63 +367,201 @@ class DietScreen extends StatefulWidget {
 }
 
 class _DietScreenState extends State<DietScreen> {
+  static const _keyWater = 'diet_water_glasses';
+  static const _keyMealsPrefix = 'diet_meal_';
+  static const _keyDate = 'diet_last_date';
+
   int _waterGlasses = 0;
   final Map<String, bool> _meals = {
-    'Breakfast tracked': false,
-    'Lunch tracked': false,
-    'Dinner tracked': false,
-    'Snacks tracked': false,
+    'Breakfast': false,
+    'Lunch': false,
+    'Dinner': false,
+    'Snacks': false,
   };
+  bool _loaded = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadPrefs();
+  }
+
+  Future<void> _loadPrefs() async {
+    final prefs = await SharedPreferences.getInstance();
+    final today = DateTime.now().toIso8601String().substring(0, 10);
+    final savedDate = prefs.getString(_keyDate) ?? '';
+
+    if (savedDate != today) {
+      // New day — reset everything
+      await prefs.setString(_keyDate, today);
+      await prefs.setInt(_keyWater, 0);
+      for (final key in _meals.keys) {
+        await prefs.setBool('$_keyMealsPrefix$key', false);
+      }
+    }
+
+    if (!mounted) return;
+    setState(() {
+      _waterGlasses = prefs.getInt(_keyWater) ?? 0;
+      for (final key in _meals.keys) {
+        _meals[key] = prefs.getBool('$_keyMealsPrefix$key') ?? false;
+      }
+      _loaded = true;
+    });
+  }
+
+  Future<void> _addWater() async {
+    final next = math.min(8, _waterGlasses + 1);
+    setState(() => _waterGlasses = next);
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setInt(_keyWater, next);
+  }
+
+  Future<void> _toggleMeal(String meal, bool value) async {
+    setState(() => _meals[meal] = value);
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setBool('$_keyMealsPrefix$meal', value);
+  }
 
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final colorScheme = theme.colorScheme;
+    final mealsTracked = _meals.values.where((v) => v).length;
+
     return Scaffold(
       appBar: AppBar(
         leading: const IosBackButton(),
         automaticallyImplyLeading: false,
         title: const Text('Diet'),
       ),
-      body: ListView(
-        padding: const EdgeInsets.all(16),
-        children: [
-          Container(
-            padding: const EdgeInsets.all(14),
-            decoration: KinsuTheme.cardDecoration,
-            child: Row(
+      body: _loaded
+          ? ListView(
+              padding: const EdgeInsets.all(16),
               children: [
-                const Icon(Icons.water_drop_outlined,
-                    color: KinsuTheme.primary),
-                const SizedBox(width: 10),
-                Expanded(
-                  child: Text(
-                    'Water intake: $_waterGlasses / 8 glasses',
-                    style: const TextStyle(fontWeight: FontWeight.w700),
+                // ── Water tracker ─────────────────────────────
+                Container(
+                  padding: const EdgeInsets.all(16),
+                  decoration: KinsuTheme.cardDecoration,
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Row(
+                        children: [
+                          const Icon(Icons.water_drop_outlined, color: KinsuTheme.primary),
+                          const SizedBox(width: 8),
+                          Text(
+                            'Water intake today',
+                            style: theme.textTheme.titleSmall?.copyWith(fontWeight: FontWeight.w700),
+                          ),
+                          const Spacer(),
+                          Text(
+                            '$_waterGlasses / 8',
+                            style: theme.textTheme.titleMedium?.copyWith(
+                              fontWeight: FontWeight.w800,
+                              color: KinsuTheme.primary,
+                            ),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 12),
+                      // Water glass indicators
+                      Row(
+                        children: List.generate(8, (i) {
+                          final filled = i < _waterGlasses;
+                          return Expanded(
+                            child: Padding(
+                              padding: const EdgeInsets.symmetric(horizontal: 2),
+                              child: AnimatedContainer(
+                                duration: const Duration(milliseconds: 200),
+                                height: 28,
+                                decoration: BoxDecoration(
+                                  color: filled
+                                      ? KinsuTheme.primary.withOpacity(0.8)
+                                      : KinsuTheme.primary.withOpacity(0.1),
+                                  borderRadius: BorderRadius.circular(6),
+                                ),
+                                child: filled
+                                    ? const Icon(Icons.water_drop, size: 14, color: Colors.white)
+                                    : null,
+                              ),
+                            ),
+                          );
+                        }),
+                      ),
+                      const SizedBox(height: 12),
+                      SizedBox(
+                        width: double.infinity,
+                        child: OutlinedButton.icon(
+                          onPressed: _waterGlasses < 8 ? _addWater : null,
+                          icon: const Icon(Icons.add, size: 16),
+                          label: Text(_waterGlasses >= 8 ? 'Goal reached! 🎉' : 'Log a glass'),
+                        ),
+                      ),
+                    ],
                   ),
                 ),
-                TextButton(
-                  onPressed: () {
-                    setState(() {
-                      _waterGlasses = math.min(8, _waterGlasses + 1);
-                    });
-                  },
-                  child: const Text('+1'),
+                const SizedBox(height: 16),
+                // ── Meal tracker ──────────────────────────────
+                Container(
+                  padding: const EdgeInsets.all(16),
+                  decoration: KinsuTheme.cardDecoration,
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Row(
+                        children: [
+                          const Icon(Icons.restaurant_outlined, color: KinsuTheme.primary),
+                          const SizedBox(width: 8),
+                          Text(
+                            'Meals today',
+                            style: theme.textTheme.titleSmall?.copyWith(fontWeight: FontWeight.w700),
+                          ),
+                          const Spacer(),
+                          Text(
+                            '$mealsTracked / ${_meals.length}',
+                            style: theme.textTheme.bodySmall?.copyWith(color: KinsuTheme.textSecondary),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 4),
+                      ..._meals.entries.map(
+                        (entry) => CheckboxListTile(
+                          value: entry.value,
+                          contentPadding: EdgeInsets.zero,
+                          dense: true,
+                          activeColor: colorScheme.primary,
+                          title: Text(entry.key),
+                          onChanged: (value) => _toggleMeal(entry.key, value ?? false),
+                        ),
+                      ),
+                    ],
+                  ),
                 ),
+                const SizedBox(height: 16),
+                // ── Daily summary chip ────────────────────────
+                if (mealsTracked == _meals.length && _waterGlasses >= 8)
+                  Container(
+                    padding: const EdgeInsets.all(14),
+                    decoration: BoxDecoration(
+                      color: Colors.green.shade50,
+                      borderRadius: BorderRadius.circular(16),
+                      border: Border.all(color: Colors.green.shade200),
+                    ),
+                    child: const Row(
+                      children: [
+                        Icon(Icons.check_circle_outline, color: Colors.green),
+                        SizedBox(width: 10),
+                        Text(
+                          'Great job! All nutrition goals met today.',
+                          style: TextStyle(color: Colors.green, fontWeight: FontWeight.w600),
+                        ),
+                      ],
+                    ),
+                  ),
               ],
-            ),
-          ),
-          const SizedBox(height: 12),
-          ..._meals.entries.map(
-            (item) => CheckboxListTile(
-              value: item.value,
-              contentPadding: EdgeInsets.zero,
-              title: Text(item.key),
-              onChanged: (value) {
-                setState(() => _meals[item.key] = value ?? false);
-              },
-            ),
-          ),
-        ],
-      ),
+            )
+          : const Center(child: CircularProgressIndicator()),
     );
   }
 }
@@ -435,30 +574,99 @@ class SleepScreen extends StatefulWidget {
 }
 
 class _SleepScreenState extends State<SleepScreen> {
+  static const _keySleepH = 'sleep_sleep_hour';
+  static const _keySleepM = 'sleep_sleep_minute';
+  static const _keyWakeH = 'sleep_wake_hour';
+  static const _keyWakeM = 'sleep_wake_minute';
+  static const _keyLogged = 'sleep_logged_today';
+  static const _keyDate = 'sleep_last_date';
+
   TimeOfDay _sleep = const TimeOfDay(hour: 23, minute: 0);
   TimeOfDay _wake = const TimeOfDay(hour: 7, minute: 0);
+  bool _loggedToday = false;
+  bool _loaded = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadPrefs();
+  }
+
+  Future<void> _loadPrefs() async {
+    final prefs = await SharedPreferences.getInstance();
+    final today = DateTime.now().toIso8601String().substring(0, 10);
+    final savedDate = prefs.getString(_keyDate) ?? '';
+
+    if (savedDate != today) {
+      await prefs.setString(_keyDate, today);
+      await prefs.setBool(_keyLogged, false);
+    }
+
+    if (!mounted) return;
+    setState(() {
+      _sleep = TimeOfDay(
+        hour: prefs.getInt(_keySleepH) ?? 23,
+        minute: prefs.getInt(_keySleepM) ?? 0,
+      );
+      _wake = TimeOfDay(
+        hour: prefs.getInt(_keyWakeH) ?? 7,
+        minute: prefs.getInt(_keyWakeM) ?? 0,
+      );
+      _loggedToday = prefs.getBool(_keyLogged) ?? false;
+      _loaded = true;
+    });
+  }
 
   Future<void> _pickSleep() async {
     final value = await showTimePicker(context: context, initialTime: _sleep);
-    if (value != null) {
+    if (value != null && mounted) {
       setState(() => _sleep = value);
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.setInt(_keySleepH, value.hour);
+      await prefs.setInt(_keySleepM, value.minute);
     }
   }
 
   Future<void> _pickWake() async {
     final value = await showTimePicker(context: context, initialTime: _wake);
-    if (value != null) {
+    if (value != null && mounted) {
       setState(() => _wake = value);
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.setInt(_keyWakeH, value.hour);
+      await prefs.setInt(_keyWakeM, value.minute);
     }
+  }
+
+  Future<void> _logSleep() async {
+    setState(() => _loggedToday = true);
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setBool(_keyLogged, true);
+    if (!mounted) return;
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(content: Text('Sleep logged for today!')),
+    );
+  }
+
+  String _sleepQualityLabel(int hours) {
+    if (hours >= 8) return 'Excellent 🌟';
+    if (hours >= 7) return 'Good 👍';
+    if (hours >= 6) return 'Fair ⚠️';
+    return 'Low 😴 — aim for 7–9 hours';
+  }
+
+  Color _sleepQualityColor(int hours) {
+    if (hours >= 8) return Colors.green;
+    if (hours >= 7) return KinsuTheme.primary;
+    if (hours >= 6) return Colors.orange;
+    return Colors.red;
   }
 
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
     final sleepMinutes = _sleep.hour * 60 + _sleep.minute;
     var wakeMinutes = _wake.hour * 60 + _wake.minute;
-    if (wakeMinutes <= sleepMinutes) {
-      wakeMinutes += 24 * 60;
-    }
+    if (wakeMinutes <= sleepMinutes) wakeMinutes += 24 * 60;
     final duration = Duration(minutes: wakeMinutes - sleepMinutes);
     final hours = duration.inHours;
     final mins = duration.inMinutes.remainder(60);
@@ -469,37 +677,79 @@ class _SleepScreenState extends State<SleepScreen> {
         automaticallyImplyLeading: false,
         title: const Text('Sleep'),
       ),
-      body: ListView(
-        padding: const EdgeInsets.all(16),
-        children: [
-          Container(
-            padding: const EdgeInsets.all(14),
-            decoration: KinsuTheme.cardDecoration,
-            child: Text(
-              'Estimated sleep: ${hours}h ${mins}m',
-              style: const TextStyle(
-                fontSize: 16,
-                fontWeight: FontWeight.w700,
-              ),
-            ),
-          ),
-          const SizedBox(height: 10),
-          ListTile(
-            contentPadding: EdgeInsets.zero,
-            leading: const Icon(Icons.bedtime_outlined),
-            title: const Text('Sleep time'),
-            subtitle: Text(_sleep.format(context)),
-            onTap: _pickSleep,
-          ),
-          ListTile(
-            contentPadding: EdgeInsets.zero,
-            leading: const Icon(Icons.wb_sunny_outlined),
-            title: const Text('Wake time'),
-            subtitle: Text(_wake.format(context)),
-            onTap: _pickWake,
-          ),
-        ],
-      ),
+      body: _loaded
+          ? ListView(
+              padding: const EdgeInsets.all(16),
+              children: [
+                // ── Duration card ────────────────────────────
+                Container(
+                  padding: const EdgeInsets.all(20),
+                  decoration: KinsuTheme.cardDecoration,
+                  child: Column(
+                    children: [
+                      Text(
+                        '${hours}h ${mins}m',
+                        style: theme.textTheme.displaySmall?.copyWith(
+                          fontWeight: FontWeight.w800,
+                          color: _sleepQualityColor(hours),
+                        ),
+                      ),
+                      const SizedBox(height: 4),
+                      Text(
+                        _sleepQualityLabel(hours),
+                        style: theme.textTheme.bodyMedium?.copyWith(
+                          color: _sleepQualityColor(hours),
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                const SizedBox(height: 16),
+                // ── Time pickers ─────────────────────────────
+                Container(
+                  decoration: KinsuTheme.cardDecoration,
+                  child: Column(
+                    children: [
+                      ListTile(
+                        leading: const Icon(Icons.bedtime_outlined, color: KinsuTheme.primary),
+                        title: const Text('Bedtime'),
+                        subtitle: Text(_sleep.format(context)),
+                        trailing: const Icon(Icons.chevron_right_rounded),
+                        onTap: _pickSleep,
+                      ),
+                      const Divider(height: 1),
+                      ListTile(
+                        leading: const Icon(Icons.wb_sunny_outlined, color: KinsuTheme.primary),
+                        title: const Text('Wake time'),
+                        subtitle: Text(_wake.format(context)),
+                        trailing: const Icon(Icons.chevron_right_rounded),
+                        onTap: _pickWake,
+                      ),
+                    ],
+                  ),
+                ),
+                const SizedBox(height: 16),
+                // ── Log button ────────────────────────────────
+                SizedBox(
+                  width: double.infinity,
+                  child: FilledButton.icon(
+                    onPressed: _loggedToday ? null : _logSleep,
+                    icon: Icon(_loggedToday ? Icons.check : Icons.save_outlined),
+                    label: Text(_loggedToday ? 'Logged for today' : 'Log tonight\'s sleep'),
+                  ),
+                ),
+                if (!_loggedToday) ...[
+                  const SizedBox(height: 8),
+                  const Text(
+                    'Tap to record your sleep for today. Logged times persist across sessions.',
+                    style: TextStyle(fontSize: 12, color: KinsuTheme.textSecondary),
+                    textAlign: TextAlign.center,
+                  ),
+                ],
+              ],
+            )
+          : const Center(child: CircularProgressIndicator()),
     );
   }
 }
@@ -605,11 +855,8 @@ class CommunityScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    const posts = [
-      'Completed a 30-minute walk streak for 7 days.',
-      'Shared healthy breakfast ideas for sugar control.',
-      'Tips for keeping medication reminders consistent.',
-    ];
+    final theme = Theme.of(context);
+    final colorScheme = theme.colorScheme;
 
     return Scaffold(
       appBar: AppBar(
@@ -617,17 +864,110 @@ class CommunityScreen extends StatelessWidget {
         automaticallyImplyLeading: false,
         title: const Text('Community'),
       ),
-      body: ListView.separated(
-        padding: const EdgeInsets.all(16),
-        itemCount: posts.length,
-        separatorBuilder: (_, __) => const SizedBox(height: 10),
-        itemBuilder: (context, index) {
-          return Container(
-            padding: const EdgeInsets.all(14),
-            decoration: KinsuTheme.cardDecoration,
-            child: Text(posts[index]),
-          );
-        },
+      body: SingleChildScrollView(
+        padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 32),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.center,
+          children: [
+            Container(
+              width: 96,
+              height: 96,
+              decoration: BoxDecoration(
+                color: colorScheme.primary.withOpacity(0.1),
+                shape: BoxShape.circle,
+              ),
+              child: Icon(Icons.people_outline_rounded, size: 48, color: colorScheme.primary),
+            ),
+            const SizedBox(height: 24),
+            Text(
+              'Community is coming soon',
+              style: theme.textTheme.titleLarge?.copyWith(fontWeight: FontWeight.w700),
+              textAlign: TextAlign.center,
+            ),
+            const SizedBox(height: 12),
+            Text(
+              'Connect with others on the same health journey — share milestones, tips, and encouragement.',
+              style: theme.textTheme.bodyMedium?.copyWith(color: Colors.grey[600], height: 1.5),
+              textAlign: TextAlign.center,
+            ),
+            const SizedBox(height: 32),
+            _UpcomingFeatureTile(
+              icon: Icons.forum_outlined,
+              title: 'Health forums',
+              description: 'Discuss topics like nutrition, exercise, and chronic conditions.',
+            ),
+            const SizedBox(height: 12),
+            _UpcomingFeatureTile(
+              icon: Icons.emoji_events_outlined,
+              title: 'Challenges & streaks',
+              description: 'Join group challenges and celebrate milestones together.',
+            ),
+            const SizedBox(height: 12),
+            _UpcomingFeatureTile(
+              icon: Icons.volunteer_activism_outlined,
+              title: 'Expert Q&A',
+              description: 'Get answers from verified health professionals.',
+            ),
+            const SizedBox(height: 36),
+            SizedBox(
+              width: double.infinity,
+              child: OutlinedButton.icon(
+                onPressed: () {},
+                icon: const Icon(Icons.notifications_outlined),
+                label: const Text('Notify me when it launches'),
+                style: OutlinedButton.styleFrom(
+                  padding: const EdgeInsets.symmetric(vertical: 14),
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+                ),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _UpcomingFeatureTile extends StatelessWidget {
+  final IconData icon;
+  final String title;
+  final String description;
+
+  const _UpcomingFeatureTile({
+    required this.icon,
+    required this.title,
+    required this.description,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final colorScheme = Theme.of(context).colorScheme;
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: KinsuTheme.cardDecoration,
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Container(
+            padding: const EdgeInsets.all(10),
+            decoration: BoxDecoration(
+              color: colorScheme.primary.withOpacity(0.08),
+              borderRadius: BorderRadius.circular(12),
+            ),
+            child: Icon(icon, size: 22, color: colorScheme.primary),
+          ),
+          const SizedBox(width: 14),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(title, style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 14)),
+                const SizedBox(height: 4),
+                Text(description, style: TextStyle(fontSize: 13, color: Colors.grey[600], height: 1.4)),
+              ],
+            ),
+          ),
+        ],
       ),
     );
   }
@@ -641,8 +981,40 @@ class SettingsScreen extends StatefulWidget {
 }
 
 class _SettingsScreenState extends State<SettingsScreen> {
+  static const _keyReminders = 'settings_reminders_enabled';
+  static const _keyWeeklyDigest = 'settings_weekly_digest';
+
   bool _remindersEnabled = true;
   bool _weeklyDigest = true;
+  bool _loaded = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadPrefs();
+  }
+
+  Future<void> _loadPrefs() async {
+    final prefs = await SharedPreferences.getInstance();
+    if (!mounted) return;
+    setState(() {
+      _remindersEnabled = prefs.getBool(_keyReminders) ?? true;
+      _weeklyDigest = prefs.getBool(_keyWeeklyDigest) ?? true;
+      _loaded = true;
+    });
+  }
+
+  Future<void> _setReminders(bool value) async {
+    setState(() => _remindersEnabled = value);
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setBool(_keyReminders, value);
+  }
+
+  Future<void> _setWeeklyDigest(bool value) async {
+    setState(() => _weeklyDigest = value);
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setBool(_keyWeeklyDigest, value);
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -652,21 +1024,25 @@ class _SettingsScreenState extends State<SettingsScreen> {
         automaticallyImplyLeading: false,
         title: const Text('Settings'),
       ),
-      body: ListView(
-        padding: const EdgeInsets.all(16),
-        children: [
-          SwitchListTile(
-            value: _remindersEnabled,
-            onChanged: (value) => setState(() => _remindersEnabled = value),
-            title: const Text('Medication reminders'),
-          ),
-          SwitchListTile(
-            value: _weeklyDigest,
-            onChanged: (value) => setState(() => _weeklyDigest = value),
-            title: const Text('Weekly health digest'),
-          ),
-        ],
-      ),
+      body: _loaded
+          ? ListView(
+              padding: const EdgeInsets.all(16),
+              children: [
+                SwitchListTile(
+                  value: _remindersEnabled,
+                  onChanged: _setReminders,
+                  title: const Text('Medication reminders'),
+                  subtitle: const Text('Get notified when it\'s time to take your medication'),
+                ),
+                SwitchListTile(
+                  value: _weeklyDigest,
+                  onChanged: _setWeeklyDigest,
+                  title: const Text('Weekly health digest'),
+                  subtitle: const Text('Receive a weekly summary of your health trends'),
+                ),
+              ],
+            )
+          : const Center(child: CircularProgressIndicator()),
     );
   }
 }

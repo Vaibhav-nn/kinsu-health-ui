@@ -217,11 +217,12 @@ class MedicationsProvider extends ChangeNotifier {
         takenAt: takenAt,
         notes: notes,
       );
-      await loadMedications(isActive: true);
-      await loadDashboard();
-      if (_adherence != null) {
-        await loadAdherence(view: _adherence!.view);
-      }
+      // Refresh all dependent data in parallel rather than sequentially.
+      await Future.wait([
+        loadMedications(isActive: true),
+        loadDashboard(),
+        if (_adherence != null) loadAdherence(view: _adherence!.view),
+      ]);
       return true;
     } catch (error) {
       _error = _formatError(error);
@@ -229,5 +230,11 @@ class MedicationsProvider extends ChangeNotifier {
       notifyListeners();
       return false;
     }
+  }
+
+  @override
+  void dispose() {
+    // Cancel any pending operations or timers here if added in future.
+    super.dispose();
   }
 }

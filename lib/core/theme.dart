@@ -21,6 +21,39 @@ class KinsuTheme {
   static const Color divider = Color(0xFFDDE4EA);
   static const Color border = divider;
 
+  // ── Spacing scale ───────────────────────────────────────────────────────────
+  /// 4 px — micro gap between tightly related elements (e.g. icon + label)
+  static const double spaceXXS = 4;
+  /// 8 px — small internal padding / tight vertical rhythm
+  static const double spaceXS = 8;
+  /// 12 px — standard item gap in a list or form
+  static const double spaceSM = 12;
+  /// 16 px — default horizontal screen margin / card internal padding
+  static const double spaceMD = 16;
+  /// 20 px — section gap or comfortable horizontal margin
+  static const double spaceLG = 20;
+  /// 24 px — large section separator
+  static const double spaceXL = 24;
+  /// 32 px — extra-large separation between major sections
+  static const double spaceXXL = 32;
+
+  /// Default horizontal content inset used on every screen.
+  static const EdgeInsets screenPaddingH =
+      EdgeInsets.symmetric(horizontal: spaceMD);
+  /// Standard card internal padding.
+  static const EdgeInsets cardPadding = EdgeInsets.all(spaceMD);
+  /// Standard page padding (horizontal + vertical).
+  static const EdgeInsets pagePadding =
+      EdgeInsets.symmetric(horizontal: spaceMD, vertical: spaceLG);
+
+  // ── Border radii ────────────────────────────────────────────────────────────
+  static const double radiusSM = 12;
+  static const double radiusMD = 16;
+  static const double radiusLG = 20;
+  static const double radiusXL = 24;
+
+  // ── Card decoration ─────────────────────────────────────────────────────────
+
   static BoxDecoration get cardDecoration => BoxDecoration(
         color: surface,
         borderRadius: BorderRadius.circular(20),

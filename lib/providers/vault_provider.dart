@@ -2,6 +2,7 @@ import 'package:file_picker/file_picker.dart';
 import 'package:flutter/foundation.dart';
 
 import '../core/constants.dart';
+import '../core/error_formatter.dart';
 import '../models/health_record.dart';
 import '../models/vault_models.dart';
 import '../services/vault_service.dart';
@@ -60,7 +61,7 @@ class VaultProvider extends ChangeNotifier {
         sortOrder: sortOrder,
       );
     } catch (e) {
-      _error = _parseError(e);
+      _error = formatProviderError(e);
     }
 
     _isLoading = false;
@@ -75,7 +76,7 @@ class VaultProvider extends ChangeNotifier {
     try {
       _connectedServices = await _service.fetchConnectedServices();
     } catch (e) {
-      _servicesError = _parseError(e);
+      _servicesError = formatProviderError(e);
     }
 
     _isLoadingServices = false;
@@ -112,7 +113,7 @@ class VaultProvider extends ChangeNotifier {
       notifyListeners();
       return true;
     } catch (e) {
-      _error = _parseError(e);
+      _error = formatProviderError(e);
       _isLoading = false;
       notifyListeners();
       return false;
@@ -162,7 +163,7 @@ class VaultProvider extends ChangeNotifier {
       notifyListeners();
       return true;
     } catch (e) {
-      _error = _parseError(e);
+      _error = formatProviderError(e);
       _isLoading = false;
       notifyListeners();
       return false;
@@ -177,7 +178,7 @@ class VaultProvider extends ChangeNotifier {
       notifyListeners();
       return true;
     } catch (e) {
-      _error = _parseError(e);
+      _error = formatProviderError(e);
       notifyListeners();
       return false;
     }
@@ -188,21 +189,5 @@ class VaultProvider extends ChangeNotifier {
     _error = null;
     _servicesError = null;
     notifyListeners();
-  }
-
-  String _parseError(dynamic error) {
-    final message = error.toString();
-
-    if (message.contains('connection error') ||
-        message.contains('XMLHttpRequest onError') ||
-        message.contains('Connection refused') ||
-        message.contains('Failed host lookup')) {
-      return 'Cannot reach backend at ${ApiConstants.baseUrl}. '
-          'Please ensure API server is running and reachable.';
-    }
-    if (message.contains('404')) {
-      return 'Records not found. Please create your first record.';
-    }
-    return 'An error occurred: $message';
   }
 }

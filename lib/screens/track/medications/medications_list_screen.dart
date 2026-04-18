@@ -2,6 +2,7 @@ import 'dart:math' as math;
 
 import 'package:flutter/material.dart';
 import 'package:kinsu_health/widgets/ios_back_button.dart';
+import 'package:kinsu_health/widgets/shimmer_placeholders.dart';
 import 'package:provider/provider.dart';
 
 import '../../../core/theme.dart';
@@ -195,10 +196,7 @@ class _MedicationsListScreenState extends State<MedicationsListScreen> {
                 if (topError != null)
                   _ErrorCard(message: topError)
                 else if (isBusy && dashboard == null && adherence == null)
-                  const Padding(
-                    padding: EdgeInsets.symmetric(vertical: 40),
-                    child: Center(child: CircularProgressIndicator()),
-                  )
+                  const ShimmerMedicationList(count: 4)
                 else if (_selectedView == 'daily')
                   _DailyMedicationView(
                     items: dashboard?.items ?? const [],
