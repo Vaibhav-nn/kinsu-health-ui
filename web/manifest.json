@@ -1,12 +1,12 @@
 {
-    "name": "kinsu_health_app",
-    "short_name": "kinsu_health_app",
+    "name": "Kinsu Health",
+    "short_name": "Kinsu",
     "start_url": ".",
     "display": "standalone",
-    "background_color": "#0175C2",
-    "theme_color": "#0175C2",
-    "description": "A new Flutter project.",
-    "orientation": "portrait-primary",
+    "background_color": "#F2F5F5",
+    "theme_color": "#0F9A96",
+    "description": "Your health, unified. Track vitals, medications, lab reports, and family health.",
+    "orientation": "any",
     "prefer_related_applications": false,
     "icons": [
         {

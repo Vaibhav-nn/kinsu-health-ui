@@ -6,14 +6,22 @@ class ApiConstants {
 
   /// Backend base URL.
   ///
-  /// Local default targets FastAPI on port 8000.
-  /// Android emulator default uses `10.0.2.2` to reach host localhost.
-  /// Override at run time using:
-  /// `flutter run --dart-define=API_BASE_URL=http://<host-ip>:8000`
+  /// Resolved in priority order:
+  ///   1. `--dart-define=API_BASE_URL=<url>` (explicit override, any platform)
+  ///   2. Web production default: deployed Railway API
+  ///   3. Android emulator: 10.0.2.2:8000 (host loopback)
+  ///   4. All other native: 127.0.0.1:8000
+  ///
+  /// Local dev web override:
+  ///   `flutter run -d chrome --dart-define=API_BASE_URL=http://127.0.0.1:8000`
   static const String _definedBaseUrl = String.fromEnvironment(
     'API_BASE_URL',
     defaultValue: '',
   );
+
+  /// Deployed Railway backend — used as the web default when no explicit URL is given.
+  static const String _productionApiUrl =
+      'https://independent-sparkle-production-03cf.up.railway.app';
 
   static String get baseUrl {
     if (_definedBaseUrl.isNotEmpty) {
@@ -21,7 +29,7 @@ class ApiConstants {
     }
 
     if (kIsWeb) {
-      return 'http://127.0.0.1:8000';
+      return _productionApiUrl;
     }
 
     if (defaultTargetPlatform == TargetPlatform.android) {

@@ -1,7 +1,9 @@
+import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
 
 import '../../core/theme.dart';
 import '../ai/ai_screen.dart';
+import '../family/family_screen.dart';
 import '../home/home_screen.dart';
 import '../track/medications/add_medication_screen.dart';
 import '../track/reminders/add_reminder_screen.dart';
@@ -10,8 +12,12 @@ import '../track/track_home.dart';
 import '../track/vitals/log_vital_screen.dart';
 import '../vault_screen.dart';
 import 'app_shell_bottom_nav.dart';
+import 'app_shell_web_nav.dart';
 
-/// Main app shell with bottom navigation bar.
+/// Main app shell.
+///
+/// Mobile / narrow web (< 900 px): 4-tab bottom nav + centre FAB.
+/// Desktop web (≥ 900 px): left sidebar with 5 tabs (adds Family).
 class MainShell extends StatefulWidget {
   final int initialIndex;
 
@@ -22,19 +28,34 @@ class MainShell extends StatefulWidget {
 }
 
 class _MainShellState extends State<MainShell> {
-  late int _currentIndex;
+  // Mobile: 4 tabs — Home(0), Track(1), Vault(2), AI(3)
+  late int _mobileIndex;
+  // Desktop web: 5 tabs — Home(0), Track(1), Vault(2), Family(3), AI(4)
+  late int _webIndex;
 
-  final List<Widget> _pages = [
-    const HomeScreen(),
-    const TrackHome(),
-    const VaultScreen(),
-    const AiScreen(),
+  static const List<Widget> _mobilePages = [
+    HomeScreen(),
+    TrackHome(),
+    VaultScreen(),
+    AiScreen(),
   ];
+
+  static const List<Widget> _webPages = [
+    HomeScreen(),
+    TrackHome(),
+    VaultScreen(),
+    FamilyScreen(),
+    AiScreen(),
+  ];
+
+  bool _isDesktopWeb(BuildContext context) =>
+      kIsWeb && MediaQuery.of(context).size.width >= 900;
 
   @override
   void initState() {
     super.initState();
-    _currentIndex = widget.initialIndex.clamp(0, _pages.length - 1);
+    _mobileIndex = widget.initialIndex.clamp(0, _mobilePages.length - 1);
+    _webIndex = widget.initialIndex.clamp(0, _webPages.length - 1);
   }
 
   void _openAddMenu() {
@@ -159,13 +180,41 @@ class _MainShellState extends State<MainShell> {
 
   @override
   Widget build(BuildContext context) {
+    if (_isDesktopWeb(context)) {
+      return _buildDesktopLayout();
+    }
+    return _buildMobileLayout();
+  }
+
+  Widget _buildMobileLayout() {
     return Scaffold(
-      body: IndexedStack(index: _currentIndex, children: _pages),
+      body: IndexedStack(index: _mobileIndex, children: _mobilePages),
       backgroundColor: KinsuTheme.background,
       bottomNavigationBar: AppShellBottomNav(
-        currentIndex: _currentIndex,
-        onTap: (index) => setState(() => _currentIndex = index),
+        currentIndex: _mobileIndex,
+        onTap: (index) => setState(() => _mobileIndex = index),
         onAddTap: _openAddMenu,
+      ),
+    );
+  }
+
+  Widget _buildDesktopLayout() {
+    return Scaffold(
+      backgroundColor: KinsuTheme.background,
+      body: Row(
+        children: [
+          AppShellWebNav(
+            currentIndex: _webIndex,
+            onTap: (index) => setState(() => _webIndex = index),
+            onAddTap: _openAddMenu,
+          ),
+          Expanded(
+            child: IndexedStack(
+              index: _webIndex,
+              children: _webPages,
+            ),
+          ),
+        ],
       ),
     );
   }
