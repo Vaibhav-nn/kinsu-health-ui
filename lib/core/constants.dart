@@ -97,12 +97,13 @@ class ApiConstants {
 class AppFlags {
   AppFlags._();
 
-  /// Demo mode flag for APK testing without Firebase auth flow.
+  /// Demo mode flag — skips Firebase auth for local development only.
   ///
-  /// Enable with:
-  /// `--dart-define=DISABLE_AUTH=true`
-  static const bool disableAuth = bool.fromEnvironment(
-    'DISABLE_AUTH',
-    defaultValue: false,
-  );
+  /// Enable with: `--dart-define=DISABLE_AUTH=true`
+  ///
+  /// Only takes effect in debug builds. The flag is silently ignored in
+  /// profile/release builds even when the dart-define is present, so a
+  /// misconfigured CI or production build can never ship with auth disabled.
+  static final bool disableAuth =
+      kDebugMode && const bool.fromEnvironment('DISABLE_AUTH', defaultValue: false);
 }

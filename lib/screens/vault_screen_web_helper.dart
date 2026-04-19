@@ -19,7 +19,10 @@ class WebPdfViewerHelper {
             ..style.border = 'none'
             ..style.width = '100%'
             ..style.height = '100%'
-            ..allowFullscreen = true;
+            ..allowFullscreen = true
+            // Sandbox limits script execution inside embedded PDFs.
+            // allow-same-origin is required so the browser can load the blob URL.
+            ..setAttribute('sandbox', 'allow-same-origin allow-scripts');
           
           return iframe;
         },

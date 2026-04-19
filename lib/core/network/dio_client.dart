@@ -1,4 +1,5 @@
 import 'package:dio/dio.dart';
+import 'package:flutter/foundation.dart';
 import 'firebase_auth_interceptor.dart';
 import 'profile_context_interceptor.dart';
 
@@ -31,14 +32,16 @@ class DioClient {
     // 2. Profile context — attaches X-Profile-Id for family profile scope
     dio.interceptors.add(ProfileContextInterceptor());
 
-    // 3. Logging — useful during development
-    dio.interceptors.add(
-      LogInterceptor(
-        requestBody: true,
-        responseBody: true,
-        logPrint: (obj) => print('🌐 DIO: $obj'),
-      ),
-    );
+    // 3. Logging — debug builds only (avoids leaking PHI/tokens in production logs)
+    if (kDebugMode) {
+      dio.interceptors.add(
+        LogInterceptor(
+          requestBody: true,
+          responseBody: true,
+          logPrint: (obj) => print('🌐 DIO: $obj'),
+        ),
+      );
+    }
 
     return dio;
   }
