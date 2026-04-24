@@ -1,11 +1,16 @@
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
-import 'package:kinsu_health/widgets/ios_back_button.dart';
-import 'package:kinsu_health/widgets/shimmer_placeholders.dart';
 import 'package:provider/provider.dart';
 
 import '../../core/theme.dart';
-import '../../models/user_profile.dart';
-import '../../services/auth_service.dart';
+import '../../core/router.dart';
+import '../../providers/vault_provider.dart';
+import '../../providers/vitals_provider.dart';
+import '../../providers/medications_provider.dart';
+import '../../providers/reminders_provider.dart';
+import '../track/medications/medications_list_screen.dart';
+import '../track/vitals/vitals_trends_screen.dart';
+import '../upload_record_screen.dart';
 
 class ProfileScreen extends StatefulWidget {
   const ProfileScreen({super.key});
@@ -15,539 +20,436 @@ class ProfileScreen extends StatefulWidget {
 }
 
 class _ProfileScreenState extends State<ProfileScreen> {
-  UserProfile? _profile;
-  bool _isLoading = true;
-  String? _error;
+  bool _darkMode = false;
+
+  String _initialsFromEmail(String email) {
+    final parts = email.split('@').first.split(RegExp(r'[\._]'));
+    if (parts.isEmpty) return 'U';
+    if (parts.length == 1) return parts.first[0].toUpperCase();
+    return (parts[0][0] + parts[1][0]).toUpperCase();
+  }
 
   @override
-  void initState() {
-    super.initState();
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      _loadProfile();
-    });
-  }
+  Widget build(BuildContext context) {
+    final user = FirebaseAuth.instance.currentUser;
+    final displayName = user?.displayName ?? user?.email?.split('@').first ?? 'User';
+    final email = user?.email ?? '';
+    final provider = user?.providerData.isNotEmpty == true
+        ? user!.providerData.first.providerId
+        : 'email';
+    final initials = user?.displayName != null
+        ? _initialsFromEmail(user!.displayName!)
+        : (email.isNotEmpty ? _initialsFromEmail(email) : 'U');
 
-  Future<void> _loadProfile() async {
-    setState(() {
-      _isLoading = true;
-      _error = null;
-    });
+    final vaultProvider = context.watch<VaultProvider>();
+    final remindersProvider = context.watch<RemindersProvider>();
+    final medsProvider = context.watch<MedicationsProvider>();
+    final vitalsProvider = context.watch<VitalsProvider>();
 
-    try {
-      final profile = await context.read<AuthService>().getProfile();
-      if (!mounted) return;
-      setState(() {
-        _profile = profile;
-        _isLoading = false;
-      });
-    } catch (error) {
-      if (!mounted) return;
-      setState(() {
-        _error = error.toString();
-        _isLoading = false;
-      });
-    }
-  }
+    final activeReminders = remindersProvider.reminders.where((r) => r.isEnabled).length;
+    final activeMeds = medsProvider.medications.where((m) => m.isActive).toList();
+    final adherencePct = activeMeds.isEmpty ? 0 : 0; // no local taken state
+    final vitalsCount = vitalsProvider.vitals.length;
+    final recordsCount = vaultProvider.records.length;
 
-  Future<void> _openEditSheet() async {
-    final profile = _profile;
-    if (profile == null) return;
-
-    final nameCtrl = TextEditingController(text: profile.displayName ?? '');
-    final professionCtrl = TextEditingController(text: profile.profession ?? '');
-    final heightCtrl = TextEditingController(
-        text: profile.heightCm != null ? profile.heightCm!.toStringAsFixed(0) : '');
-    final weightCtrl = TextEditingController(
-        text: profile.weightKg != null ? profile.weightKg!.toStringAsFixed(0) : '');
-
-    await showModalBottomSheet<void>(
-      context: context,
-      isScrollControlled: true,
-      useSafeArea: true,
-      showDragHandle: true,
-      builder: (ctx) {
-        return Padding(
-          padding: EdgeInsets.fromLTRB(20, 8, 20, 20 + MediaQuery.of(ctx).viewInsets.bottom),
-          child: SingleChildScrollView(
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              crossAxisAlignment: CrossAxisAlignment.start,
+    return Scaffold(
+      appBar: AppBar(
+        title: const Text('Profile'),
+        leading: IconButton(
+          icon: const Icon(Icons.chevron_left),
+          onPressed: () => Navigator.pop(context),
+        ),
+      ),
+      backgroundColor: KinsuTheme.background,
+      body: ListView(
+        padding: const EdgeInsets.all(16),
+        children: [
+          // ── Profile card ───────────────────────────────────────────
+          Container(
+            padding: const EdgeInsets.all(20),
+            decoration: KinsuTheme.cardDecoration,
+            child: Row(
               children: [
-                const Text('Edit Profile',
-                    style: TextStyle(fontSize: 18, fontWeight: FontWeight.w700)),
-                const SizedBox(height: 16),
-                TextField(
-                  controller: nameCtrl,
-                  decoration: const InputDecoration(labelText: 'Display name'),
-                ),
-                const SizedBox(height: 12),
-                TextField(
-                  controller: professionCtrl,
-                  decoration: const InputDecoration(labelText: 'Profession'),
-                ),
-                const SizedBox(height: 12),
-                Row(
-                  children: [
-                    Expanded(
-                      child: TextField(
-                        controller: heightCtrl,
-                        keyboardType: TextInputType.number,
-                        decoration: const InputDecoration(labelText: 'Height (cm)'),
-                      ),
+                CircleAvatar(
+                  radius: 34,
+                  backgroundColor: KinsuTheme.primaryLight,
+                  child: Text(
+                    initials,
+                    style: const TextStyle(
+                      color: KinsuTheme.primary,
+                      fontWeight: FontWeight.w700,
+                      fontSize: 22,
                     ),
-                    const SizedBox(width: 12),
-                    Expanded(
-                      child: TextField(
-                        controller: weightCtrl,
-                        keyboardType: TextInputType.number,
-                        decoration: const InputDecoration(labelText: 'Weight (kg)'),
-                      ),
-                    ),
-                  ],
+                  ),
                 ),
-                const SizedBox(height: 20),
-                SizedBox(
-                  width: double.infinity,
-                  child: FilledButton(
-                    onPressed: () async {
-                      Navigator.pop(ctx);
-                      try {
-                        await context.read<AuthService>().updateProfile(
-                          displayName: nameCtrl.text.trim().isEmpty ? null : nameCtrl.text.trim(),
-                          profession: professionCtrl.text.trim().isEmpty ? null : professionCtrl.text.trim(),
-                          heightCm: double.tryParse(heightCtrl.text.trim()),
-                          weightKg: double.tryParse(weightCtrl.text.trim()),
-                        );
-                        if (mounted) await _loadProfile();
-                      } catch (e) {
-                        if (mounted) {
-                          ScaffoldMessenger.of(context).showSnackBar(
-                            SnackBar(content: Text('Failed to update profile: $e')),
-                          );
-                        }
-                      }
-                    },
-                    child: const Text('Save changes'),
+                const SizedBox(width: 16),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        displayName,
+                        style: const TextStyle(
+                          fontSize: 20,
+                          fontWeight: FontWeight.w700,
+                          color: KinsuTheme.textPrimary,
+                        ),
+                      ),
+                      if (email.isNotEmpty) ...[
+                        const SizedBox(height: 2),
+                        Text(
+                          email,
+                          style: const TextStyle(
+                            fontSize: 14,
+                            color: KinsuTheme.textSecondary,
+                          ),
+                        ),
+                      ],
+                      const SizedBox(height: 2),
+                      Text(
+                        provider,
+                        style: const TextStyle(
+                          fontSize: 12,
+                          color: KinsuTheme.textSecondary,
+                        ),
+                      ),
+                    ],
                   ),
                 ),
               ],
             ),
           ),
-        );
-      },
-    );
+          const SizedBox(height: 14),
 
-    nameCtrl.dispose();
-    professionCtrl.dispose();
-    heightCtrl.dispose();
-    weightCtrl.dispose();
-  }
+          // ── Stats grid ─────────────────────────────────────────────
+          Row(
+            children: [
+              Expanded(
+                  child: _StatCard(
+                      label: 'Records',
+                      value: recordsCount.toString())),
+              const SizedBox(width: 8),
+              Expanded(
+                  child: _StatCard(
+                      label: 'Reminders',
+                      value: activeReminders.toString())),
+              const SizedBox(width: 8),
+              Expanded(
+                  child: _StatCard(
+                      label: 'Adherence',
+                      value: '$adherencePct%')),
+              const SizedBox(width: 8),
+              Expanded(
+                  child: _StatCard(
+                      label: 'Vitals',
+                      value: vitalsCount.toString())),
+            ],
+          ),
+          const SizedBox(height: 16),
 
-  String _initials() {
-    final name = _profile?.displayName?.trim();
-    if (name == null || name.isEmpty) {
-      return 'KH';
-    }
-    final parts =
-        name.split(RegExp(r'\s+')).where((part) => part.isNotEmpty).toList();
-    if (parts.length == 1) {
-      return parts.first
-          .substring(0, parts.first.length >= 2 ? 2 : 1)
-          .toUpperCase();
-    }
-    return '${parts.first[0]}${parts.last[0]}'.toUpperCase();
-  }
-
-  String _displayName() {
-    final name = _profile?.displayName?.trim();
-    if (name != null && name.isNotEmpty) {
-      return name;
-    }
-    return 'Kinsu User';
-  }
-
-  String _formatDate(DateTime? value) {
-    if (value == null) {
-      return 'Not available';
-    }
-    return '${value.day.toString().padLeft(2, '0')}/'
-        '${value.month.toString().padLeft(2, '0')}/${value.year}';
-  }
-
-  List<_InfoChipData> _summaryChips() {
-    final chips = <_InfoChipData>[];
-    if (_profile?.age != null) {
-      chips.add(_InfoChipData(label: '${_profile!.age}y'));
-    }
-    if ((_profile?.bloodGroup ?? '').isNotEmpty) {
-      chips.add(_InfoChipData(label: _profile!.bloodGroup!));
-    }
-    if ((_profile?.gender ?? '').isNotEmpty) {
-      chips.add(_InfoChipData(label: _profile!.gender!));
-    }
-    return chips;
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    final profile = _profile;
-
-    return Scaffold(
-      appBar: AppBar(
-        leading: const IosBackButton(),
-        automaticallyImplyLeading: false,
-        title: const Text('Profile'),
-        actions: [
-          if (_profile != null)
-            IconButton(
-              icon: const Icon(Icons.edit_outlined),
-              tooltip: 'Edit profile',
-              onPressed: _openEditSheet,
-            ),
-        ],
-      ),
-      body: RefreshIndicator(
-        onRefresh: _loadProfile,
-        child: ListView(
-          padding: const EdgeInsets.all(16),
-          children: [
-            if (_isLoading)
-              const Padding(
-                padding: EdgeInsets.symmetric(vertical: 8),
-                child: Column(
-                  children: [
-                    ShimmerProfileHeader(),
-                    SizedBox(height: 16),
-                    ShimmerCardList(count: 2, cardHeight: 72),
-                  ],
+          // ── Dark mode toggle ───────────────────────────────────────
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+            decoration: KinsuTheme.cardDecoration,
+            child: Row(
+              children: [
+                Container(
+                  width: 36,
+                  height: 36,
+                  decoration: BoxDecoration(
+                    color: KinsuTheme.primary.withValues(alpha: 0.1),
+                    borderRadius: BorderRadius.circular(10),
+                  ),
+                  child: const Icon(Icons.dark_mode_outlined,
+                      color: KinsuTheme.primary, size: 18),
                 ),
-              )
-            else if (_error != null)
-              _ProfileErrorCard(message: _error!, onRetry: _loadProfile)
-            else ...[
-              Container(
-                padding: const EdgeInsets.all(18),
-                decoration: BoxDecoration(
-                  color: Colors.white,
-                  borderRadius: BorderRadius.circular(24),
-                  border: Border.all(
-                      color: KinsuTheme.divider.withValues(alpha: 0.5)),
-                  boxShadow: const [
-                    BoxShadow(
-                      color: Color(0x12000000),
-                      blurRadius: 10,
-                      offset: Offset(0, 4),
-                    ),
-                  ],
-                ),
-                child: Row(
-                  children: [
-                    CircleAvatar(
-                      radius: 34,
-                      backgroundColor:
-                          KinsuTheme.primary.withValues(alpha: 0.12),
-                      child: Text(
-                        _initials(),
-                        style: const TextStyle(
-                          color: KinsuTheme.primary,
-                          fontWeight: FontWeight.w800,
-                          fontSize: 22,
+                const SizedBox(width: 12),
+                const Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        'Dark Mode',
+                        style: TextStyle(
+                          fontWeight: FontWeight.w600,
+                          color: KinsuTheme.textPrimary,
                         ),
                       ),
-                    ),
-                    const SizedBox(width: 14),
-                    Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(
-                            _displayName(),
-                            style: const TextStyle(
-                              fontSize: 20,
-                              fontWeight: FontWeight.w800,
-                              color: KinsuTheme.textPrimary,
-                            ),
-                          ),
-                          const SizedBox(height: 4),
-                          Text(
-                            profile?.email ?? 'No email available',
-                            style: const TextStyle(
-                              fontSize: 14,
-                              color: KinsuTheme.textSecondary,
-                            ),
-                          ),
-                          if ((profile?.authProvider ?? '').isNotEmpty) ...[
-                            const SizedBox(height: 6),
-                            Text(
-                              'Signed in with ${profile!.authProvider}',
-                              style: const TextStyle(
-                                fontSize: 12,
-                                color: KinsuTheme.textSecondary,
-                              ),
-                            ),
-                          ],
-                        ],
+                      Text(
+                        'Appearance setting (coming soon)',
+                        style: TextStyle(
+                          fontSize: 12,
+                          color: KinsuTheme.textSecondary,
+                        ),
                       ),
-                    ),
-                  ],
-                ),
-              ),
-              const SizedBox(height: 14),
-              if (_summaryChips().isNotEmpty)
-                Wrap(
-                  spacing: 8,
-                  runSpacing: 8,
-                  children: _summaryChips()
-                      .map((chip) => _InfoChip(label: chip.label))
-                      .toList(),
-                ),
-              if (_summaryChips().isNotEmpty) const SizedBox(height: 16),
-              Row(
-                children: [
-                  Expanded(
-                    child: _ProfileMetricCard(
-                      label: 'Height',
-                      value: profile?.heightCm == null
-                          ? '--'
-                          : '${profile!.heightCm!.toStringAsFixed(0)} cm',
-                    ),
+                    ],
                   ),
-                  const SizedBox(width: 10),
-                  Expanded(
-                    child: _ProfileMetricCard(
-                      label: 'Weight',
-                      value: profile?.weightKg == null
-                          ? '--'
-                          : '${profile!.weightKg!.toStringAsFixed(0)} kg',
-                    ),
-                  ),
-                ],
-              ),
-              const SizedBox(height: 16),
-              _SectionCard(
-                title: 'Health Goals',
-                child: (profile?.healthGoals ?? const []).isEmpty
-                    ? const Text(
-                        'No health goals selected yet.',
-                        style: TextStyle(color: KinsuTheme.textSecondary),
-                      )
-                    : Wrap(
-                        spacing: 8,
-                        runSpacing: 8,
-                        children: profile!.healthGoals
-                            .map((goal) => _InfoChip(label: goal))
-                            .toList(),
-                      ),
-              ),
-              const SizedBox(height: 14),
-              _SectionCard(
-                title: 'Account Details',
-                child: Column(
-                  children: [
-                    _ProfileRow(
-                      label: 'Date of Birth',
-                      value: _formatDate(profile?.dateOfBirth),
-                    ),
-                    _ProfileRow(
-                      label: 'Profession',
-                      value: (profile?.profession ?? '').isEmpty
-                          ? 'Not provided'
-                          : profile!.profession!,
-                    ),
-                    _ProfileRow(
-                      label: 'Consent',
-                      value: profile?.consentAcceptedAt == null
-                          ? 'Pending'
-                          : 'Accepted on ${_formatDate(profile!.consentAcceptedAt)}',
-                    ),
-                    _ProfileRow(
-                      label: 'Onboarding',
-                      value: profile?.onboardingCompletedAt == null
-                          ? 'Incomplete'
-                          : 'Completed on ${_formatDate(profile!.onboardingCompletedAt)}',
-                    ),
-                    _ProfileRow(
-                      label: 'Last Login',
-                      value: _formatDate(profile?.lastLoginAt),
-                      showDivider: false,
-                    ),
-                  ],
                 ),
-              ),
-            ],
-          ],
-        ),
-      ),
-    );
-  }
-}
+                Switch(
+                  value: _darkMode,
+                  onChanged: (v) => setState(() => _darkMode = v),
+                  activeThumbColor: KinsuTheme.primary,
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(height: 16),
 
-class _ProfileMetricCard extends StatelessWidget {
-  final String label;
-  final String value;
-
-  const _ProfileMetricCard({required this.label, required this.value});
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(20),
-        border: Border.all(color: KinsuTheme.divider.withValues(alpha: 0.5)),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text(
-            label,
-            style:
-                const TextStyle(fontSize: 13, color: KinsuTheme.textSecondary),
+          // ── Health section ─────────────────────────────────────────
+          const _SectionLabel(label: 'Health'),
+          const SizedBox(height: 8),
+          _MenuTile(
+            icon: Icons.folder_outlined,
+            iconBg: KinsuTheme.primaryLight,
+            iconColor: KinsuTheme.primary,
+            title: 'My health records',
+            subtitle: 'Lab reports, prescriptions, imaging',
+            onTap: () => Navigator.push(
+              context,
+              MaterialPageRoute(builder: (_) => const UploadRecordScreen()),
+            ),
           ),
           const SizedBox(height: 8),
-          Text(
-            value,
-            style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w700),
+          _MenuTile(
+            icon: Icons.show_chart_rounded,
+            iconBg: const Color(0xFFF5F3FF),
+            iconColor: const Color(0xFF8B5CF6),
+            title: 'Vitals & tracking',
+            subtitle: 'Blood pressure, sugar, heart rate',
+            onTap: () => Navigator.push(
+              context,
+              MaterialPageRoute(builder: (_) => const VitalsTrendsScreen()),
+            ),
           ),
+          const SizedBox(height: 8),
+          _MenuTile(
+            icon: Icons.notifications_outlined,
+            iconBg: const Color(0xFFFFF3CD),
+            iconColor: const Color(0xFFB45309),
+            title: 'Reminder hub',
+            subtitle: 'Medication and appointment reminders',
+            onTap: () => Navigator.push(
+              context,
+              MaterialPageRoute(builder: (_) => const MedicationsListScreen()),
+            ),
+          ),
+          const SizedBox(height: 16),
+
+          // ── Account section ────────────────────────────────────────
+          const _SectionLabel(label: 'Account'),
+          const SizedBox(height: 8),
+          _MenuTile(
+            icon: Icons.privacy_tip_outlined,
+            iconBg: const Color(0xFFD1FAE5),
+            iconColor: const Color(0xFF047857),
+            title: 'Privacy & consent',
+            subtitle: 'Manage data sharing and consent',
+            onTap: () => ScaffoldMessenger.of(context).showSnackBar(
+              const SnackBar(content: Text('Privacy settings coming soon')),
+            ),
+          ),
+          const SizedBox(height: 8),
+          _MenuTile(
+            icon: Icons.health_and_safety_outlined,
+            iconBg: const Color(0xFFEFF6FF),
+            iconColor: const Color(0xFF3B82F6),
+            title: 'Connected apps',
+            subtitle: KinsuRoutes.healthConnect,
+            onTap: () => ScaffoldMessenger.of(context).showSnackBar(
+              const SnackBar(content: Text('Health Connect settings coming soon')),
+            ),
+          ),
+          const SizedBox(height: 16),
+
+          // ── Preferences section ────────────────────────────────────
+          const _SectionLabel(label: 'Preferences'),
+          const SizedBox(height: 8),
+          _MenuTile(
+            icon: Icons.settings_outlined,
+            iconBg: KinsuTheme.panel,
+            iconColor: KinsuTheme.textSecondary,
+            title: 'App settings',
+            subtitle: 'Notifications, language, units',
+            onTap: () => ScaffoldMessenger.of(context).showSnackBar(
+              const SnackBar(content: Text('App settings coming soon')),
+            ),
+          ),
+          const SizedBox(height: 16),
+
+          // ── Sign out ───────────────────────────────────────────────
+          OutlinedButton.icon(
+            onPressed: () async {
+              await FirebaseAuth.instance.signOut();
+              if (!context.mounted) return;
+              Navigator.of(context).popUntil((route) => route.isFirst);
+            },
+            icon: const Icon(Icons.logout, size: 18),
+            label: const Text('Sign out'),
+            style: OutlinedButton.styleFrom(
+              foregroundColor: KinsuTheme.destructive,
+              side: const BorderSide(color: KinsuTheme.destructive),
+              padding: const EdgeInsets.symmetric(vertical: 14),
+            ),
+          ),
+          const SizedBox(height: 16),
+
+          // ── DPDP notice ────────────────────────────────────────────
+          Container(
+            padding: const EdgeInsets.all(12),
+            decoration: BoxDecoration(
+              color: KinsuTheme.panel,
+              borderRadius: BorderRadius.circular(10),
+              border: Border.all(color: KinsuTheme.divider),
+            ),
+            child: const Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Icon(Icons.security_outlined,
+                    size: 16, color: KinsuTheme.textSecondary),
+                SizedBox(width: 8),
+                Expanded(
+                  child: Text(
+                    'Your data is protected under the DPDP Act 2023 (India). '
+                    'Kinsu Health stores and processes your health data securely. '
+                    'You may request data deletion at any time.',
+                    style: TextStyle(
+                      fontSize: 11,
+                      color: KinsuTheme.textSecondary,
+                      height: 1.4,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(height: 8),
         ],
       ),
     );
   }
 }
 
-class _SectionCard extends StatelessWidget {
-  final String title;
-  final Widget child;
+class _StatCard extends StatelessWidget {
+  final String label;
+  final String value;
 
-  const _SectionCard({required this.title, required this.child});
+  const _StatCard({required this.label, required this.value});
 
   @override
   Widget build(BuildContext context) {
     return Container(
-      padding: const EdgeInsets.all(18),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(24),
-        border: Border.all(color: KinsuTheme.divider.withValues(alpha: 0.5)),
-      ),
+      padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 8),
+      decoration: KinsuTheme.cardDecoration,
       child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Text(
-            title,
-            style: const TextStyle(fontSize: 17, fontWeight: FontWeight.w800),
+            value,
+            style: const TextStyle(
+              fontSize: 20,
+              fontWeight: FontWeight.w700,
+              color: KinsuTheme.primary,
+            ),
           ),
-          const SizedBox(height: 14),
-          child,
+          const SizedBox(height: 2),
+          Text(
+            label,
+            style: const TextStyle(
+              fontSize: 11,
+              color: KinsuTheme.textSecondary,
+            ),
+            textAlign: TextAlign.center,
+          ),
         ],
       ),
     );
   }
 }
 
-class _ProfileRow extends StatelessWidget {
+class _SectionLabel extends StatelessWidget {
   final String label;
-  final String value;
-  final bool showDivider;
 
-  const _ProfileRow({
-    required this.label,
-    required this.value,
-    this.showDivider = true,
+  const _SectionLabel({required this.label});
+
+  @override
+  Widget build(BuildContext context) {
+    return Text(
+      label.toUpperCase(),
+      style: const TextStyle(
+        fontSize: 11,
+        fontWeight: FontWeight.w700,
+        color: KinsuTheme.textSecondary,
+        letterSpacing: 1.2,
+      ),
+    );
+  }
+}
+
+class _MenuTile extends StatelessWidget {
+  final IconData icon;
+  final Color iconBg;
+  final Color iconColor;
+  final String title;
+  final String subtitle;
+  final VoidCallback onTap;
+
+  const _MenuTile({
+    required this.icon,
+    required this.iconBg,
+    required this.iconColor,
+    required this.title,
+    required this.subtitle,
+    required this.onTap,
   });
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.symmetric(vertical: 12),
-      decoration: BoxDecoration(
-        border: showDivider
-            ? Border(
-                bottom: BorderSide(
-                    color: KinsuTheme.divider.withValues(alpha: 0.5)),
-              )
-            : null,
-      ),
-      child: Row(
-        children: [
-          Expanded(
-            child: Text(
-              label,
-              style: const TextStyle(
-                  fontSize: 14, color: KinsuTheme.textSecondary),
-            ),
+    return Material(
+      color: Colors.transparent,
+      child: InkWell(
+        borderRadius: BorderRadius.circular(12),
+        onTap: onTap,
+        child: Container(
+          padding: const EdgeInsets.all(14),
+          decoration: KinsuTheme.cardDecoration,
+          child: Row(
+            children: [
+              Container(
+                width: 40,
+                height: 40,
+                decoration: BoxDecoration(
+                  color: iconBg,
+                  borderRadius: BorderRadius.circular(10),
+                ),
+                child: Icon(icon, color: iconColor, size: 20),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      title,
+                      style: const TextStyle(
+                        fontWeight: FontWeight.w600,
+                        color: KinsuTheme.textPrimary,
+                        fontSize: 14,
+                      ),
+                    ),
+                    const SizedBox(height: 2),
+                    Text(
+                      subtitle,
+                      style: const TextStyle(
+                        color: KinsuTheme.textSecondary,
+                        fontSize: 12,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              const Icon(Icons.chevron_right, color: KinsuTheme.textSecondary),
+            ],
           ),
-          const SizedBox(width: 12),
-          Flexible(
-            child: Text(
-              value,
-              textAlign: TextAlign.right,
-              style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w600),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-class _InfoChip extends StatelessWidget {
-  final String label;
-
-  const _InfoChip({required this.label});
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-      decoration: BoxDecoration(
-        color: KinsuTheme.primaryLight.withValues(alpha: 0.25),
-        borderRadius: BorderRadius.circular(999),
-      ),
-      child: Text(
-        label,
-        style: const TextStyle(
-          color: KinsuTheme.primary,
-          fontWeight: FontWeight.w600,
         ),
-      ),
-    );
-  }
-}
-
-class _InfoChipData {
-  final String label;
-
-  const _InfoChipData({required this.label});
-}
-
-class _ProfileErrorCard extends StatelessWidget {
-  final String message;
-  final Future<void> Function() onRetry;
-
-  const _ProfileErrorCard({required this.message, required this.onRetry});
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.all(16),
-      decoration: KinsuTheme.cardDecoration,
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          const Text(
-            'Unable to load profile',
-            style: TextStyle(fontWeight: FontWeight.w700),
-          ),
-          const SizedBox(height: 8),
-          Text(
-            message,
-            style: const TextStyle(color: KinsuTheme.textSecondary),
-          ),
-          const SizedBox(height: 12),
-          OutlinedButton(onPressed: onRetry, child: const Text('Retry')),
-        ],
       ),
     );
   }

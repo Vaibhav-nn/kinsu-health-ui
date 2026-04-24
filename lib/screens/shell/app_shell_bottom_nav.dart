@@ -1,186 +1,114 @@
 import 'package:flutter/material.dart';
-
 import '../../core/theme.dart';
 
+/// Kinsu bottom navigation bar — 5 positions: Home | Track | [FAB] | Vault | Family.
 class AppShellBottomNav extends StatelessWidget {
-  final int currentIndex;
+  final int currentIndex; // 0=Home, 1=Track, 2=Vault, 3=Family
   final ValueChanged<int> onTap;
-  final VoidCallback? onAddTap;
+  final VoidCallback onAddTap;
 
   const AppShellBottomNav({
     super.key,
     required this.currentIndex,
     required this.onTap,
-    this.onAddTap,
+    required this.onAddTap,
   });
-
-  static const _items = <_ShellNavItem>[
-    _ShellNavItem('HOME', Icons.home_outlined, Icons.home_rounded),
-    _ShellNavItem(
-      'TRACK',
-      Icons.insights_outlined,
-      Icons.insights_rounded,
-    ),
-    _ShellNavItem(
-      'VAULT',
-      Icons.folder_outlined,
-      Icons.folder_rounded,
-    ),
-    _ShellNavItem(
-      'AI',
-      Icons.auto_awesome_outlined,
-      Icons.auto_awesome_rounded,
-    ),
-  ];
 
   @override
   Widget build(BuildContext context) {
-    final bottomInset = MediaQuery.of(context).padding.bottom;
-    // 96px base gives 70px of inner content space — enough for all tab states
-    // on both mobile (bottomInset handled via padding) and web/Mac (bottomInset≈0).
-    final totalHeight = 96.0 + bottomInset;
-    return SizedBox(
-      height: totalHeight,
-      child: Stack(
-        alignment: Alignment.topCenter,
-        clipBehavior: Clip.none,
-        children: [
-          Positioned.fill(
-            top: 10,
-            child: Container(
-              padding: EdgeInsets.fromLTRB(14, 8, 14, 8 + bottomInset),
-              decoration: const BoxDecoration(
-                color: Colors.white,
-                border: Border(top: BorderSide(color: KinsuTheme.divider)),
-                borderRadius: BorderRadius.vertical(
-                  top: Radius.circular(28),
-                ),
-                boxShadow: [
-                  BoxShadow(
-                    color: Color(0x140F172A),
-                    blurRadius: 16,
-                    offset: Offset(0, -2),
-                  ),
-                ],
+    return Container(
+      decoration: const BoxDecoration(
+        color: Colors.white,
+        border: Border(
+          top: BorderSide(color: Color(0xFFE0DCD5), width: 1),
+        ),
+      ),
+      child: SafeArea(
+        top: false,
+        child: SizedBox(
+          height: 64,
+          child: Row(
+            mainAxisAlignment: MainAxisAlignment.spaceAround,
+            children: [
+              _NavItem(
+                icon: Icons.home_rounded,
+                label: 'Home',
+                isActive: currentIndex == 0,
+                onTap: () => onTap(0),
               ),
-              child: Row(
-                children: [
-                  Expanded(child: _buildItem(context, 0)),
-                  Expanded(child: _buildItem(context, 1)),
-                  const SizedBox(width: 78),
-                  Expanded(child: _buildItem(context, 2)),
-                  Expanded(child: _buildItem(context, 3)),
-                ],
+              _NavItem(
+                icon: Icons.show_chart_rounded,
+                label: 'Track',
+                isActive: currentIndex == 1,
+                onTap: () => onTap(1),
               ),
-            ),
+              // Center FAB — floats above the bar with a negative y-offset using Stack
+              _CenterFab(onTap: onAddTap),
+              _NavItem(
+                icon: Icons.lock_rounded,
+                label: 'Vault',
+                isActive: currentIndex == 2,
+                onTap: () => onTap(2),
+              ),
+              _NavItem(
+                icon: Icons.people_rounded,
+                label: 'Family',
+                isActive: currentIndex == 3,
+                onTap: () => onTap(3),
+              ),
+            ],
           ),
-          Positioned(
-            top: 6,
-            child: GestureDetector(
-              onTap: onAddTap,
-              child: Container(
-                width: 72,
-                height: 72,
-                decoration: BoxDecoration(
-                  color: KinsuTheme.primary,
-                  shape: BoxShape.circle,
-                  boxShadow: [
-                    BoxShadow(
-                      color: Colors.black.withValues(alpha: 0.12),
-                      blurRadius: 18,
-                      offset: const Offset(0, 4),
-                    ),
-                  ],
-                ),
-                child: const Icon(
-                  Icons.add_rounded,
-                  color: Colors.white,
-                  size: 38,
-                ),
-              ),
-            ),
-          ),
-        ],
+        ),
       ),
     );
   }
+}
 
-  Widget _buildItem(BuildContext context, int index) {
-    final item = _items[index];
-    final selected = index == currentIndex;
-    final isTrack = item.label == 'TRACK';
-    // Use compact layout for TRACK tab on all platforms — keeps height consistent
-    // and prevents overflow on web/Mac Chrome where the indicator adds extra pixels.
-    final compactTrack = isTrack && selected;
-    final color = isTrack
-        ? const Color(0xFF91A0B4)
-        : selected
-            ? KinsuTheme.primaryDark
-            : const Color(0xFF91A0B4);
-    final isVault = item.label == 'VAULT';
-    final iconData = selected ? item.activeIcon : item.icon;
+class _NavItem extends StatelessWidget {
+  final IconData icon;
+  final String label;
+  final bool isActive;
+  final VoidCallback onTap;
 
-    final iconWidget = isVault
-        ? SizedBox(
-            width: 32,
-            height: 30,
-            child: Stack(
-              clipBehavior: Clip.none,
-              children: [
-                Positioned(
-                  left: 0,
-                  top: 0,
-                  child: Icon(iconData, color: color, size: 28),
-                ),
-                Positioned(
-                  right: -1,
-                  bottom: -1,
-                  child: Icon(
-                    Icons.lock_outline_rounded,
-                    color: color,
-                    size: 12,
-                  ),
-                ),
-              ],
-            ),
-          )
-        : Icon(
-            iconData,
-            color: color,
-            size: compactTrack ? 26 : 28,
-          );
+  const _NavItem({
+    required this.icon,
+    required this.label,
+    required this.isActive,
+    required this.onTap,
+  });
 
-    return InkWell(
-      borderRadius: BorderRadius.circular(16),
-      onTap: () => onTap(index),
-      child: Padding(
-        padding: EdgeInsets.symmetric(vertical: compactTrack ? 4 : 6),
+  @override
+  Widget build(BuildContext context) {
+    return GestureDetector(
+      onTap: onTap,
+      behavior: HitTestBehavior.opaque,
+      child: SizedBox(
+        width: 64,
         child: Column(
-          mainAxisSize: MainAxisSize.min,
+          mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            iconWidget,
-            SizedBox(height: compactTrack ? 3 : 5),
-            Text(
-              item.label,
-              maxLines: 1,
-              style: TextStyle(
-                fontSize: isTrack ? (compactTrack ? 9.5 : 10) : 11,
-                fontWeight: FontWeight.w700,
-                color: color,
-                letterSpacing: isTrack ? (compactTrack ? 1.5 : 1.8) : 1.2,
+            AnimatedContainer(
+              duration: const Duration(milliseconds: 180),
+              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 5),
+              decoration: BoxDecoration(
+                color: isActive ? const Color(0xFFE1F0F8) : Colors.transparent,
+                borderRadius: BorderRadius.circular(20),
+              ),
+              child: Icon(
+                icon,
+                size: 22,
+                color: isActive ? KinsuTheme.primary : const Color(0xFFA7A6A3),
               ),
             ),
-            if (isTrack && selected) ...[
-              SizedBox(height: compactTrack ? 1 : 2),
-              Container(
-                width: compactTrack ? 38 : 42,
-                height: compactTrack ? 2 : 3,
-                decoration: BoxDecoration(
-                  color: const Color(0xFF3B82F6),
-                  borderRadius: BorderRadius.circular(2),
-                ),
+            const SizedBox(height: 2),
+            Text(
+              label,
+              style: TextStyle(
+                fontSize: 10,
+                fontWeight: isActive ? FontWeight.w600 : FontWeight.w400,
+                color: isActive ? const Color(0xFF309BD3) : const Color(0xFFA7A6A3),
               ),
-            ],
+            ),
           ],
         ),
       ),
@@ -188,10 +116,34 @@ class AppShellBottomNav extends StatelessWidget {
   }
 }
 
-class _ShellNavItem {
-  final String label;
-  final IconData icon;
-  final IconData activeIcon;
+class _CenterFab extends StatelessWidget {
+  final VoidCallback onTap;
 
-  const _ShellNavItem(this.label, this.icon, this.activeIcon);
+  const _CenterFab({required this.onTap});
+
+  @override
+  Widget build(BuildContext context) {
+    return Transform.translate(
+      offset: const Offset(0, -8),
+      child: GestureDetector(
+        onTap: onTap,
+        child: Container(
+          width: 56,
+          height: 56,
+          decoration: BoxDecoration(
+            color: const Color(0xFF309BD3),
+            shape: BoxShape.circle,
+            boxShadow: [
+              BoxShadow(
+                color: const Color(0xFF309BD3).withOpacity(0.4),
+                blurRadius: 12,
+                offset: const Offset(0, 4),
+              ),
+            ],
+          ),
+          child: const Icon(Icons.add, color: Colors.white, size: 28),
+        ),
+      ),
+    );
+  }
 }

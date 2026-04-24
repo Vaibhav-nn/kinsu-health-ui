@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:dio/dio.dart';
-import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
 
 import 'package:kinsu_health/models/home_models.dart';
@@ -26,33 +25,6 @@ import 'package:kinsu_health/services/reminders_service.dart';
 import 'package:kinsu_health/services/vault_service.dart';
 import 'package:kinsu_health/services/vitals_service.dart';
 
-/// Minimal go_router that wraps [MainShell] for unit tests.
-/// Uses 5 empty branches matching production branch indices.
-GoRouter _testShellRouter() => GoRouter(
-      initialLocation: '/',
-      routes: [
-        StatefulShellRoute.indexedStack(
-          builder: (context, state, shell) => MainShell(navigationShell: shell),
-          branches: [
-            StatefulShellBranch(routes: [
-              GoRoute(path: '/', builder: (_, __) => const SizedBox()),
-            ]),
-            StatefulShellBranch(routes: [
-              GoRoute(path: '/track', builder: (_, __) => const SizedBox()),
-            ]),
-            StatefulShellBranch(routes: [
-              GoRoute(path: '/vault', builder: (_, __) => const SizedBox()),
-            ]),
-            StatefulShellBranch(routes: [
-              GoRoute(path: '/family', builder: (_, __) => const SizedBox()),
-            ]),
-            StatefulShellBranch(routes: [
-              GoRoute(path: '/ai', builder: (_, __) => const SizedBox()),
-            ]),
-          ],
-        ),
-      ],
-    );
 
 Dio _testDio() {
   return Dio(
@@ -128,15 +100,16 @@ void main() {
         ChangeNotifierProvider(
             create: (_) => FamilyProvider(FamilyService(dio))),
       ],
-      child: MaterialApp.router(routerConfig: _testShellRouter()),
+      child: const MaterialApp(home: MainShell()),
     ));
 
     await tester.pump(const Duration(milliseconds: 100));
 
-    expect(find.text('HOME'), findsWidgets);
-    expect(find.text('VAULT'), findsWidgets);
-    expect(find.text('TRACK'), findsWidgets);
-    expect(find.text('AI'), findsWidgets);
+    // New 5-position nav: Home | Track | [FAB] | Vault | Family
+    expect(find.text('Home'), findsWidgets);
+    expect(find.text('Track'), findsWidgets);
+    expect(find.text('Vault'), findsWidgets);
+    expect(find.text('Family'), findsWidgets);
   });
 
   testWidgets('Vitals trends opens log vital screen',

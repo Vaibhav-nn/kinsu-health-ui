@@ -1,14 +1,13 @@
-import 'dart:math' as math;
-
 import 'package:flutter/material.dart';
-import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
+import 'package:fl_chart/fl_chart.dart';
 
-import '../../core/router.dart';
 import '../../core/theme.dart';
-import '../../models/vital.dart';
+import '../../providers/medications_provider.dart';
 import '../../providers/vitals_provider.dart';
-import '../../services/home_service.dart';
+import 'medications/medications_list_screen.dart';
+import 'vitals/vitals_trends_screen.dart';
+import 'symptoms/symptoms_list_screen.dart';
 
 class TrackHome extends StatefulWidget {
   const TrackHome({super.key});
@@ -18,306 +17,385 @@ class TrackHome extends StatefulWidget {
 }
 
 class _TrackHomeState extends State<TrackHome> {
-  String _displayName = 'there';
+  String _selectedMetric = 'BP'; // 'BP' or 'HR'
 
   @override
   void initState() {
     super.initState();
     WidgetsBinding.instance.addPostFrameCallback((_) {
+      context.read<MedicationsProvider>().loadMedications(isActive: true);
       context.read<VitalsProvider>().loadVitals();
-      _loadDisplayName();
     });
   }
 
-  Future<void> _loadDisplayName() async {
-    try {
-      final overview = await context.read<HomeService>().fetchOverview();
-      final raw = overview.profile.displayName.trim();
-      if (!mounted || raw.isEmpty) {
-        return;
-      }
-      setState(() {
-        _displayName = raw;
-      });
-    } catch (_) {
-      // Keep default fallback when profile endpoint is temporarily unavailable.
-    }
-  }
-
-  /// Returns entries of [type] from an **already-sorted** [vitals] list.
-  /// Callers must pass a list sorted by [VitalLog.recordedAt] ascending.
-  List<VitalLog> _entriesForType(List<VitalLog> sortedVitals, String type) {
-    final expectedType = _normalizeVitalType(type);
-    return sortedVitals
-        .where((item) => _normalizeVitalType(item.vitalType) == expectedType)
-        .toList();
-  }
-
-  String _normalizeVitalType(String value) {
-    return value.trim().toLowerCase().replaceAll(' ', '_');
-  }
-
-  String _formatNumber(double value) {
-    if ((value - value.roundToDouble()).abs() < 0.05) {
-      return value.round().toString();
-    }
-    return value.toStringAsFixed(1);
-  }
-
-  _TrendStat _buildTrendStat({
-    required List<VitalLog> vitals,
-    required String type,
-    required String label,
-    required String fallbackUnit,
-    required Color color,
-  }) {
-    final entries = _entriesForType(vitals, type);
-    if (entries.isEmpty) {
-      return _TrendStat(
-        label: label,
-        value: '--',
-        unit: fallbackUnit,
-        delta: '→ 0%',
-        color: color,
-      );
-    }
-
-    final latest = entries.last;
-    final displayValue = type == 'blood_pressure' &&
-            latest.valueSecondary != null
-        ? '${_formatNumber(latest.value)}/${_formatNumber(latest.valueSecondary!)}'
-        : _formatNumber(latest.value);
-
-    String delta = '→ 0%';
-    if (entries.length >= 2) {
-      final prev = entries[entries.length - 2].value;
-      if (prev.abs() > 0.001) {
-        final pct = ((latest.value - prev) / prev) * 100;
-        if (pct.abs() >= 0.1) {
-          delta = '${pct > 0 ? '↑' : '↓'} ${pct.abs().round()}%';
-        }
-      }
-    }
-
-    return _TrendStat(
-      label: label,
-      value: displayValue,
-      unit: latest.unit.trim().isEmpty ? fallbackUnit : latest.unit,
-      delta: delta,
-      color: color,
-    );
-  }
-
-  String _latestInsightBody(List<VitalLog> vitals) {
-    if (vitals.isEmpty) {
-      return 'Start logging vitals to unlock your latest trend insights.';
-    }
-
-    // vitals is expected to be pre-sorted ascending; latest is therefore last.
-    final latest = vitals.last;
-    final label = latest.vitalType.trim().replaceAll('_', ' ');
-    final titleCase = label
-        .split(' ')
-        .where((part) => part.isNotEmpty)
-        .map((part) => '${part[0].toUpperCase()}${part.substring(1)}')
-        .join(' ');
-    final value = latest.valueSecondary != null
-        ? '${_formatNumber(latest.value)}/${_formatNumber(latest.valueSecondary!)}'
-        : _formatNumber(latest.value);
-    return 'Latest saved: $titleCase $value ${latest.unit} at '
-        '${latest.recordedAt.hour.toString().padLeft(2, '0')}:${latest.recordedAt.minute.toString().padLeft(2, '0')}.';
+  String _greeting() {
+    final hour = DateTime.now().hour;
+    if (hour < 12) return 'Good morning';
+    if (hour < 17) return 'Good afternoon';
+    return 'Good evening';
   }
 
   @override
   Widget build(BuildContext context) {
+    final medsProvider = context.watch<MedicationsProvider>();
     final vitalsProvider = context.watch<VitalsProvider>();
 
-    // Sort once per build so all helpers receive a pre-sorted list and
-    // don't need to re-sort internally (avoids O(n log n) × number of callers).
-    final sortedVitals = [...vitalsProvider.vitals]
+    final activeMeds = medsProvider.medications.where((m) => m.isActive).toList();
+    final takenCount = 0; // no local taken state in track screen
+    final firstName = 'there'; // simplified — no auth provider needed here
+
+    // Build weekly vitals data
+    final now = DateTime.now();
+    final weekAgo = now.subtract(const Duration(days: 7));
+    final vitalType = _selectedMetric == 'BP' ? 'blood_pressure' : 'heart_rate';
+    final weeklyVitals = vitalsProvider.vitals
+        .where((v) => v.vitalType == vitalType && v.recordedAt.isAfter(weekAgo))
+        .toList()
       ..sort((a, b) => a.recordedAt.compareTo(b.recordedAt));
 
-    final bp = _buildTrendStat(
-      vitals: sortedVitals,
-      type: 'blood_pressure',
-      label: 'BP',
-      fallbackUnit: 'mmHg',
-      color: const Color(0xFFDC6C5C),
-    );
+    // Build 7-day sparkline spots
+    final List<FlSpot> spots = [];
+    for (int i = 0; i < 7; i++) {
+      final day = weekAgo.add(Duration(days: i));
+      final dayVitals = weeklyVitals.where((v) {
+        return v.recordedAt.year == day.year &&
+            v.recordedAt.month == day.month &&
+            v.recordedAt.day == day.day;
+      }).toList();
+      if (dayVitals.isNotEmpty) {
+        final avg = dayVitals.map((v) => v.value).reduce((a, b) => a + b) / dayVitals.length;
+        spots.add(FlSpot(i.toDouble(), avg));
+      }
+    }
+    final hasChartData = spots.isNotEmpty;
 
-    final hr = _buildTrendStat(
-      vitals: sortedVitals,
-      type: 'heart_rate',
-      label: 'HR',
-      fallbackUnit: 'bpm',
-      color: const Color(0xFF0F9A96),
-    );
-
-    final hrEntries = _entriesForType(sortedVitals, 'heart_rate');
-    final chartValues = hrEntries.isEmpty
-        ? const [70.0, 74.0, 73.0, 82.0, 79.0, 76.0, 84.0]
-        : hrEntries
-            .skip(math.max(0, hrEntries.length - 7))
-            .map((item) => item.value)
-            .toList();
+    // Adherence copy
+    String adherenceCopy;
+    if (activeMeds.isNotEmpty && takenCount > 0) {
+      adherenceCopy = "You've taken $takenCount medicines today — nice work.";
+    } else if (weeklyVitals.isNotEmpty) {
+      adherenceCopy = "Your vitals are being tracked — stay consistent.";
+    } else {
+      adherenceCopy = "Start logging your vitals and meds to build insights.";
+    }
 
     return Scaffold(
       backgroundColor: KinsuTheme.background,
       body: SafeArea(
         child: ListView(
-          padding: const EdgeInsets.fromLTRB(20, 12, 20, 30),
+          padding: const EdgeInsets.fromLTRB(16, 14, 16, 24),
           children: [
+            // ── Top bar ──────────────────────────────────────
+            Row(
+              children: [
+                const Icon(Icons.chevron_left, color: KinsuTheme.textSecondary),
+                const SizedBox(width: 4),
+                const Text(
+                  'Track',
+                  style: TextStyle(
+                    fontSize: 18,
+                    fontWeight: FontWeight.w700,
+                    color: KinsuTheme.primary,
+                  ),
+                ),
+                const Spacer(),
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                  decoration: BoxDecoration(
+                    color: KinsuTheme.primaryLight,
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                  child: const Text(
+                    'Today',
+                    style: TextStyle(
+                      fontSize: 12,
+                      color: KinsuTheme.primary,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 16),
+
+            // ── Daily Overview label ───────────────────────────
             const Text(
               'DAILY OVERVIEW',
               style: TextStyle(
-                fontSize: 10,
-                fontWeight: FontWeight.w800,
+                fontSize: 11,
                 color: KinsuTheme.primary,
-                letterSpacing: 1.1,
-              ),
-            ),
-            const SizedBox(height: 10),
-            Text(
-              'Good morning, $_displayName.',
-              style: const TextStyle(
-                fontSize: 28,
-                fontWeight: FontWeight.w800,
-                height: 1.0,
-                color: KinsuTheme.textPrimary,
+                letterSpacing: 1.2,
+                fontWeight: FontWeight.w700,
               ),
             ),
             const SizedBox(height: 8),
-            const Text(
-              'Your wellness markers are stable today. Take a moment to log your morning vitals.',
-              style: TextStyle(
-                color: KinsuTheme.textSecondary,
+
+            // ── Greeting ──────────────────────────────────────
+            Text(
+              '${_greeting()}, $firstName.',
+              style: const TextStyle(
+                fontSize: 24,
+                fontWeight: FontWeight.w700,
+                color: KinsuTheme.textPrimary,
+              ),
+            ),
+            const SizedBox(height: 4),
+            Text(
+              adherenceCopy,
+              style: const TextStyle(
                 fontSize: 14,
-                height: 1.35,
+                color: KinsuTheme.textSecondary,
               ),
             ),
             const SizedBox(height: 18),
+
+            // ── Vitality Metrics card ──────────────────────────
             Container(
-              padding: const EdgeInsets.all(18),
-              decoration: BoxDecoration(
-                color: const Color(0xFFF6F8F8),
-                borderRadius: BorderRadius.circular(26),
-                border: Border.all(color: KinsuTheme.divider),
-              ),
+              decoration: KinsuTheme.cardDecoration,
+              padding: const EdgeInsets.all(16),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Row(
                     children: [
                       Container(
-                        padding: const EdgeInsets.symmetric(
-                            horizontal: 8, vertical: 4),
+                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
                         decoration: BoxDecoration(
-                          color: KinsuTheme.primaryLight,
-                          borderRadius: BorderRadius.circular(999),
+                          color: KinsuTheme.statusWarning.withValues(alpha: 0.12),
+                          borderRadius: BorderRadius.circular(6),
                         ),
                         child: const Text(
-                          'VITALS',
+                          'INSIGHT',
                           style: TextStyle(
                             fontSize: 10,
-                            fontWeight: FontWeight.w800,
-                            color: KinsuTheme.primaryDark,
+                            fontWeight: FontWeight.w700,
+                            color: KinsuTheme.statusWarning,
                             letterSpacing: 0.8,
                           ),
                         ),
                       ),
-                      const SizedBox(width: 10),
+                      const SizedBox(width: 8),
                       const Expanded(
                         child: Text(
                           'Vitality Metrics',
                           style: TextStyle(
-                            fontSize: 19,
-                            fontWeight: FontWeight.w800,
-                            height: 1.1,
+                            fontSize: 14,
+                            fontWeight: FontWeight.w700,
                           ),
                         ),
                       ),
-                      _TrendChip(stat: bp),
+                      _MetricChip(
+                        label: 'BP',
+                        isSelected: _selectedMetric == 'BP',
+                        onTap: () => setState(() => _selectedMetric = 'BP'),
+                      ),
                       const SizedBox(width: 6),
-                      _TrendChip(stat: hr),
+                      _MetricChip(
+                        label: 'HR',
+                        isSelected: _selectedMetric == 'HR',
+                        onTap: () => setState(() => _selectedMetric = 'HR'),
+                      ),
                     ],
                   ),
                   const SizedBox(height: 16),
-                  SizedBox(height: 128, child: _Sparkline(values: chartValues)),
-                  const SizedBox(height: 8),
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceAround,
-                    children:
-                        const ['MON', 'TUE', 'WED', 'THU', 'FRI', 'SAT', 'SUN']
-                            .map(
-                              (label) => Text(
-                                label,
-                                style: TextStyle(
-                                  color: KinsuTheme.textSecondary,
-                                  fontSize: 11,
-                                  fontWeight: FontWeight.w700,
+                  SizedBox(
+                    height: 120,
+                    child: hasChartData
+                        ? LineChart(
+                            LineChartData(
+                              minX: 0,
+                              maxX: 6,
+                              minY: spots.map((s) => s.y).reduce((a, b) => a < b ? a : b) - 10,
+                              maxY: spots.map((s) => s.y).reduce((a, b) => a > b ? a : b) + 10,
+                              gridData: const FlGridData(show: false),
+                              borderData: FlBorderData(show: false),
+                              titlesData: FlTitlesData(
+                                leftTitles: const AxisTitles(sideTitles: SideTitles(showTitles: false)),
+                                rightTitles: const AxisTitles(sideTitles: SideTitles(showTitles: false)),
+                                topTitles: const AxisTitles(sideTitles: SideTitles(showTitles: false)),
+                                bottomTitles: AxisTitles(
+                                  sideTitles: SideTitles(
+                                    showTitles: true,
+                                    getTitlesWidget: (value, meta) {
+                                      const labels = ['MON', 'TUE', 'WED', 'THU', 'FRI', 'SAT', 'SUN'];
+                                      final idx = value.round();
+                                      if (idx < 0 || idx > 6) return const SizedBox.shrink();
+                                      return Text(
+                                        labels[idx],
+                                        style: const TextStyle(
+                                          fontSize: 8,
+                                          color: KinsuTheme.textSecondary,
+                                        ),
+                                      );
+                                    },
+                                    reservedSize: 20,
+                                  ),
                                 ),
                               ),
-                            )
-                            .toList(),
+                              lineBarsData: [
+                                LineChartBarData(
+                                  spots: spots,
+                                  isCurved: true,
+                                  color: KinsuTheme.primary,
+                                  barWidth: 2.5,
+                                  dotData: const FlDotData(show: false),
+                                  belowBarData: BarAreaData(
+                                    show: true,
+                                    color: KinsuTheme.primary.withValues(alpha: 0.08),
+                                  ),
+                                ),
+                              ],
+                            ),
+                          )
+                        : Column(
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            children: [
+                              _DashedLine(),
+                              const SizedBox(height: 8),
+                              const Text(
+                                'No data this week. Start logging vitals.',
+                                style: TextStyle(
+                                  fontSize: 12,
+                                  color: KinsuTheme.textSecondary,
+                                ),
+                              ),
+                            ],
+                          ),
                   ),
+                  const SizedBox(height: 4),
+                  if (!hasChartData)
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceAround,
+                      children: const [
+                        Text('MON', style: TextStyle(fontSize: 8, color: KinsuTheme.textSecondary)),
+                        Text('TUE', style: TextStyle(fontSize: 8, color: KinsuTheme.textSecondary)),
+                        Text('WED', style: TextStyle(fontSize: 8, color: KinsuTheme.textSecondary)),
+                        Text('THU', style: TextStyle(fontSize: 8, color: KinsuTheme.textSecondary)),
+                        Text('FRI', style: TextStyle(fontSize: 8, color: KinsuTheme.textSecondary)),
+                        Text('SAT', style: TextStyle(fontSize: 8, color: KinsuTheme.textSecondary)),
+                        Text('SUN', style: TextStyle(fontSize: 8, color: KinsuTheme.textSecondary)),
+                      ],
+                    ),
                 ],
               ),
             ),
             const SizedBox(height: 16),
+
+            // ── Quick action tiles ─────────────────────────────
             Row(
               children: [
                 Expanded(
-                  child: _ActionTile(
+                  child: _QuickActionTile(
                     icon: Icons.monitor_heart_outlined,
                     label: 'Log Vitals',
-                    iconBg: const Color(0xFFE8F5F7),
-                    iconColor: const Color(0xFF3D7281),
-                    onTap: () => context.push(KinsuRoutes.vitalLog),
+                    bg: KinsuTheme.primaryLight,
+                    color: KinsuTheme.primary,
+                    onTap: () => Navigator.push(
+                      context,
+                      MaterialPageRoute(builder: (_) => const VitalsTrendsScreen()),
+                    ),
                   ),
                 ),
-                const SizedBox(width: 10),
+                const SizedBox(width: 8),
                 Expanded(
-                  child: _ActionTile(
+                  child: _QuickActionTile(
                     icon: Icons.medication_outlined,
                     label: 'Log Meds',
-                    iconBg: const Color(0xFFF7EFC8),
-                    iconColor: const Color(0xFF7D7418),
-                    onTap: () => context.push(KinsuRoutes.medicationsAdd),
+                    bg: KinsuTheme.accent.withValues(alpha: 0.25),
+                    color: const Color(0xFFB45309),
+                    onTap: () => Navigator.push(
+                      context,
+                      MaterialPageRoute(builder: (_) => const MedicationsListScreen()),
+                    ),
                   ),
                 ),
-                const SizedBox(width: 10),
+                const SizedBox(width: 8),
                 Expanded(
-                  child: _ActionTile(
-                    icon: Icons.bolt_rounded,
-                    label: 'Log Symptoms',
-                    iconBg: const Color(0xFFE6F5E4),
-                    iconColor: const Color(0xFF648932),
-                    highlight: true,
-                    onTap: () => context.push(KinsuRoutes.symptomsQuick),
+                  child: _QuickActionTile(
+                    icon: Icons.sick_outlined,
+                    label: 'Symptoms',
+                    bg: KinsuTheme.success.withValues(alpha: 0.12),
+                    color: KinsuTheme.success,
+                    onTap: () => Navigator.push(
+                      context,
+                      MaterialPageRoute(builder: (_) => const SymptomsListScreen()),
+                    ),
                   ),
                 ),
               ],
             ),
-            const SizedBox(height: 14),
-            const _InsightRow(
-              icon: Icons.lightbulb_outline_rounded,
-              title: 'Weekly Wellness Tip',
-              body:
-                  'Increasing your hydration by just 500ml daily can significantly improve your morning vital readings.',
-              accent: Color(0xFF5AA5AD),
+            const SizedBox(height: 16),
+
+            // ── Weekly Wellness Tip ────────────────────────────
+            Container(
+              padding: const EdgeInsets.all(16),
+              decoration: BoxDecoration(
+                color: KinsuTheme.primary,
+                borderRadius: BorderRadius.circular(16),
+              ),
+              child: Row(
+                children: [
+                  Container(
+                    width: 56,
+                    height: 56,
+                    decoration: BoxDecoration(
+                      color: Colors.white.withValues(alpha: 0.18),
+                      borderRadius: BorderRadius.circular(14),
+                    ),
+                    child: const Icon(Icons.water_drop, color: Colors.white, size: 28),
+                  ),
+                  const SizedBox(width: 14),
+                  const Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          'Weekly Wellness Tip',
+                          style: TextStyle(
+                            color: Colors.white70,
+                            fontSize: 11,
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
+                        SizedBox(height: 4),
+                        Text(
+                          'Stay hydrated — aim for 8 glasses of water daily to support heart health.',
+                          style: TextStyle(
+                            color: Colors.white,
+                            fontSize: 13,
+                            height: 1.4,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
             ),
-            const SizedBox(height: 12),
-            GestureDetector(
-              onTap: () => context.push(KinsuRoutes.vitals),
-              child: _InsightRow(
-                icon: Icons.history_rounded,
-                title: 'Last Saved Vitals',
-                body: _latestInsightBody(sortedVitals),
-                accent: Color(0xFF8B5CF6),
-                trailing: const Icon(
-                  Icons.chevron_right_rounded,
-                  color: KinsuTheme.textSecondary,
-                ),
+            const SizedBox(height: 10),
+
+            // ── Community Insight card ──────────────────────────
+            Container(
+              padding: const EdgeInsets.all(16),
+              decoration: BoxDecoration(
+                color: const Color(0xFF1A1C1E),
+                borderRadius: BorderRadius.circular(16),
+              ),
+              child: const Row(
+                children: [
+                  Icon(Icons.nightlight_round, color: Colors.white60, size: 24),
+                  SizedBox(width: 12),
+                  Expanded(
+                    child: Text(
+                      'Good sleep improves medication effectiveness by up to 20%.',
+                      style: TextStyle(
+                        color: Colors.white70,
+                        fontSize: 13,
+                        height: 1.4,
+                      ),
+                    ),
+                  ),
+                ],
               ),
             ),
           ],
@@ -327,58 +405,81 @@ class _TrackHomeState extends State<TrackHome> {
   }
 }
 
-class _ActionTile extends StatelessWidget {
-  final IconData icon;
+class _MetricChip extends StatelessWidget {
   final String label;
-  final Color iconBg;
-  final Color iconColor;
-  final bool highlight;
+  final bool isSelected;
   final VoidCallback onTap;
 
-  const _ActionTile({
-    required this.icon,
+  const _MetricChip({
     required this.label,
-    required this.iconBg,
-    required this.iconColor,
-    this.highlight = false,
+    required this.isSelected,
     required this.onTap,
   });
 
   @override
   Widget build(BuildContext context) {
-    return InkWell(
+    return GestureDetector(
       onTap: onTap,
-      borderRadius: BorderRadius.circular(18),
       child: Container(
-        constraints: const BoxConstraints(minHeight: 158),
-        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 16),
+        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
         decoration: BoxDecoration(
-          color: highlight ? const Color(0xFFECF6D8) : Colors.white,
-          borderRadius: BorderRadius.circular(18),
-          border: Border.all(color: KinsuTheme.divider),
+          color: isSelected ? KinsuTheme.primary : KinsuTheme.panel,
+          borderRadius: BorderRadius.circular(8),
         ),
+        child: Text(
+          label,
+          style: TextStyle(
+            fontSize: 11,
+            fontWeight: FontWeight.w600,
+            color: isSelected ? Colors.white : KinsuTheme.textSecondary,
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _QuickActionTile extends StatelessWidget {
+  final IconData icon;
+  final String label;
+  final Color bg;
+  final Color color;
+  final VoidCallback onTap;
+
+  const _QuickActionTile({
+    required this.icon,
+    required this.label,
+    required this.bg,
+    required this.color,
+    required this.onTap,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return GestureDetector(
+      onTap: onTap,
+      child: Container(
+        padding: const EdgeInsets.all(12),
+        decoration: KinsuTheme.cardDecoration,
         child: Column(
-          mainAxisAlignment: MainAxisAlignment.spaceEvenly,
           children: [
             Container(
-              width: 52,
-              height: 52,
+              width: 42,
+              height: 42,
               decoration: BoxDecoration(
-                color: iconBg,
-                borderRadius: BorderRadius.circular(16),
+                color: bg,
+                borderRadius: BorderRadius.circular(12),
               ),
-              child: Icon(icon, color: iconColor, size: 25),
+              child: Icon(icon, color: color, size: 20),
             ),
-            const SizedBox(height: 10),
+            const SizedBox(height: 8),
             Text(
               label,
               textAlign: TextAlign.center,
-              maxLines: 2,
-              overflow: TextOverflow.ellipsis,
               style: const TextStyle(
-                fontSize: 13,
-                fontWeight: FontWeight.w700,
-                height: 1.2,
+                fontSize: 11,
+                fontWeight: FontWeight.w600,
+                color: KinsuTheme.textPrimary,
               ),
             ),
           ],
@@ -388,198 +489,37 @@ class _ActionTile extends StatelessWidget {
   }
 }
 
-class _TrendChip extends StatelessWidget {
-  final _TrendStat stat;
-
-  const _TrendChip({required this.stat});
-
+class _DashedLine extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-      decoration: BoxDecoration(
-        color: stat.color.withValues(alpha: 0.16),
-        borderRadius: BorderRadius.circular(999),
-      ),
-      child: Text(
-        stat.label,
-        style: TextStyle(
-          color: stat.color,
-          fontWeight: FontWeight.w700,
-          fontSize: 12,
-        ),
+    return SizedBox(
+      height: 60,
+      child: CustomPaint(
+        painter: _DashedLinePainter(),
+        size: const Size(double.infinity, 60),
       ),
     );
   }
 }
 
-class _InsightRow extends StatelessWidget {
-  final IconData icon;
-  final String title;
-  final String body;
-  final Color accent;
-  final Widget? trailing;
-
-  const _InsightRow({
-    required this.icon,
-    required this.title,
-    required this.body,
-    required this.accent,
-    this.trailing,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(18),
-        border: Border.all(color: KinsuTheme.divider),
-      ),
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.center,
-        children: [
-          Container(
-            width: 52,
-            height: 52,
-            decoration: BoxDecoration(
-              color: accent.withValues(alpha: 0.2),
-              borderRadius: BorderRadius.circular(14),
-            ),
-            child: Icon(icon, color: KinsuTheme.primaryDark),
-          ),
-          const SizedBox(width: 12),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  title,
-                  style: const TextStyle(
-                    fontSize: 16,
-                    fontWeight: FontWeight.w800,
-                    height: 1.1,
-                  ),
-                ),
-                const SizedBox(height: 6),
-                Text(
-                  body,
-                  style: const TextStyle(
-                    fontSize: 14,
-                    color: KinsuTheme.textSecondary,
-                    height: 1.4,
-                  ),
-                ),
-              ],
-            ),
-          ),
-          if (trailing != null) ...[
-            const SizedBox(width: 8),
-            trailing!,
-          ],
-        ],
-      ),
-    );
-  }
-}
-
-class _Sparkline extends StatelessWidget {
-  final List<double> values;
-
-  const _Sparkline({required this.values});
-
-  @override
-  Widget build(BuildContext context) {
-    return CustomPaint(
-      painter: _SparklinePainter(values),
-      child: const SizedBox.expand(),
-    );
-  }
-}
-
-class _SparklinePainter extends CustomPainter {
-  final List<double> values;
-
-  _SparklinePainter(this.values);
-
+class _DashedLinePainter extends CustomPainter {
   @override
   void paint(Canvas canvas, Size size) {
-    if (values.isEmpty) {
-      return;
-    }
+    final paint = Paint()
+      ..color = KinsuTheme.divider
+      ..strokeWidth = 1.5
+      ..style = PaintingStyle.stroke;
 
-    final minValue = values.reduce(math.min);
-    final maxValue = values.reduce(math.max);
-    final spread =
-        (maxValue - minValue).abs() < 0.001 ? 1.0 : maxValue - minValue;
-
-    final linePaint = Paint()
-      ..color = KinsuTheme.primaryDark
-      ..strokeWidth = 3
-      ..style = PaintingStyle.stroke
-      ..strokeCap = StrokeCap.round;
-
-    final fillPaint = Paint()
-      ..shader = const LinearGradient(
-        begin: Alignment.topCenter,
-        end: Alignment.bottomCenter,
-        colors: [Color(0x33149C97), Color(0x00149C97)],
-      ).createShader(Rect.fromLTWH(0, 0, size.width, size.height));
-
-    final path = Path();
-    final fillPath = Path();
-
-    for (var i = 0; i < values.length; i++) {
-      final x = (size.width - 24) * (i / math.max(values.length - 1, 1)) + 12;
-      final normalized = (values[i] - minValue) / spread;
-      final y = (size.height - 12) - (normalized * (size.height - 46));
-
-      if (i == 0) {
-        path.moveTo(x, y);
-        fillPath.moveTo(x, size.height - 2);
-        fillPath.lineTo(x, y);
-      } else {
-        path.lineTo(x, y);
-        fillPath.lineTo(x, y);
-      }
-    }
-
-    final lastX = (size.width - 24) + 12;
-    fillPath.lineTo(lastX, size.height - 2);
-    fillPath.close();
-
-    canvas.drawPath(fillPath, fillPaint);
-    canvas.drawPath(path, linePaint);
-
-    final dotPaint = Paint()..color = KinsuTheme.primaryDark;
-    for (var i = 0; i < values.length; i++) {
-      final x = (size.width - 24) * (i / math.max(values.length - 1, 1)) + 12;
-      final normalized = (values[i] - minValue) / spread;
-      final y = (size.height - 12) - (normalized * (size.height - 46));
-      canvas.drawCircle(Offset(x, y), 4.5, dotPaint);
-      canvas.drawCircle(Offset(x, y), 2, Paint()..color = Colors.white);
+    const dashWidth = 6.0;
+    const dashSpace = 4.0;
+    double startX = 0;
+    final y = size.height / 2;
+    while (startX < size.width) {
+      canvas.drawLine(Offset(startX, y), Offset(startX + dashWidth, y), paint);
+      startX += dashWidth + dashSpace;
     }
   }
 
   @override
-  bool shouldRepaint(covariant _SparklinePainter oldDelegate) {
-    return oldDelegate.values != values;
-  }
-}
-
-class _TrendStat {
-  final String label;
-  final String value;
-  final String unit;
-  final String delta;
-  final Color color;
-
-  const _TrendStat({
-    required this.label,
-    required this.value,
-    required this.unit,
-    required this.delta,
-    required this.color,
-  });
+  bool shouldRepaint(covariant CustomPainter oldDelegate) => false;
 }

@@ -1,7 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:go_router/go_router.dart';
 
-import '../../../core/router.dart';
 import '../../../screens/shell/app_shell_bottom_nav.dart';
 import '../medications/add_medication_screen.dart';
 import '../reminders/add_reminder_screen.dart';
@@ -43,15 +41,8 @@ class TrackFlowBottomNav extends StatelessWidget {
 
   void _navigateToRoot(BuildContext context, int index) {
     if (index == _selectedRootIndex()) return;
-
-    // Map 4-tab mobile nav index to route path.
-    const routes = [
-      KinsuRoutes.home,
-      KinsuRoutes.track,
-      KinsuRoutes.vault,
-      KinsuRoutes.ai,
-    ];
-    context.go(routes[index]);
+    // Pop back to the main shell (IndexedStack root).
+    Navigator.of(context).popUntil((route) => route.isFirst);
   }
 
   void _openAddMenu(BuildContext context) {

@@ -1,12 +1,11 @@
 import 'package:dio/dio.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
-import 'package:go_router/go_router.dart';
 
 import '../../core/constants.dart';
 import '../../core/network/dio_client.dart';
-import '../../core/router.dart';
 import '../../models/user_profile.dart';
+import '../../screens/shell/main_shell.dart';
 import '../../services/auth_service.dart';
 import 'auth_flow.dart';
 import 'profile_setup_flow.dart';
@@ -137,13 +136,8 @@ class _AuthGateState extends State<AuthGate> {
               );
             }
 
-            // Profile is complete — let go_router take over navigation.
-            WidgetsBinding.instance.addPostFrameCallback((_) {
-              if (mounted) context.go(KinsuRoutes.home);
-            });
-            return const Scaffold(
-              body: Center(child: CircularProgressIndicator()),
-            );
+            // Profile is complete — go to the main shell.
+            return const MainShell();
           },
         );
       },

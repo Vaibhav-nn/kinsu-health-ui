@@ -1,212 +1,184 @@
-import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
-import 'package:go_router/go_router.dart';
-
-import '../../core/router.dart';
+import '../ai/ai_screen.dart';
+import '../family/family_screen.dart';
+import '../home/home_screen.dart';
+import '../track/track_home.dart';
+import '../vault_screen.dart';
 import '../../core/theme.dart';
-import '../track/medications/add_medication_screen.dart';
-import '../track/reminders/add_reminder_screen.dart';
-import '../track/symptoms/quick_symptom_log_screen.dart';
-import '../track/vitals/log_vital_screen.dart';
-import 'app_shell_bottom_nav.dart';
-import 'app_shell_web_nav.dart';
 
-/// Main app shell — driven by go_router's [StatefulNavigationShell].
-///
-/// Layout rules:
-///   < 900 px  — 4-tab bottom nav + centre FAB (Home, Track, Vault, AI).
-///   ≥ 900 px  — 5-tab left sidebar (adds Family between Vault and AI).
-///
-/// Branch indices (see [_Branch] in router.dart):
-///   0 Home  1 Track  2 Vault  3 Family  4 AI
+/// Main app shell with bottom navigation bar — 5 positions with center FAB.
+/// Positions: Home | Track | [+ FAB] | Vault | Family
 class MainShell extends StatefulWidget {
-  final StatefulNavigationShell navigationShell;
-
-  const MainShell({super.key, required this.navigationShell});
+  const MainShell({super.key});
 
   @override
   State<MainShell> createState() => _MainShellState();
 }
 
 class _MainShellState extends State<MainShell> {
-  bool _isDesktopWeb(BuildContext context) =>
-      kIsWeb && MediaQuery.of(context).size.width >= 900;
+  // 0=Home, 1=Track, 2=Vault, 3=Family, 4=AI (no nav tab)
+  int _currentIndex = 0;
 
-  // ── Navigation helpers ──────────────────────────────────────────────────
+  final List<Widget> _pages = [
+    const HomeScreen(),
+    const TrackHome(),
+    const VaultScreen(),
+    const FamilyScreen(),
+    const AiScreen(),
+  ];
 
-  void _goBranch(int branchIndex) {
-    widget.navigationShell.goBranch(
-      branchIndex,
-      // If already on this branch, navigate to its initial location
-      // (i.e. pop all sub-routes in that branch).
-      initialLocation: branchIndex == widget.navigationShell.currentIndex,
+  void _navigateToAI() {
+    setState(() => _currentIndex = 4);
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      body: IndexedStack(
+        index: _currentIndex,
+        children: _pages,
+      ),
+      bottomNavigationBar: _KinsuBottomNav(
+        currentIndex: _currentIndex,
+        onTap: (index) => setState(() => _currentIndex = index),
+        onFabTap: _navigateToAI,
+      ),
     );
   }
+}
 
-  void _onMobileNavTap(int navIndex) {
-    _goBranch(mobileNavToBranch(navIndex));
-  }
+class _KinsuBottomNav extends StatelessWidget {
+  final int currentIndex;
+  final ValueChanged<int> onTap;
+  final VoidCallback onFabTap;
 
-  // ── Quick-add bottom sheet ──────────────────────────────────────────────
+  const _KinsuBottomNav({
+    required this.currentIndex,
+    required this.onTap,
+    required this.onFabTap,
+  });
 
-  void _openAddMenu() {
-    showModalBottomSheet<void>(
-      context: context,
-      isScrollControlled: true,
-      backgroundColor: Colors.transparent,
-      builder: (sheetContext) {
-        return SafeArea(
-          child: SingleChildScrollView(
-            child: Container(
-              margin: const EdgeInsets.fromLTRB(16, 0, 16, 16),
-              padding: const EdgeInsets.fromLTRB(16, 16, 16, 8),
-              decoration: BoxDecoration(
-                color: Colors.white,
-                borderRadius: BorderRadius.circular(24),
-              ),
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  const Text(
-                    'Quick Add',
-                    style: TextStyle(fontSize: 20, fontWeight: FontWeight.w800),
-                  ),
-                  const SizedBox(height: 8),
-                  _addActionTile(
-                    icon: Icons.monitor_heart_outlined,
-                    label: 'Log Vitals',
-                    onTap: () {
-                      Navigator.of(sheetContext).pop();
-                      Navigator.of(context, rootNavigator: true).push(
-                        MaterialPageRoute(
-                            builder: (_) => const LogVitalScreen()),
-                      );
-                    },
-                  ),
-                  _addActionTile(
-                    icon: Icons.medication_outlined,
-                    label: 'Log Medicine',
-                    onTap: () {
-                      Navigator.of(sheetContext).pop();
-                      Navigator.of(context, rootNavigator: true).push(
-                        MaterialPageRoute(
-                            builder: (_) => const AddMedicationScreen()),
-                      );
-                    },
-                  ),
-                  _addActionTile(
-                    icon: Icons.spa_outlined,
-                    label: 'Log Symptoms',
-                    onTap: () {
-                      Navigator.of(sheetContext).pop();
-                      Navigator.of(context, rootNavigator: true).push(
-                        MaterialPageRoute(
-                            builder: (_) => const QuickSymptomLogScreen()),
-                      );
-                    },
-                  ),
-                  _addActionTile(
-                    icon: Icons.notifications_active_outlined,
-                    label: 'Add Reminder',
-                    onTap: () {
-                      Navigator.of(sheetContext).pop();
-                      Navigator.of(context, rootNavigator: true).push(
-                        MaterialPageRoute(
-                            builder: (_) => const AddReminderScreen()),
-                      );
-                    },
-                  ),
-                ],
-              ),
-            ),
-          ),
-        );
-      },
-    );
-  }
-
-  Widget _addActionTile({
-    required IconData icon,
-    required String label,
-    required VoidCallback onTap,
-  }) {
-    return Padding(
-      padding: const EdgeInsets.only(bottom: 10),
-      child: InkWell(
-        borderRadius: BorderRadius.circular(18),
-        onTap: onTap,
-        child: Container(
-          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 14),
-          decoration: BoxDecoration(
-            color: KinsuTheme.panel,
-            borderRadius: BorderRadius.circular(18),
-            border: Border.all(color: KinsuTheme.divider),
-          ),
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      decoration: const BoxDecoration(
+        color: KinsuTheme.surface,
+        border: Border(
+          top: BorderSide(color: KinsuTheme.divider, width: 1),
+        ),
+      ),
+      child: SafeArea(
+        top: false,
+        child: SizedBox(
+          height: 64,
           child: Row(
+            mainAxisAlignment: MainAxisAlignment.spaceAround,
             children: [
-              Container(
-                width: 40,
-                height: 40,
-                decoration: BoxDecoration(
-                  color: KinsuTheme.primaryLight,
-                  borderRadius: BorderRadius.circular(12),
-                ),
-                child: Icon(icon, color: KinsuTheme.primaryDark),
+              _NavItem(
+                icon: Icons.home_outlined,
+                activeIcon: Icons.home,
+                label: 'Home',
+                isActive: currentIndex == 0,
+                onTap: () => onTap(0),
               ),
-              const SizedBox(width: 12),
-              Expanded(
-                child: Text(
-                  label,
-                  style: const TextStyle(
-                      fontSize: 16, fontWeight: FontWeight.w700),
+              _NavItem(
+                icon: Icons.show_chart_outlined,
+                activeIcon: Icons.show_chart,
+                label: 'Track',
+                isActive: currentIndex == 1,
+                onTap: () => onTap(1),
+              ),
+              // Center FAB
+              GestureDetector(
+                onTap: onFabTap,
+                child: Container(
+                  width: 56,
+                  height: 56,
+                  decoration: BoxDecoration(
+                    color: KinsuTheme.primary,
+                    shape: BoxShape.circle,
+                    boxShadow: [
+                      BoxShadow(
+                        color: KinsuTheme.primary.withValues(alpha: 0.35),
+                        blurRadius: 10,
+                        offset: const Offset(0, 4),
+                      ),
+                    ],
+                  ),
+                  child: const Icon(Icons.auto_awesome, color: Colors.white, size: 26),
                 ),
               ),
-              const Icon(Icons.chevron_right_rounded,
-                  color: KinsuTheme.textSecondary),
+              _NavItem(
+                icon: Icons.folder_outlined,
+                activeIcon: Icons.folder,
+                label: 'Vault',
+                isActive: currentIndex == 2,
+                onTap: () => onTap(2),
+              ),
+              _NavItem(
+                icon: Icons.people_outline,
+                activeIcon: Icons.people,
+                label: 'Family',
+                isActive: currentIndex == 3,
+                onTap: () => onTap(3),
+              ),
             ],
           ),
         ),
       ),
     );
   }
+}
 
-  // ── Build ───────────────────────────────────────────────────────────────
+class _NavItem extends StatelessWidget {
+  final IconData icon;
+  final IconData activeIcon;
+  final String label;
+  final bool isActive;
+  final VoidCallback onTap;
+
+  const _NavItem({
+    required this.icon,
+    required this.activeIcon,
+    required this.label,
+    required this.isActive,
+    required this.onTap,
+  });
 
   @override
   Widget build(BuildContext context) {
-    if (_isDesktopWeb(context)) {
-      return _buildDesktopLayout();
-    }
-    return _buildMobileLayout();
-  }
-
-  Widget _buildMobileLayout() {
-    final navIndex =
-        branchToMobileNav(widget.navigationShell.currentIndex);
-
-    return Scaffold(
-      body: widget.navigationShell,
-      backgroundColor: KinsuTheme.background,
-      bottomNavigationBar: AppShellBottomNav(
-        currentIndex: navIndex < 0 ? 0 : navIndex,
-        onTap: _onMobileNavTap,
-        onAddTap: _openAddMenu,
-      ),
-    );
-  }
-
-  Widget _buildDesktopLayout() {
-    return Scaffold(
-      backgroundColor: KinsuTheme.background,
-      body: Row(
-        children: [
-          AppShellWebNav(
-            currentIndex: widget.navigationShell.currentIndex,
-            onTap: _goBranch,
-            onAddTap: _openAddMenu,
-          ),
-          Expanded(child: widget.navigationShell),
-        ],
+    return GestureDetector(
+      onTap: onTap,
+      behavior: HitTestBehavior.opaque,
+      child: SizedBox(
+        width: 60,
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            AnimatedContainer(
+              duration: const Duration(milliseconds: 200),
+              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
+              decoration: BoxDecoration(
+                color: isActive ? KinsuTheme.primaryLight : Colors.transparent,
+                borderRadius: BorderRadius.circular(20),
+              ),
+              child: Icon(
+                isActive ? activeIcon : icon,
+                size: 22,
+                color: isActive ? KinsuTheme.primary : KinsuTheme.textSecondary,
+              ),
+            ),
+            const SizedBox(height: 2),
+            Text(
+              label,
+              style: TextStyle(
+                fontSize: 10,
+                fontWeight: isActive ? FontWeight.w600 : FontWeight.w400,
+                color: isActive ? KinsuTheme.primary : KinsuTheme.textSecondary,
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }

@@ -4,7 +4,6 @@ import 'package:provider/provider.dart';
 import '../../core/theme.dart';
 import '../../models/family_member_profile.dart';
 import '../../providers/family_provider.dart';
-import 'add_family_member_screen.dart';
 
 class FamilyScreen extends StatefulWidget {
   const FamilyScreen({super.key});
@@ -22,435 +21,614 @@ class _FamilyScreenState extends State<FamilyScreen> {
     });
   }
 
-  Future<void> _openAddMember() async {
-    await Navigator.push(
-      context,
-      MaterialPageRoute(
-        builder: (_) => const AddFamilyMemberScreen(),
+  void _showAddMemberSheet() {
+    final nameCtrl = TextEditingController();
+    final phoneCtrl = TextEditingController();
+    final ageCtrl = TextEditingController();
+    String? relation = 'Other';
+    String gender = 'Male';
+    String role = 'Dependent';
+
+    const relations = [
+      'Self',
+      'Spouse',
+      'Father',
+      'Mother',
+      'Son',
+      'Daughter',
+      'Brother',
+      'Sister',
+      'Grandparent',
+      'Friend',
+      'Other',
+    ];
+
+    showModalBottomSheet<void>(
+      context: context,
+      isScrollControlled: true,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      ),
+      builder: (ctx) => StatefulBuilder(
+        builder: (ctx2, setLocal) => Padding(
+          padding: EdgeInsets.fromLTRB(
+            20,
+            16,
+            20,
+            MediaQuery.of(ctx2).viewInsets.bottom + 24,
+          ),
+          child: SingleChildScrollView(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Center(
+                  child: Container(
+                    width: 40,
+                    height: 4,
+                    decoration: BoxDecoration(
+                      color: KinsuTheme.divider,
+                      borderRadius: BorderRadius.circular(2),
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 16),
+                const Text(
+                  'Add Family Member',
+                  style: TextStyle(fontSize: 18, fontWeight: FontWeight.w700),
+                ),
+                const SizedBox(height: 16),
+                // Name
+                TextField(
+                  controller: nameCtrl,
+                  decoration: const InputDecoration(
+                    labelText: 'Name *',
+                    hintText: 'Full name',
+                  ),
+                ),
+                const SizedBox(height: 12),
+                // Relation dropdown
+                DropdownButtonFormField<String>(
+                  initialValue: relation,
+                  decoration: const InputDecoration(labelText: 'Relation'),
+                  items: relations
+                      .map((r) => DropdownMenuItem(value: r, child: Text(r)))
+                      .toList(),
+                  onChanged: (v) => setLocal(() => relation = v),
+                ),
+                const SizedBox(height: 12),
+                // Phone
+                TextField(
+                  controller: phoneCtrl,
+                  keyboardType: TextInputType.phone,
+                  decoration: const InputDecoration(
+                    labelText: 'Phone',
+                    hintText: '+91XXXXXXXXXX',
+                  ),
+                ),
+                const SizedBox(height: 12),
+                // Age
+                TextField(
+                  controller: ageCtrl,
+                  keyboardType: TextInputType.number,
+                  decoration: const InputDecoration(labelText: 'Age'),
+                ),
+                const SizedBox(height: 14),
+                // Gender chips
+                const Text(
+                  'Gender',
+                  style: TextStyle(
+                    fontSize: 13,
+                    fontWeight: FontWeight.w600,
+                    color: KinsuTheme.textSecondary,
+                  ),
+                ),
+                const SizedBox(height: 8),
+                Wrap(
+                  spacing: 8,
+                  children: ['Male', 'Female', 'Other'].map((g) {
+                    final sel = gender == g;
+                    return FilterChip(
+                      label: Text(g),
+                      selected: sel,
+                      onSelected: (_) => setLocal(() => gender = g),
+                      selectedColor: KinsuTheme.primaryLight,
+                      checkmarkColor: KinsuTheme.primary,
+                      labelStyle: TextStyle(
+                        color: sel ? KinsuTheme.primary : KinsuTheme.textPrimary,
+                      ),
+                    );
+                  }).toList(),
+                ),
+                const SizedBox(height: 14),
+                // Role chips
+                const Text(
+                  'Role',
+                  style: TextStyle(
+                    fontSize: 13,
+                    fontWeight: FontWeight.w600,
+                    color: KinsuTheme.textSecondary,
+                  ),
+                ),
+                const SizedBox(height: 8),
+                Wrap(
+                  spacing: 8,
+                  children: ['You', 'Dependent', 'Caregiver'].map((r) {
+                    final sel = role == r;
+                    return FilterChip(
+                      label: Text(r),
+                      selected: sel,
+                      onSelected: (_) => setLocal(() => role = r),
+                      selectedColor: KinsuTheme.primaryLight,
+                      checkmarkColor: KinsuTheme.primary,
+                      labelStyle: TextStyle(
+                        color: sel ? KinsuTheme.primary : KinsuTheme.textPrimary,
+                      ),
+                    );
+                  }).toList(),
+                ),
+                const SizedBox(height: 20),
+                Row(
+                  children: [
+                    Expanded(
+                      child: OutlinedButton(
+                        onPressed: () => Navigator.pop(ctx2),
+                        child: const Text('Cancel'),
+                      ),
+                    ),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: ElevatedButton(
+                        onPressed: () async {
+                          final name = nameCtrl.text.trim();
+                          if (name.isEmpty) {
+                            ScaffoldMessenger.of(ctx2).showSnackBar(
+                              const SnackBar(content: Text('Name is required')),
+                            );
+                            return;
+                          }
+                          final phone =
+                              phoneCtrl.text.trim().isEmpty ? '+910000000000' : phoneCtrl.text.trim();
+                          final ageInt = int.tryParse(ageCtrl.text.trim()) ?? 0;
+                          final dob = ageInt > 0
+                              ? DateTime(
+                                  DateTime.now().year - ageInt,
+                                  DateTime.now().month,
+                                  DateTime.now().day,
+                                )
+                              : null;
+
+                          Navigator.pop(ctx2);
+                          final success =
+                              await context.read<FamilyProvider>().addMember(
+                                    displayName: name,
+                                    phoneE164: phone,
+                                    relation: relation,
+                                    dateOfBirth: dob,
+                                    notes: 'Gender: $gender, Role: $role',
+                                  );
+                          if (mounted) {
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              SnackBar(
+                                content: Text(
+                                  success
+                                      ? '$name added successfully'
+                                      : 'Failed to add member',
+                                ),
+                              ),
+                            );
+                          }
+                        },
+                        child: const Text('Save'),
+                      ),
+                    ),
+                  ],
+                ),
+              ],
+            ),
+          ),
+        ),
       ),
     );
-    if (mounted) {
-      await context.read<FamilyProvider>().loadFamilyData();
-    }
+  }
+
+  void _showDetailSheet(FamilyMemberProfile member) {
+    final initials = member.displayName.trim().isEmpty
+        ? 'F'
+        : member.displayName
+            .trim()
+            .split(RegExp(r'\s+'))
+            .take(2)
+            .map((s) => s[0].toUpperCase())
+            .join();
+
+    final age = member.dateOfBirth != null
+        ? '${DateTime.now().year - member.dateOfBirth!.year} yrs'
+        : null;
+
+    showModalBottomSheet<void>(
+      context: context,
+      isScrollControlled: true,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      ),
+      builder: (ctx) => Padding(
+        padding: const EdgeInsets.fromLTRB(20, 16, 20, 32),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Container(
+              width: 40,
+              height: 4,
+              decoration: BoxDecoration(
+                color: KinsuTheme.divider,
+                borderRadius: BorderRadius.circular(2),
+              ),
+            ),
+            const SizedBox(height: 20),
+            CircleAvatar(
+              radius: 36,
+              backgroundColor: KinsuTheme.primaryLight,
+              child: Text(
+                initials,
+                style: const TextStyle(
+                  fontSize: 24,
+                  fontWeight: FontWeight.w700,
+                  color: KinsuTheme.primary,
+                ),
+              ),
+            ),
+            const SizedBox(height: 12),
+            Text(
+              member.displayName,
+              style: const TextStyle(
+                fontSize: 20,
+                fontWeight: FontWeight.w700,
+                color: KinsuTheme.textPrimary,
+              ),
+            ),
+            const SizedBox(height: 6),
+            _RoleBadge(
+              isActive: member.isActive,
+              relation: member.relation,
+            ),
+            const SizedBox(height: 16),
+            Container(
+              width: double.infinity,
+              padding: const EdgeInsets.all(14),
+              decoration: KinsuTheme.cardDecoration,
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  if (member.relation != null && member.relation!.isNotEmpty)
+                    _DetailRow(label: 'Relation', value: member.relation!),
+                  if (age != null) _DetailRow(label: 'Age', value: age),
+                  _DetailRow(label: 'Phone', value: member.phoneE164),
+                  if (member.notes != null && member.notes!.isNotEmpty)
+                    _DetailRow(label: 'Notes', value: member.notes!),
+                ],
+              ),
+            ),
+            const SizedBox(height: 20),
+            SizedBox(
+              width: double.infinity,
+              child: ElevatedButton(
+                onPressed: () => Navigator.pop(ctx),
+                child: const Text('Close'),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
+      backgroundColor: KinsuTheme.background,
       body: SafeArea(
-        child: Consumer<FamilyProvider>(
-          builder: (context, provider, _) {
-            return RefreshIndicator(
-              onRefresh: provider.loadFamilyData,
-              child: ListView(
-                padding: const EdgeInsets.fromLTRB(16, 12, 16, 18),
+        child: Column(
+          children: [
+            // ── Header ────────────────────────────────────────────────
+            Container(
+              color: Colors.white,
+              padding: const EdgeInsets.fromLTRB(16, 14, 16, 14),
+              decoration: const BoxDecoration(
+                border: Border(
+                  bottom: BorderSide(color: KinsuTheme.divider, width: 1),
+                ),
+              ),
+              child: Row(
                 children: [
-                  Row(
-                    children: [
-                      const Expanded(
-                        child: Text(
-                          'Family',
-                          style: TextStyle(
-                            fontSize: 24,
-                            fontWeight: FontWeight.w700,
-                          ),
-                        ),
-                      ),
-                      Material(
-                        color: KinsuTheme.primary,
-                        shape: const CircleBorder(),
-                        child: InkWell(
-                          onTap: _openAddMember,
-                          customBorder: const CircleBorder(),
-                          child: const SizedBox(
-                            width: 52,
-                            height: 52,
-                            child: Icon(
-                              Icons.person_add_alt_1,
-                              color: Colors.white,
-                            ),
-                          ),
-                        ),
-                      ),
-                    ],
-                  ),
-                  const Text(
-                    'Manage family members and caregiver access',
-                    style: TextStyle(
-                      color: KinsuTheme.textSecondary,
-                      fontSize: 13,
-                    ),
-                  ),
-                  const SizedBox(height: 12),
-                  Container(
-                    padding: const EdgeInsets.all(16),
-                    decoration: BoxDecoration(
-                      color: KinsuTheme.primaryLight.withValues(alpha: 0.22),
-                      borderRadius: BorderRadius.circular(18),
-                      border: Border.all(color: KinsuTheme.primaryLight),
-                    ),
-                    child: const Row(
+                  const Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        Icon(Icons.shield_outlined, color: KinsuTheme.primary),
-                        SizedBox(width: 12),
-                        Expanded(
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Text(
-                                'Caregiver Mode Available',
-                                style: TextStyle(
-                                  fontWeight: FontWeight.w700,
-                                  color: KinsuTheme.primary,
-                                ),
-                              ),
-                              SizedBox(height: 4),
-                              Text(
-                                'Log health data on behalf of family members.',
-                                style: TextStyle(
-                                  color: KinsuTheme.textSecondary,
-                                ),
-                              ),
-                            ],
+                        Text(
+                          'Family Care',
+                          style: TextStyle(
+                            fontSize: 22,
+                            fontWeight: FontWeight.w700,
+                            color: KinsuTheme.textPrimary,
+                          ),
+                        ),
+                        SizedBox(height: 2),
+                        Text(
+                          'Manage care for the people you love',
+                          style: TextStyle(
+                            fontSize: 12,
+                            color: KinsuTheme.textSecondary,
                           ),
                         ),
                       ],
                     ),
                   ),
-                  const SizedBox(height: 14),
-                  if (provider.isLoading)
-                    const Padding(
-                      padding: EdgeInsets.symmetric(vertical: 28),
-                      child: Center(child: CircularProgressIndicator()),
-                    )
-                  else if (provider.error != null)
-                    Container(
-                      padding: const EdgeInsets.all(16),
-                      decoration: KinsuTheme.cardDecoration,
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          const Text(
-                            'Unable to load family dashboard',
-                            style: TextStyle(fontWeight: FontWeight.w700),
+                  FilledButton.icon(
+                    onPressed: _showAddMemberSheet,
+                    icon: const Icon(Icons.person_add_rounded, size: 18),
+                    label: const Text('Add'),
+                    style: FilledButton.styleFrom(
+                      backgroundColor: KinsuTheme.primary,
+                      foregroundColor: Colors.white,
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 14, vertical: 10),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+
+            // ── Body ─────────────────────────────────────────────────
+            Expanded(
+              child: Consumer<FamilyProvider>(
+                builder: (context, provider, _) {
+                  return ListView(
+                    padding: const EdgeInsets.all(16),
+                    children: [
+                      // Info banner
+                      Container(
+                        padding: const EdgeInsets.all(12),
+                        decoration: BoxDecoration(
+                          color: KinsuTheme.primaryLight.withValues(alpha: 0.5),
+                          borderRadius: BorderRadius.circular(10),
+                          border: Border.all(
+                            color: KinsuTheme.primaryLight,
                           ),
-                          const SizedBox(height: 8),
-                          Text(
-                            provider.error!,
-                            style: const TextStyle(
-                              color: KinsuTheme.textSecondary,
+                        ),
+                        child: const Row(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Icon(Icons.shield_outlined,
+                                size: 16, color: KinsuTheme.primary),
+                            SizedBox(width: 8),
+                            Expanded(
+                              child: Text(
+                                'Consent is required from each adult dependent before syncing their records.',
+                                style: TextStyle(
+                                  fontSize: 12,
+                                  color: KinsuTheme.textPrimary,
+                                  height: 1.4,
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                      const SizedBox(height: 16),
+
+                      // Member list or empty state
+                      if (provider.isLoading)
+                        const Center(child: CircularProgressIndicator())
+                      else if (provider.members.isEmpty)
+                        Center(
+                          child: Padding(
+                            padding: const EdgeInsets.symmetric(vertical: 40),
+                            child: Column(
+                              children: [
+                                const Icon(Icons.people_outline,
+                                    size: 64,
+                                    color: KinsuTheme.textSecondary),
+                                const SizedBox(height: 16),
+                                const Text(
+                                  'No family members yet',
+                                  style: TextStyle(
+                                    fontSize: 17,
+                                    fontWeight: FontWeight.w600,
+                                    color: KinsuTheme.textPrimary,
+                                  ),
+                                ),
+                                const SizedBox(height: 8),
+                                const Text(
+                                  'Add a family member to start managing their care.',
+                                  textAlign: TextAlign.center,
+                                  style: TextStyle(
+                                      color: KinsuTheme.textSecondary,
+                                      fontSize: 13),
+                                ),
+                                const SizedBox(height: 20),
+                                FilledButton.icon(
+                                  onPressed: _showAddMemberSheet,
+                                  icon: const Icon(Icons.person_add_rounded,
+                                      size: 18),
+                                  label: const Text('Add Member'),
+                                  style: FilledButton.styleFrom(
+                                    backgroundColor: KinsuTheme.primary,
+                                    foregroundColor: Colors.white,
+                                  ),
+                                ),
+                              ],
                             ),
                           ),
-                        ],
-                      ),
-                    )
-                  else if (provider.dashboardCards.isEmpty)
-                    Container(
-                      padding: const EdgeInsets.all(16),
-                      decoration: KinsuTheme.cardDecoration,
-                      child: const Text(
-                        'No family profiles yet. Tap Add Family Member to get started.',
-                        style: TextStyle(color: KinsuTheme.textSecondary),
-                      ),
-                    )
-                  else
-                    ...provider.dashboardCards.map(
-                      (card) => Padding(
-                        padding: const EdgeInsets.only(bottom: 12),
-                        child: _FamilyDashboardCardView(
-                          card: card,
-                          onTap: () {
-                            provider.setActiveProfileId(
-                              card.isSelf ? null : card.profileId,
-                            );
-                            ScaffoldMessenger.of(context).showSnackBar(
-                              SnackBar(
-                                content: Text(
-                                  card.isSelf
-                                      ? 'Switched to your profile'
-                                      : 'Switched to ${card.displayName}',
+                        )
+                      else
+                        ...provider.members.map(
+                          (member) {
+                            final initials = member.displayName.trim().isEmpty
+                                ? 'F'
+                                : member.displayName
+                                    .trim()
+                                    .split(RegExp(r'\s+'))
+                                    .take(2)
+                                    .map((s) => s[0].toUpperCase())
+                                    .join();
+                            final age = member.dateOfBirth != null
+                                ? '${DateTime.now().year - member.dateOfBirth!.year} yrs'
+                                : null;
+                            final subtitle = [
+                              if (member.relation != null &&
+                                  member.relation!.isNotEmpty)
+                                member.relation!,
+                              if (age != null) age,
+                            ].join(' · ');
+
+                            return Padding(
+                              padding: const EdgeInsets.only(bottom: 10),
+                              child: Container(
+                                decoration: KinsuTheme.cardDecoration,
+                                child: ListTile(
+                                  onTap: () => _showDetailSheet(member),
+                                  leading: CircleAvatar(
+                                    radius: 22,
+                                    backgroundColor: KinsuTheme.primaryLight,
+                                    child: Text(
+                                      initials,
+                                      style: const TextStyle(
+                                        color: KinsuTheme.primary,
+                                        fontWeight: FontWeight.w700,
+                                        fontSize: 14,
+                                      ),
+                                    ),
+                                  ),
+                                  title: Text(
+                                    member.displayName,
+                                    style: const TextStyle(
+                                        fontWeight: FontWeight.w700,
+                                        fontSize: 15),
+                                  ),
+                                  subtitle: Column(
+                                    crossAxisAlignment:
+                                        CrossAxisAlignment.start,
+                                    children: [
+                                      const SizedBox(height: 2),
+                                      _RoleBadge(
+                                        isActive: member.isActive,
+                                        relation: member.relation,
+                                      ),
+                                      if (subtitle.isNotEmpty)
+                                        Padding(
+                                          padding:
+                                              const EdgeInsets.only(top: 2),
+                                          child: Text(
+                                            subtitle,
+                                            style: const TextStyle(
+                                              fontSize: 12,
+                                              color: KinsuTheme.textSecondary,
+                                            ),
+                                          ),
+                                        ),
+                                    ],
+                                  ),
+                                  trailing: const Icon(Icons.chevron_right,
+                                      color: KinsuTheme.textSecondary),
                                 ),
                               ),
                             );
                           },
                         ),
-                      ),
-                    ),
-                  const SizedBox(height: 6),
-                  InkWell(
-                    onTap: _openAddMember,
-                    borderRadius: BorderRadius.circular(22),
-                    child: Container(
-                      padding: const EdgeInsets.symmetric(vertical: 20),
-                      decoration: BoxDecoration(
-                        color: Colors.white,
-                        borderRadius: BorderRadius.circular(22),
-                        border: Border.all(color: KinsuTheme.divider),
-                      ),
-                      child: const Row(
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        children: [
-                          Icon(Icons.add, color: KinsuTheme.textSecondary),
-                          SizedBox(width: 10),
-                          Text(
-                            'Add Family Member',
-                            style: TextStyle(
-                              color: KinsuTheme.textSecondary,
-                              fontSize: 18,
-                              fontWeight: FontWeight.w600,
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                  ),
-                ],
+                    ],
+                  );
+                },
               ),
-            );
-          },
+            ),
+          ],
         ),
       ),
     );
   }
 }
 
-class _FamilyDashboardCardView extends StatelessWidget {
-  final FamilyDashboardCard card;
-  final VoidCallback onTap;
+class _RoleBadge extends StatelessWidget {
+  final bool isActive;
+  final String? relation;
 
-  const _FamilyDashboardCardView({
-    required this.card,
-    required this.onTap,
-  });
+  const _RoleBadge({required this.isActive, this.relation});
 
   @override
   Widget build(BuildContext context) {
-    return Material(
-      color: Colors.white,
-      borderRadius: BorderRadius.circular(22),
-      child: InkWell(
-        onTap: onTap,
-        borderRadius: BorderRadius.circular(22),
-        child: Container(
-          decoration: KinsuTheme.cardDecoration,
-          child: Column(
-            children: [
-              Padding(
-                padding: const EdgeInsets.all(16),
-                child: Row(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    CircleAvatar(
-                      radius: 30,
-                      backgroundColor: _avatarColor(card.initials),
-                      child: Text(
-                        card.initials,
-                        style: TextStyle(
-                          color: _avatarTextColor(card.initials),
-                          fontWeight: FontWeight.w700,
-                          fontSize: 24,
-                        ),
-                      ),
-                    ),
-                    const SizedBox(width: 14),
-                    Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Row(
-                            children: [
-                              Expanded(
-                                child: Text(
-                                  card.displayName,
-                                  style: const TextStyle(
-                                    fontSize: 18,
-                                    fontWeight: FontWeight.w700,
-                                  ),
-                                ),
-                              ),
-                              if (card.isSelf || card.isActiveContext)
-                                Container(
-                                  padding: const EdgeInsets.symmetric(
-                                    horizontal: 10,
-                                    vertical: 5,
-                                  ),
-                                  decoration: BoxDecoration(
-                                    color: KinsuTheme.primaryLight
-                                        .withValues(alpha: 0.35),
-                                    borderRadius: BorderRadius.circular(999),
-                                  ),
-                                  child: Text(
-                                    card.isSelf ? 'You' : 'Active',
-                                    style: const TextStyle(
-                                      color: KinsuTheme.primary,
-                                      fontWeight: FontWeight.w600,
-                                    ),
-                                  ),
-                                ),
-                            ],
-                          ),
-                          const SizedBox(height: 4),
-                          Text(
-                            [
-                              card.relation,
-                              if (card.age != null) '${card.age}y',
-                              if (card.bloodGroup != null &&
-                                  card.bloodGroup!.isNotEmpty)
-                                card.bloodGroup!,
-                            ].join(' · '),
-                            style: const TextStyle(
-                              color: KinsuTheme.textSecondary,
-                              fontSize: 15,
-                            ),
-                          ),
-                          if (card.healthConditions.isNotEmpty) ...[
-                            const SizedBox(height: 12),
-                            Wrap(
-                              spacing: 8,
-                              runSpacing: 8,
-                              children: card.healthConditions
-                                  .map(
-                                    (condition) => Container(
-                                      padding: const EdgeInsets.symmetric(
-                                        horizontal: 12,
-                                        vertical: 6,
-                                      ),
-                                      decoration: BoxDecoration(
-                                        color: const Color(0xFFFFF7ED),
-                                        borderRadius:
-                                            BorderRadius.circular(999),
-                                      ),
-                                      child: Text(
-                                        _labelize(condition),
-                                        style: const TextStyle(
-                                          color: Color(0xFFB45309),
-                                          fontWeight: FontWeight.w600,
-                                        ),
-                                      ),
-                                    ),
-                                  )
-                                  .toList(),
-                            ),
-                          ],
-                        ],
-                      ),
-                    ),
-                    const SizedBox(width: 12),
-                    Container(
-                      width: 44,
-                      height: 44,
-                      decoration: BoxDecoration(
-                        color: const Color(0xFFF3F4F6),
-                        borderRadius: BorderRadius.circular(999),
-                      ),
-                      child: const Icon(
-                        Icons.chevron_right_rounded,
-                        color: KinsuTheme.textSecondary,
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-              const Divider(height: 1),
-              Padding(
-                padding: const EdgeInsets.all(16),
-                child: Row(
-                  children: [
-                    Expanded(
-                      child: _MetaItem(
-                        icon: Icons.description_outlined,
-                        label: '${card.recordCount} records',
-                      ),
-                    ),
-                    Expanded(
-                      child: _MetaItem(
-                        icon: Icons.medication_outlined,
-                        label: '${card.medicationCount} medications',
-                      ),
-                    ),
-                    Expanded(
-                      child: Text(
-                        card.lastActivity,
-                        textAlign: TextAlign.right,
-                        style: const TextStyle(
-                          color: KinsuTheme.textSecondary,
-                          fontSize: 13,
-                          height: 1.4,
-                        ),
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-            ],
-          ),
+    final isSelf =
+        relation?.toLowerCase() == 'self' || relation == null;
+    final Color bgColor;
+    final Color textColor;
+    final String label;
+
+    if (isSelf) {
+      bgColor = KinsuTheme.primaryLight;
+      textColor = KinsuTheme.primary;
+      label = 'You';
+    } else if (isActive) {
+      bgColor = const Color(0xFFFFF3CD);
+      textColor = const Color(0xFFB45309);
+      label = 'Dependent';
+    } else {
+      bgColor = const Color(0xFFD1FAE5);
+      textColor = const Color(0xFF047857);
+      label = 'Caregiver';
+    }
+
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+      decoration: BoxDecoration(
+        color: bgColor,
+        borderRadius: BorderRadius.circular(8),
+      ),
+      child: Text(
+        label,
+        style: TextStyle(
+          fontSize: 11,
+          fontWeight: FontWeight.w600,
+          color: textColor,
         ),
       ),
     );
   }
-
-  static Color _avatarColor(String initials) {
-    switch (initials.characters.firstOrNull ?? 'A') {
-      case 'L':
-        return const Color(0xFFF3E8FF);
-      case 'R':
-        return const Color(0xFFE0ECFF);
-      case 'V':
-        return const Color(0xFFFFF3E8);
-      default:
-        return KinsuTheme.primaryLight.withValues(alpha: 0.35);
-    }
-  }
-
-  static Color _avatarTextColor(String initials) {
-    switch (initials.characters.firstOrNull ?? 'A') {
-      case 'L':
-        return const Color(0xFF8B5CF6);
-      case 'R':
-        return const Color(0xFF3B82F6);
-      case 'V':
-        return const Color(0xFFF59E0B);
-      default:
-        return KinsuTheme.primary;
-    }
-  }
-
-  static String _labelize(String raw) {
-    return raw
-        .split('_')
-        .map((part) => part.isEmpty
-            ? part
-            : '${part[0].toUpperCase()}${part.substring(1)}')
-        .join(' ');
-  }
 }
 
-class _MetaItem extends StatelessWidget {
-  final IconData icon;
+class _DetailRow extends StatelessWidget {
   final String label;
+  final String value;
 
-  const _MetaItem({
-    required this.icon,
-    required this.label,
-  });
+  const _DetailRow({required this.label, required this.value});
 
   @override
   Widget build(BuildContext context) {
-    return Row(
-      mainAxisSize: MainAxisSize.min,
-      children: [
-        Icon(icon, size: 18, color: KinsuTheme.textSecondary),
-        const SizedBox(width: 6),
-        Flexible(
-          child: Text(
-            label,
-            style: const TextStyle(
-              color: KinsuTheme.textSecondary,
-              fontSize: 13,
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 8),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          SizedBox(
+            width: 80,
+            child: Text(
+              label,
+              style: const TextStyle(
+                fontSize: 13,
+                color: KinsuTheme.textSecondary,
+              ),
             ),
           ),
-        ),
-      ],
+          Expanded(
+            child: Text(
+              value,
+              style: const TextStyle(
+                fontSize: 14,
+                fontWeight: FontWeight.w600,
+                color: KinsuTheme.textPrimary,
+              ),
+            ),
+          ),
+        ],
+      ),
     );
   }
 }
