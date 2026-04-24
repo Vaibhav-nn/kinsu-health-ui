@@ -238,7 +238,7 @@ class _MedicationsListScreenState extends State<MedicationsListScreen> {
         final takenCount =
             activeMeds.where((m) => _taken[_medKey(m)] == true).length;
         final total = activeMeds.length;
-        final missedCount = 0; // no real missed tracking without server state
+
         final leftCount = (total - takenCount).clamp(0, total);
         final adherencePct =
             total == 0 ? 0 : ((takenCount / total) * 100).round();
@@ -358,9 +358,9 @@ class _MedicationsListScreenState extends State<MedicationsListScreen> {
                                         label: 'Taken',
                                         value: '$takenCount'),
                                     const SizedBox(width: 6),
-                                    _MiniStatBox(
+                                    const _MiniStatBox(
                                         label: 'Missed',
-                                        value: '$missedCount'),
+                                        value: '0'),
                                     const SizedBox(width: 6),
                                     _MiniStatBox(
                                         label: 'Left',
@@ -603,7 +603,7 @@ class _DailyView extends StatelessWidget {
                     Container(
                       width: 32,
                       height: 32,
-                      decoration: BoxDecoration(
+                      decoration: const BoxDecoration(
                         color: KinsuTheme.primaryLight,
                         shape: BoxShape.circle,
                       ),

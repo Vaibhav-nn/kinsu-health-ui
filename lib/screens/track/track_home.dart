@@ -41,8 +41,8 @@ class _TrackHomeState extends State<TrackHome> {
     final vitalsProvider = context.watch<VitalsProvider>();
 
     final activeMeds = medsProvider.medications.where((m) => m.isActive).toList();
-    final takenCount = 0; // no local taken state in track screen
-    final firstName = 'there'; // simplified — no auth provider needed here
+    const takenCount = 0; // no local taken state in track screen
+    const firstName = 'there'; // simplified — no auth provider needed here
 
     // Build weekly vitals data
     final now = DateTime.now();
@@ -264,9 +264,9 @@ class _TrackHomeState extends State<TrackHome> {
                   ),
                   const SizedBox(height: 4),
                   if (!hasChartData)
-                    Row(
+                    const Row(
                       mainAxisAlignment: MainAxisAlignment.spaceAround,
-                      children: const [
+                      children: [
                         Text('MON', style: TextStyle(fontSize: 8, color: KinsuTheme.textSecondary)),
                         Text('TUE', style: TextStyle(fontSize: 8, color: KinsuTheme.textSecondary)),
                         Text('WED', style: TextStyle(fontSize: 8, color: KinsuTheme.textSecondary)),

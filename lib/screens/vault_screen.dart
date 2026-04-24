@@ -342,7 +342,7 @@ class _VaultScreenState extends State<VaultScreen> {
           ),
           Container(
             padding: const EdgeInsets.fromLTRB(20, 16, 20, 16),
-            decoration: BoxDecoration(
+            decoration: const BoxDecoration(
               border:
                   Border(bottom: BorderSide(color: KinsuTheme.divider, width: 1)),
             ),
@@ -352,7 +352,7 @@ class _VaultScreenState extends State<VaultScreen> {
                   width: 48,
                   height: 48,
                   decoration: BoxDecoration(
-                    color: color.withOpacity(0.1),
+                    color: color.withValues(alpha: 0.1),
                     borderRadius: BorderRadius.circular(12),
                   ),
                   child: Icon(icon, color: color, size: 24),
@@ -422,7 +422,7 @@ class _VaultScreenState extends State<VaultScreen> {
           ),
           Container(
             padding: const EdgeInsets.all(20),
-            decoration: BoxDecoration(
+            decoration: const BoxDecoration(
               border:
                   Border(top: BorderSide(color: KinsuTheme.divider, width: 1)),
             ),
@@ -918,7 +918,7 @@ class _VaultScreenState extends State<VaultScreen> {
                   width: 44,
                   height: 44,
                   decoration: BoxDecoration(
-                    color: color.withOpacity(0.1),
+                    color: color.withValues(alpha: 0.1),
                     borderRadius: BorderRadius.circular(12),
                   ),
                   child: Icon(icon, color: color, size: 20),
@@ -972,7 +972,7 @@ class _VaultScreenState extends State<VaultScreen> {
                             padding: const EdgeInsets.symmetric(
                                 horizontal: 6, vertical: 2),
                             decoration: BoxDecoration(
-                              color: color.withOpacity(0.08),
+                              color: color.withValues(alpha: 0.08),
                               borderRadius: BorderRadius.circular(4),
                             ),
                             child: Text(

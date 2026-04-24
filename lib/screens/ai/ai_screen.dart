@@ -160,7 +160,7 @@ class _AiInsightsView extends StatelessWidget {
             const SizedBox(height: 10),
 
             if (!hasData)
-              _InsightCard(
+              const _InsightCard(
                 icon: Icons.lightbulb_outline,
                 iconColor: KinsuTheme.primary,
                 iconBg: KinsuTheme.primaryLight,

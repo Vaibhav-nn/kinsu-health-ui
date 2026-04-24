@@ -135,7 +135,7 @@ class _CenterFab extends StatelessWidget {
             shape: BoxShape.circle,
             boxShadow: [
               BoxShadow(
-                color: const Color(0xFF309BD3).withOpacity(0.4),
+                color: const Color(0xFF309BD3).withValues(alpha: 0.4),
                 blurRadius: 12,
                 offset: const Offset(0, 4),
               ),

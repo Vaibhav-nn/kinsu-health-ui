@@ -211,7 +211,7 @@ class _UploadRecordScreenState extends State<UploadRecordScreen> {
                     ),
                     decoration: BoxDecoration(
                       color: isSelected
-                          ? (type['color'] as Color).withOpacity(0.1)
+                          ? (type['color'] as Color).withValues(alpha: 0.1)
                           : KinsuTheme.background,
                       borderRadius: BorderRadius.circular(12),
                       border: Border.all(
@@ -311,11 +311,11 @@ class _UploadRecordScreenState extends State<UploadRecordScreen> {
                 fillColor: KinsuTheme.background,
                 border: OutlineInputBorder(
                   borderRadius: BorderRadius.circular(12),
-                  borderSide: BorderSide(color: KinsuTheme.divider),
+                  borderSide: const BorderSide(color: KinsuTheme.divider),
                 ),
                 enabledBorder: OutlineInputBorder(
                   borderRadius: BorderRadius.circular(12),
-                  borderSide: BorderSide(color: KinsuTheme.divider),
+                  borderSide: const BorderSide(color: KinsuTheme.divider),
                 ),
               ),
               validator: (value) {
@@ -347,11 +347,11 @@ class _UploadRecordScreenState extends State<UploadRecordScreen> {
                 fillColor: KinsuTheme.background,
                 border: OutlineInputBorder(
                   borderRadius: BorderRadius.circular(12),
-                  borderSide: BorderSide(color: KinsuTheme.divider),
+                  borderSide: const BorderSide(color: KinsuTheme.divider),
                 ),
                 enabledBorder: OutlineInputBorder(
                   borderRadius: BorderRadius.circular(12),
-                  borderSide: BorderSide(color: KinsuTheme.divider),
+                  borderSide: const BorderSide(color: KinsuTheme.divider),
                 ),
               ),
             ),
@@ -424,7 +424,7 @@ class _UploadRecordScreenState extends State<UploadRecordScreen> {
                     Container(
                       padding: const EdgeInsets.all(12),
                       decoration: BoxDecoration(
-                        color: KinsuTheme.primary.withOpacity(0.1),
+                        color: KinsuTheme.primary.withValues(alpha: 0.1),
                         borderRadius: BorderRadius.circular(8),
                       ),
                       child: const Icon(
