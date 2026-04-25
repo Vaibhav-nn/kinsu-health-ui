@@ -2,11 +2,23 @@ import 'package:dio/dio.dart';
 
 import '../core/constants.dart';
 import '../models/activity_models.dart';
+import 'health_connect_service.dart';
 
 class ExerciseService {
   final Dio _dio;
 
   ExerciseService(this._dio);
+
+  // ── Health Connect write-back ─────────────────────────────────────────────
+
+  HealthConnectService? _hcService;
+  bool _hcWriteBack = false;
+
+  /// Called by [HealthSyncProvider] to wire up (or disconnect) HC write-back.
+  void configureHealthConnect(HealthConnectService hc, {required bool writeBack}) {
+    _hcService = hc;
+    _hcWriteBack = writeBack;
+  }
 
   Future<List<ActivityCatalogSection>> fetchCatalog() async {
     final response = await _dio.get(ApiConstants.exerciseCatalog);
@@ -59,6 +71,10 @@ class ExerciseService {
         if (details != null && details.isNotEmpty) 'details': details,
       },
     );
-    return ActivityLogItem.fromJson(response.data as Map<String, dynamic>);
+    final item = ActivityLogItem.fromJson(response.data as Map<String, dynamic>);
+    if (_hcWriteBack && _hcService != null) {
+      _hcService!.writeActivityLog(item);
+    }
+    return item;
   }
 }
