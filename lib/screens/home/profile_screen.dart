@@ -3,12 +3,12 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
 import '../../core/theme.dart';
-import '../../core/router.dart';
 import '../../providers/vault_provider.dart';
 import '../../providers/vitals_provider.dart';
 import '../../providers/reminders_provider.dart';
 import '../../utils/display_utils.dart';
 import '../../widgets/kinsu_widgets.dart';
+import '../settings/health_connect_settings_screen.dart';
 import '../track/medications/medications_list_screen.dart';
 import '../track/vitals/vitals_trends_screen.dart';
 import '../upload_record_screen.dart';
@@ -245,9 +245,12 @@ class _ProfileScreenState extends State<ProfileScreen> {
             iconBg: const Color(0xFFEFF6FF),
             iconColor: const Color(0xFF3B82F6),
             title: 'Connected apps',
-            subtitle: KinsuRoutes.healthConnect,
-            onTap: () => ScaffoldMessenger.of(context).showSnackBar(
-              const SnackBar(content: Text('Health Connect settings coming soon')),
+            subtitle: 'Health Connect, wearables & devices',
+            onTap: () => Navigator.push(
+              context,
+              MaterialPageRoute(
+                builder: (_) => const HealthConnectSettingsScreen(),
+              ),
             ),
           ),
           const SizedBox(height: 16),

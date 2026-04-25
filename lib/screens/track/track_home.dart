@@ -4,9 +4,11 @@ import 'package:fl_chart/fl_chart.dart';
 
 import '../../core/theme.dart';
 import '../../providers/family_provider.dart';
+import '../../providers/health_sync_provider.dart';
 import '../../providers/medications_provider.dart';
 import '../../providers/vitals_provider.dart';
 import '../../utils/display_utils.dart';
+import '../settings/health_connect_settings_screen.dart';
 import 'medications/medications_list_screen.dart';
 import 'vitals/vitals_trends_screen.dart';
 import 'symptoms/symptoms_list_screen.dart';
@@ -35,6 +37,7 @@ class _TrackHomeState extends State<TrackHome> {
     final medsProvider = context.watch<MedicationsProvider>();
     final vitalsProvider = context.watch<VitalsProvider>();
     final familyProvider = context.watch<FamilyProvider>();
+    final hsp = context.watch<HealthSyncProvider>();
 
     final activeMeds = medsProvider.activeMedications;
     const takenCount = 0; // no local taken state; requires backend session
@@ -278,6 +281,72 @@ class _TrackHomeState extends State<TrackHome> {
                         Text('SUN', style: TextStyle(fontSize: 8, color: KinsuTheme.textSecondary)),
                       ],
                     ),
+                  if (!hasChartData && hsp.isAvailable) ...[
+                    const SizedBox(height: 12),
+                    const Divider(height: 1, color: KinsuTheme.divider),
+                    const SizedBox(height: 12),
+                    Row(
+                      children: [
+                        const Icon(Icons.bolt,
+                            size: 16, color: KinsuTheme.primary),
+                        const SizedBox(width: 6),
+                        const Expanded(
+                          child: Text(
+                            'Import vitals from Health Connect',
+                            style: TextStyle(
+                              fontSize: 13,
+                              fontWeight: FontWeight.w600,
+                              color: KinsuTheme.textPrimary,
+                            ),
+                          ),
+                        ),
+                        hsp.status == HCSyncStatus.syncing
+                            ? const SizedBox(
+                                width: 18,
+                                height: 18,
+                                child: CircularProgressIndicator(
+                                  strokeWidth: 2,
+                                  color: KinsuTheme.primary,
+                                ),
+                              )
+                            : TextButton(
+                                style: TextButton.styleFrom(
+                                  padding: const EdgeInsets.symmetric(
+                                      horizontal: 12, vertical: 6),
+                                  backgroundColor: KinsuTheme.primaryLight,
+                                  foregroundColor: KinsuTheme.primary,
+                                  shape: RoundedRectangleBorder(
+                                    borderRadius: BorderRadius.circular(8),
+                                  ),
+                                ),
+                                onPressed: () => hsp.importFromHC(days: 30),
+                                child: const Text(
+                                  'Import',
+                                  style: TextStyle(
+                                    fontSize: 12,
+                                    fontWeight: FontWeight.w700,
+                                  ),
+                                ),
+                              ),
+                      ],
+                    ),
+                    const SizedBox(height: 4),
+                    GestureDetector(
+                      onTap: () => Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (_) => const HealthConnectSettingsScreen(),
+                        ),
+                      ),
+                      child: const Text(
+                        'Manage Health Connect settings →',
+                        style: TextStyle(
+                          fontSize: 11,
+                          color: KinsuTheme.primary,
+                        ),
+                      ),
+                    ),
+                  ],
                 ],
               ),
             ),

@@ -2,11 +2,13 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
 import '../../core/theme.dart';
+import '../../providers/health_sync_provider.dart';
 import '../../providers/medications_provider.dart';
 import '../../providers/vitals_provider.dart';
 import '../../providers/vault_provider.dart';
 import '../../providers/family_provider.dart';
 import '../../utils/display_utils.dart';
+import '../settings/health_connect_settings_screen.dart';
 import '../ai/ai_screen.dart';
 import '../track/medications/medications_list_screen.dart';
 import '../track/vitals/vitals_trends_screen.dart';
@@ -42,6 +44,7 @@ class _HomeScreenState extends State<HomeScreen> {
     final vitalsProvider = context.watch<VitalsProvider>();
     final vaultProvider = context.watch<VaultProvider>();
     final familyProvider = context.watch<FamilyProvider>();
+    final hsp = context.watch<HealthSyncProvider>();
 
     final activeProfile = familyProvider.profiles.isEmpty
         ? null
@@ -190,55 +193,98 @@ class _HomeScreenState extends State<HomeScreen> {
             const SizedBox(height: 14),
 
             // ── Hero card ────────────────────────────────────────────
-            Container(
-              height: 130,
-              decoration: BoxDecoration(
-                color: KinsuTheme.primary,
-                borderRadius: BorderRadius.circular(16),
-              ),
-              clipBehavior: Clip.hardEdge,
-              child: Stack(
-                children: [
-                  Positioned(
-                    right: -20,
-                    top: -30,
-                    child: Container(
-                      width: 140,
-                      height: 140,
-                      decoration: BoxDecoration(
-                        shape: BoxShape.circle,
-                        color: Colors.white.withValues(alpha: 0.12),
+            GestureDetector(
+              onTap: hsp.isAvailable
+                  ? () => Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (_) => const HealthConnectSettingsScreen(),
+                        ),
+                      )
+                  : null,
+              child: Container(
+                height: 130,
+                decoration: BoxDecoration(
+                  color: KinsuTheme.primary,
+                  borderRadius: BorderRadius.circular(16),
+                ),
+                clipBehavior: Clip.hardEdge,
+                child: Stack(
+                  children: [
+                    Positioned(
+                      right: -20,
+                      top: -30,
+                      child: Container(
+                        width: 140,
+                        height: 140,
+                        decoration: BoxDecoration(
+                          shape: BoxShape.circle,
+                          color: Colors.white.withValues(alpha: 0.12),
+                        ),
                       ),
                     ),
-                  ),
-                  Padding(
-                    padding: const EdgeInsets.all(18),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        const Text(
-                          'Welcome to Kinsu',
-                          style: TextStyle(
-                            color: Colors.white60,
-                            fontSize: 12,
-                            fontWeight: FontWeight.w500,
+                    Padding(
+                      padding: const EdgeInsets.all(18),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          const Text(
+                            'Welcome to Kinsu',
+                            style: TextStyle(
+                              color: Colors.white60,
+                              fontSize: 12,
+                              fontWeight: FontWeight.w500,
+                            ),
                           ),
-                        ),
-                        const SizedBox(height: 4),
-                        Text(
-                          'Hi $firstName, let\'s build\nyour health routine',
-                          style: const TextStyle(
-                            color: Colors.white,
-                            fontSize: 18,
-                            fontWeight: FontWeight.w700,
-                            height: 1.3,
+                          const SizedBox(height: 4),
+                          Text(
+                            'Hi $firstName, let\'s build\nyour health routine',
+                            style: const TextStyle(
+                              color: Colors.white,
+                              fontSize: 18,
+                              fontWeight: FontWeight.w700,
+                              height: 1.3,
+                            ),
                           ),
-                        ),
-                      ],
+                          if (hsp.isAvailable) ...[
+                            const SizedBox(height: 8),
+                            Row(
+                              children: [
+                                Container(
+                                  padding: const EdgeInsets.symmetric(
+                                      horizontal: 8, vertical: 3),
+                                  decoration: BoxDecoration(
+                                    color: Colors.white.withValues(alpha: 0.2),
+                                    borderRadius: BorderRadius.circular(20),
+                                  ),
+                                  child: Row(
+                                    mainAxisSize: MainAxisSize.min,
+                                    children: [
+                                      const Icon(Icons.bolt,
+                                          size: 12, color: Colors.white),
+                                      const SizedBox(width: 3),
+                                      Text(
+                                        hsp.writeBackEnabled
+                                            ? 'HC Synced'
+                                            : 'HC Available',
+                                        style: const TextStyle(
+                                          fontSize: 11,
+                                          color: Colors.white,
+                                          fontWeight: FontWeight.w600,
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ],
+                        ],
+                      ),
                     ),
-                  ),
-                ],
+                  ],
+                ),
               ),
             ),
             const SizedBox(height: 14),
