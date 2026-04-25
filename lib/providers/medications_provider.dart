@@ -90,21 +90,28 @@ class MedicationsProvider extends ChangeNotifier {
     }
   }
 
+  /// Adds a medication with optimistic UI update.
+  ///
+  /// The medication is inserted locally at index 0 immediately. If the POST
+  /// fails, the placeholder is removed and [error] is set.
   Future<Medication?> addMedication(Medication medication) async {
-    _isLoading = true;
+    // Optimistic insert — user sees the new entry immediately.
+    _medications.insert(0, medication);
     _error = null;
     notifyListeners();
 
     try {
       final created = await _service.addMedication(medication);
-      _medications.insert(0, created);
+      // Replace placeholder with the server-assigned version (real id, etc.).
+      final idx = _medications.indexOf(medication);
+      if (idx >= 0) _medications[idx] = created;
+      notifyListeners();
       return created;
     } catch (error) {
+      _medications.remove(medication);
       _error = formatProviderError(error);
-      return null;
-    } finally {
-      _isLoading = false;
       notifyListeners();
+      return null;
     }
   }
 

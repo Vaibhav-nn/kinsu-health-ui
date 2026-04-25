@@ -198,23 +198,11 @@ class HealthSyncProvider extends ChangeNotifier {
       // We intentionally do NOT mark a UUID as synced if its POST failed —
       // this ensures the next import retries it rather than silently skipping.
       final successUuids = <String>[];
-      for (int i = 0; i < vitalsToLog.length; i++) {
-        final ok = await _vitalsProvider.logVital(vitalsToLog[i], skipHCWrite: true);
+      for (final entry in vitalsToLog) {
+        final ok = await _vitalsProvider.logVital(entry.vital, skipHCWrite: true);
         if (ok) {
           _lastImportCount++;
-          // Map the converted vital back to its source HC point(s).
-          // BP vitals come from two points (sys + dia); all others are 1:1.
-          if (vitalsToLog[i].vitalType == 'blood_pressure') {
-            successUuids.addAll(
-              newPoints
-                  .where((p) =>
-                      p.type == HealthDataType.BLOOD_PRESSURE_SYSTOLIC ||
-                      p.type == HealthDataType.BLOOD_PRESSURE_DIASTOLIC)
-                  .map((p) => p.uuid),
-            );
-          } else if (i < newPoints.length) {
-            successUuids.add(newPoints[i].uuid);
-          }
+          successUuids.addAll(entry.sourceUuids);
         }
       }
 
@@ -239,50 +227,62 @@ class HealthSyncProvider extends ChangeNotifier {
   /// Groups BP systolic/diastolic pairs by timestamp (±1 s tolerance) and
   /// converts all other numeric vitals to [VitalLog] objects.
   ///
+  /// Returns pairs of (vital, sourceUuids) so the caller can mark exactly the
+  /// right HC point UUIDs as synced after a successful backend POST.
+  ///
   /// STEPS, ACTIVE_ENERGY_BURNED, and WORKOUT are silently skipped — exercise
   /// import is handled separately via writeActivityLog (Phase 4).
-  List<VitalLog> _groupAndConvert(List<HealthDataPoint> points) {
-    // Bucket BP values by millisecond timestamp for fast matching.
-    final bpSys = <int, double>{};
-    final bpDia = <int, double>{};
+  List<({VitalLog vital, List<String> sourceUuids})> _groupAndConvert(
+    List<HealthDataPoint> points,
+  ) {
+    // Bucket BP values and their UUIDs by millisecond timestamp for matching.
+    final bpSys = <int, ({double value, String uuid})>{};
+    final bpDia = <int, ({double value, String uuid})>{};
     final others = <HealthDataPoint>[];
 
     for (final p in points) {
       final ms = p.dateFrom.millisecondsSinceEpoch;
       if (p.type == HealthDataType.BLOOD_PRESSURE_SYSTOLIC) {
-        bpSys[ms] = _numValue(p);
+        bpSys[ms] = (value: _numValue(p), uuid: p.uuid);
       } else if (p.type == HealthDataType.BLOOD_PRESSURE_DIASTOLIC) {
-        bpDia[ms] = _numValue(p);
+        bpDia[ms] = (value: _numValue(p), uuid: p.uuid);
       } else {
         others.add(p);
       }
     }
 
-    final vitals = <VitalLog>[];
+    final result = <({VitalLog vital, List<String> sourceUuids})>[];
 
     // Match BP pairs within a ±1 000 ms window.
-    for (final entry in bpSys.entries) {
-      final matchMs = bpDia.keys.firstWhere(
-        (t) => (t - entry.key).abs() <= 1000,
-        orElse: () => entry.key,
-      );
-      vitals.add(VitalLog(
-        vitalType: 'blood_pressure',
-        value: entry.value,
-        valueSecondary: bpDia[matchMs],
-        unit: 'mmHg',
-        recordedAt: DateTime.fromMillisecondsSinceEpoch(entry.key),
-        notes: 'Imported from Health Connect',
+    for (final sysEntry in bpSys.entries) {
+      int? matchMs;
+      for (final t in bpDia.keys) {
+        if ((t - sysEntry.key).abs() <= 1000) {
+          matchMs = t;
+          break;
+        }
+      }
+      final diaEntry = matchMs != null ? bpDia[matchMs] : null;
+      result.add((
+        vital: VitalLog(
+          vitalType: 'blood_pressure',
+          value: sysEntry.value.value,
+          valueSecondary: diaEntry?.value,
+          unit: 'mmHg',
+          recordedAt: DateTime.fromMillisecondsSinceEpoch(sysEntry.key),
+          notes: 'Imported from Health Connect',
+        ),
+        sourceUuids: [sysEntry.value.uuid, if (diaEntry != null) diaEntry.uuid],
       ));
     }
 
-    // Convert remaining types.
+    // Convert remaining types — each HC point maps to exactly one VitalLog.
     for (final p in others) {
       final v = _convertPoint(p);
-      if (v != null) vitals.add(v);
+      if (v != null) result.add((vital: v, sourceUuids: [p.uuid]));
     }
 
-    return vitals;
+    return result;
   }
 
   /// Converts a single [HealthDataPoint] to a [VitalLog], or null if the

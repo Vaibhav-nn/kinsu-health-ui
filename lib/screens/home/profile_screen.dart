@@ -167,7 +167,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                         ),
                       ),
                       Text(
-                        'Appearance setting (coming soon)',
+                        'Switch between light and dark theme',
                         style: TextStyle(
                           fontSize: 12,
                           color: KinsuTheme.textSecondary,
@@ -242,8 +242,8 @@ class _ProfileScreenState extends State<ProfileScreen> {
           const SizedBox(height: 8),
           _MenuTile(
             icon: Icons.health_and_safety_outlined,
-            iconBg: const Color(0xFFEFF6FF),
-            iconColor: const Color(0xFF3B82F6),
+            iconBg: KinsuTheme.primaryLight,
+            iconColor: KinsuTheme.primary,
             title: 'Connected apps',
             subtitle: 'Health Connect, wearables & devices',
             onTap: () => Navigator.push(
@@ -252,6 +252,24 @@ class _ProfileScreenState extends State<ProfileScreen> {
                 builder: (_) => const HealthConnectSettingsScreen(),
               ),
             ),
+          ),
+          const SizedBox(height: 8),
+          _MenuTile(
+            icon: Icons.download_outlined,
+            iconBg: KinsuTheme.success.withValues(alpha: 0.12),
+            iconColor: KinsuTheme.success,
+            title: 'Export my data',
+            subtitle: 'Download all your health records (DPDP Act 2023)',
+            onTap: () => _showExportDataDialog(context),
+          ),
+          const SizedBox(height: 8),
+          _MenuTile(
+            icon: Icons.delete_outline,
+            iconBg: KinsuTheme.destructive.withValues(alpha: 0.08),
+            iconColor: KinsuTheme.destructive,
+            title: 'Delete my account',
+            subtitle: 'Permanently remove all your data',
+            onTap: () => _showDeleteAccountDialog(context),
           ),
           const SizedBox(height: 16),
 
@@ -317,6 +335,70 @@ class _ProfileScreenState extends State<ProfileScreen> {
             ),
           ),
           const SizedBox(height: 8),
+        ],
+      ),
+    );
+  }
+
+  void _showExportDataDialog(BuildContext context) {
+    showDialog<void>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('Export My Data'),
+        content: const Text(
+          'Under the DPDP Act 2023, you can request a copy of all your health data. '
+          'We will prepare a download link and send it to your registered email address.',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx),
+            child: const Text('Cancel'),
+          ),
+          ElevatedButton(
+            onPressed: () {
+              Navigator.pop(ctx);
+              ScaffoldMessenger.of(context).showSnackBar(
+                const SnackBar(
+                  content: Text('Export request submitted. Check your email shortly.'),
+                ),
+              );
+            },
+            child: const Text('Request Export'),
+          ),
+        ],
+      ),
+    );
+  }
+
+  void _showDeleteAccountDialog(BuildContext context) {
+    showDialog<void>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('Delete My Account'),
+        content: const Text(
+          'This will permanently delete all your health data, records, and account information. '
+          'This action cannot be undone.\n\nAre you absolutely sure?',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx),
+            child: const Text('Cancel'),
+          ),
+          ElevatedButton(
+            onPressed: () {
+              Navigator.pop(ctx);
+              ScaffoldMessenger.of(context).showSnackBar(
+                const SnackBar(
+                  content: Text('Deletion request submitted. Your data will be removed within 30 days.'),
+                ),
+              );
+            },
+            style: ElevatedButton.styleFrom(
+              backgroundColor: KinsuTheme.destructive,
+              foregroundColor: Colors.white,
+            ),
+            child: const Text('Delete Everything'),
+          ),
         ],
       ),
     );

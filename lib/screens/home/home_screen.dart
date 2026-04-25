@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import 'package:url_launcher/url_launcher.dart';
 
 import '../../core/theme.dart';
 import '../../models/medication.dart';
@@ -350,15 +351,11 @@ class _HomeScreenState extends State<HomeScreen> {
                     ),
                   ),
                   _QuickActionTile(
-                    icon: Icons.sos_outlined,
-                    label: 'SOS',
+                    icon: Icons.emergency_outlined,
+                    label: 'Emergency',
                     bg: const Color(0xFFFEE2E2),
                     color: KinsuTheme.destructive,
-                    onTap: () {
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        const SnackBar(content: Text('SOS flow coming soon.')),
-                      );
-                    },
+                    onTap: () => _showEmergencySheet(context),
                   ),
                 ],
               ),
@@ -710,6 +707,158 @@ class _HomeScreenState extends State<HomeScreen> {
               ),
             ),
           ],
+        ),
+      ),
+    );
+  }
+}
+
+void _showEmergencySheet(BuildContext context) {
+  showModalBottomSheet<void>(
+    context: context,
+    isScrollControlled: true,
+    backgroundColor: Colors.transparent,
+    builder: (_) => Container(
+      decoration: const BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      ),
+      padding: const EdgeInsets.fromLTRB(24, 12, 24, 40),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Center(
+            child: Container(
+              width: 40,
+              height: 4,
+              decoration: BoxDecoration(
+                color: KinsuTheme.divider,
+                borderRadius: BorderRadius.circular(2),
+              ),
+            ),
+          ),
+          const SizedBox(height: 20),
+          Row(
+            children: [
+              Container(
+                width: 44,
+                height: 44,
+                decoration: BoxDecoration(
+                  color: KinsuTheme.destructive.withValues(alpha: 0.1),
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: const Icon(Icons.emergency_outlined,
+                    color: KinsuTheme.destructive, size: 22),
+              ),
+              const SizedBox(width: 12),
+              const Text(
+                'Emergency Contacts',
+                style: TextStyle(
+                  fontSize: 18,
+                  fontWeight: FontWeight.w700,
+                  color: KinsuTheme.textPrimary,
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 16),
+          const Text(
+            'Quick-dial emergency services or your personal contacts:',
+            style: TextStyle(fontSize: 14, color: KinsuTheme.textSecondary),
+          ),
+          const SizedBox(height: 16),
+          const _EmergencyContactTile(
+            label: 'National Emergency (Police/Fire/Medical)',
+            number: '112',
+            icon: Icons.local_police_outlined,
+          ),
+          const SizedBox(height: 8),
+          const _EmergencyContactTile(
+            label: 'Ambulance',
+            number: '108',
+            icon: Icons.local_hospital_outlined,
+          ),
+          const SizedBox(height: 8),
+          const _EmergencyContactTile(
+            label: 'Women Helpline',
+            number: '1091',
+            icon: Icons.support_agent_outlined,
+          ),
+          const SizedBox(height: 20),
+          SizedBox(
+            width: double.infinity,
+            child: OutlinedButton(
+              onPressed: () => Navigator.pop(context),
+              child: const Text('Close'),
+            ),
+          ),
+        ],
+      ),
+    ),
+  );
+}
+
+class _EmergencyContactTile extends StatelessWidget {
+  final String label;
+  final String number;
+  final IconData icon;
+
+  const _EmergencyContactTile({
+    required this.label,
+    required this.number,
+    required this.icon,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Material(
+      color: Colors.transparent,
+      child: InkWell(
+        borderRadius: BorderRadius.circular(12),
+        onTap: () async {
+          final uri = Uri.parse('tel:$number');
+          try {
+            await launchUrl(uri);
+          } catch (_) {
+            if (context.mounted) {
+              ScaffoldMessenger.of(context).showSnackBar(
+                SnackBar(content: Text('Dial $number')),
+              );
+            }
+          }
+        },
+        child: Container(
+          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+          decoration: BoxDecoration(
+            color: KinsuTheme.background,
+            borderRadius: BorderRadius.circular(12),
+            border: Border.all(color: KinsuTheme.divider),
+          ),
+          child: Row(
+            children: [
+              Icon(icon, size: 20, color: KinsuTheme.destructive),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(label,
+                        style: const TextStyle(
+                            fontSize: 13, color: KinsuTheme.textSecondary)),
+                    Text(number,
+                        style: const TextStyle(
+                          fontSize: 16,
+                          fontWeight: FontWeight.w700,
+                          color: KinsuTheme.textPrimary,
+                        )),
+                  ],
+                ),
+              ),
+              const Icon(Icons.phone_outlined,
+                  size: 18, color: KinsuTheme.primary),
+            ],
+          ),
         ),
       ),
     );

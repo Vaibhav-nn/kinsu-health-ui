@@ -5,6 +5,7 @@ import 'package:provider/provider.dart';
 
 import '../../core/constants.dart';
 import '../../core/network/dio_client.dart';
+import '../../core/theme.dart';
 import '../../models/user_profile.dart';
 import '../../providers/health_sync_provider.dart';
 import '../../screens/settings/health_connect_settings_screen.dart';
@@ -198,46 +199,46 @@ class _HCOnboardingSheet extends StatelessWidget {
             width: 40,
             height: 4,
             decoration: BoxDecoration(
-              color: Colors.grey.shade300,
+              color: KinsuTheme.divider,
               borderRadius: BorderRadius.circular(2),
             ),
           ),
-          const SizedBox(height: 20),
+          const SizedBox(height: KinsuSpacing.xl),
           Container(
             width: 60,
             height: 60,
             decoration: BoxDecoration(
-              color: const Color(0xFFEFF6FF),
+              color: KinsuTheme.primaryLight,
               borderRadius: BorderRadius.circular(16),
             ),
             child: const Icon(Icons.health_and_safety_outlined,
-                color: Color(0xFF3B82F6), size: 30),
+                color: KinsuTheme.primary, size: 30),
           ),
-          const SizedBox(height: 16),
+          const SizedBox(height: KinsuSpacing.lg),
           const Text(
             'Connect Health Connect',
             style: TextStyle(
               fontSize: 18,
               fontWeight: FontWeight.w700,
-              color: Color(0xFF1A1A2E),
+              color: KinsuTheme.textPrimary,
             ),
           ),
-          const SizedBox(height: 8),
+          const SizedBox(height: KinsuSpacing.sm),
           const Text(
             'Auto-sync your steps, heart rate, and workouts '
             'directly into Kinsu — no manual logging needed.',
             textAlign: TextAlign.center,
             style: TextStyle(
               fontSize: 14,
-              color: Color(0xFF6B7280),
+              color: KinsuTheme.textSecondary,
               height: 1.5,
             ),
           ),
-          const SizedBox(height: 6),
+          const SizedBox(height: KinsuSpacing.sm),
           const _HCBullet(icon: Icons.directions_walk, text: 'Steps & activity'),
           const _HCBullet(icon: Icons.favorite_outline, text: 'Heart rate & SpO₂'),
           const _HCBullet(icon: Icons.fitness_center_outlined, text: 'Workouts & sleep'),
-          const SizedBox(height: 20),
+          const SizedBox(height: KinsuSpacing.xl),
           SizedBox(
             width: double.infinity,
             child: ElevatedButton(
@@ -251,17 +252,17 @@ class _HCOnboardingSheet extends StatelessWidget {
                 );
               },
               style: ElevatedButton.styleFrom(
-                padding: const EdgeInsets.symmetric(vertical: 14),
+                padding: const EdgeInsets.symmetric(vertical: KinsuSpacing.md),
               ),
               child: const Text('Set up Health Connect'),
             ),
           ),
-          const SizedBox(height: 8),
+          const SizedBox(height: KinsuSpacing.sm),
           TextButton(
             onPressed: () => Navigator.pop(context),
             child: const Text(
               'Maybe later',
-              style: TextStyle(color: Color(0xFF6B7280)),
+              style: TextStyle(color: KinsuTheme.textSecondary),
             ),
           ),
         ],
@@ -282,13 +283,13 @@ class _HCBullet extends StatelessWidget {
       padding: const EdgeInsets.symmetric(vertical: 4),
       child: Row(
         children: [
-          Icon(icon, size: 18, color: const Color(0xFF3B82F6)),
+          Icon(icon, size: 18, color: KinsuTheme.primary),
           const SizedBox(width: 10),
           Text(
             text,
             style: const TextStyle(
               fontSize: 13,
-              color: Color(0xFF374151),
+              color: KinsuTheme.textPrimary,
             ),
           ),
         ],

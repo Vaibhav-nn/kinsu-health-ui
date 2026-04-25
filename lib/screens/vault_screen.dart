@@ -9,6 +9,7 @@ import '../core/theme.dart';
 import '../models/health_record.dart';
 import '../providers/vault_provider.dart';
 import '../widgets/kinsu_widgets.dart';
+import '../widgets/shimmer_placeholders.dart';
 import '../utils/file_utils.dart';
 import 'upload_record_screen.dart';
 
@@ -735,7 +736,7 @@ class _VaultScreenState extends State<VaultScreen> {
               child: Consumer<VaultProvider>(
                 builder: (context, provider, _) {
                   if (provider.isLoading) {
-                    return const Center(child: CircularProgressIndicator());
+                    return const ShimmerCardList(count: 5);
                   }
 
                   if (provider.error != null) {

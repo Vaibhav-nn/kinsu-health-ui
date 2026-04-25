@@ -121,22 +121,22 @@ class ShimmerMedicationRow extends StatelessWidget {
           color: Colors.white,
           borderRadius: BorderRadius.circular(KinsuTheme.radiusLG),
         ),
-        child: Row(
+        child: const Row(
           children: [
-            const _ShimmerBox(width: 44, height: 44, radius: 22),
-            const SizedBox(width: 12),
+            _ShimmerBox(width: 44, height: 44, radius: 22),
+            SizedBox(width: 12),
             Expanded(
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   _ShimmerBox(width: double.infinity * 0.7, height: 14),
-                  const SizedBox(height: 8),
-                  const _ShimmerBox(width: 100, height: 11),
+                  SizedBox(height: 8),
+                  _ShimmerBox(width: 100, height: 11),
                 ],
               ),
             ),
-            const SizedBox(width: 12),
-            const _ShimmerBox(width: 60, height: 28, radius: 14),
+            SizedBox(width: 12),
+            _ShimmerBox(width: 60, height: 28, radius: 14),
           ],
         ),
       ),
@@ -179,13 +179,13 @@ class ShimmerVitalTile extends StatelessWidget {
           color: Colors.white,
           borderRadius: BorderRadius.circular(KinsuTheme.radiusLG),
         ),
-        child: Column(
+        child: const Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            const _ShimmerBox(width: 80, height: 11),
-            const SizedBox(height: 10),
-            const _ShimmerBox(width: 120, height: 28, radius: 6),
-            const SizedBox(height: 8),
+            _ShimmerBox(width: 80, height: 11),
+            SizedBox(height: 10),
+            _ShimmerBox(width: 120, height: 28, radius: 6),
+            SizedBox(height: 8),
             _ShimmerBox(width: double.infinity, height: 10),
           ],
         ),
@@ -199,20 +199,20 @@ class ShimmerVitalGrid extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsets.all(16),
+    return const Padding(
+      padding: EdgeInsets.all(16),
       child: Column(
         children: [
           Row(
-            children: const [
+            children: [
               Expanded(child: ShimmerVitalTile()),
               SizedBox(width: 12),
               Expanded(child: ShimmerVitalTile()),
             ],
           ),
-          const SizedBox(height: 12),
+          SizedBox(height: 12),
           Row(
-            children: const [
+            children: [
               Expanded(child: ShimmerVitalTile()),
               SizedBox(width: 12),
               Expanded(child: ShimmerVitalTile()),
@@ -238,17 +238,17 @@ class ShimmerProfileHeader extends StatelessWidget {
           color: Colors.white,
           borderRadius: BorderRadius.circular(24),
         ),
-        child: Row(
+        child: const Row(
           children: [
-            const _ShimmerBox(width: 68, height: 68, radius: 34),
-            const SizedBox(width: 14),
+            _ShimmerBox(width: 68, height: 68, radius: 34),
+            SizedBox(width: 14),
             Expanded(
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   _ShimmerBox(width: double.infinity * 0.6, height: 18),
-                  const SizedBox(height: 10),
-                  const _ShimmerBox(width: 140, height: 13),
+                  SizedBox(height: 10),
+                  _ShimmerBox(width: 140, height: 13),
                 ],
               ),
             ),
@@ -274,21 +274,21 @@ class ShimmerFamilyCard extends StatelessWidget {
           color: Colors.white,
           borderRadius: BorderRadius.circular(KinsuTheme.radiusLG),
         ),
-        child: Row(
+        child: const Row(
           children: [
-            const _ShimmerBox(width: 48, height: 48, radius: 24),
-            const SizedBox(width: 12),
+            _ShimmerBox(width: 48, height: 48, radius: 24),
+            SizedBox(width: 12),
             Expanded(
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  const _ShimmerBox(width: 120, height: 14),
-                  const SizedBox(height: 8),
-                  const _ShimmerBox(width: 80, height: 11),
+                  _ShimmerBox(width: 120, height: 14),
+                  SizedBox(height: 8),
+                  _ShimmerBox(width: 80, height: 11),
                 ],
               ),
             ),
-            const _ShimmerBox(width: 40, height: 20, radius: 10),
+            _ShimmerBox(width: 40, height: 20, radius: 10),
           ],
         ),
       ),

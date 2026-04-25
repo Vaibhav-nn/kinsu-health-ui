@@ -84,12 +84,23 @@ class _TrackHomeState extends State<TrackHome> {
       adherenceCopy = "Start logging your vitals and meds to build insights.";
     }
 
+    final hasError = vitalsProvider.error != null || medsProvider.error != null;
+    final errorMessage = vitalsProvider.error ?? medsProvider.error;
+
     return Scaffold(
       backgroundColor: KinsuTheme.background,
       body: SafeArea(
         child: ListView(
           padding: const EdgeInsets.fromLTRB(16, 14, 16, 24),
           children: [
+            if (hasError)
+              _TrackErrorBanner(
+                message: errorMessage!,
+                onRetry: () {
+                  context.read<MedicationsProvider>().loadMedications(isActive: true);
+                  context.read<VitalsProvider>().loadVitals();
+                },
+              ),
             // ── Top bar ──────────────────────────────────────
             Row(
               children: [
@@ -568,6 +579,50 @@ class _DashedLine extends StatelessWidget {
       child: CustomPaint(
         painter: _DashedLinePainter(),
         size: const Size(double.infinity, 60),
+      ),
+    );
+  }
+}
+
+class _TrackErrorBanner extends StatelessWidget {
+  final String message;
+  final VoidCallback onRetry;
+
+  const _TrackErrorBanner({required this.message, required this.onRetry});
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      margin: const EdgeInsets.only(bottom: 12),
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+      decoration: BoxDecoration(
+        color: KinsuTheme.destructive.withValues(alpha: 0.08),
+        borderRadius: BorderRadius.circular(10),
+        border: Border.all(color: KinsuTheme.destructive.withValues(alpha: 0.25)),
+      ),
+      child: Row(
+        children: [
+          const Icon(Icons.wifi_off_rounded,
+              size: 16, color: KinsuTheme.destructive),
+          const SizedBox(width: 8),
+          Expanded(
+            child: Text(
+              message,
+              style: const TextStyle(
+                  fontSize: 12, color: KinsuTheme.destructive),
+            ),
+          ),
+          TextButton(
+            onPressed: onRetry,
+            style: TextButton.styleFrom(
+              padding: const EdgeInsets.symmetric(horizontal: 8),
+              foregroundColor: KinsuTheme.destructive,
+            ),
+            child: const Text('Retry',
+                style:
+                    TextStyle(fontSize: 12, fontWeight: FontWeight.w700)),
+          ),
+        ],
       ),
     );
   }

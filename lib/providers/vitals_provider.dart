@@ -92,17 +92,91 @@ class VitalsProvider extends ChangeNotifier {
     }
   }
 
+  /// Logs a multi-reading snapshot with optimistic UI update.
+  ///
+  /// Placeholder [VitalLog]s are built from the snapshot's non-null fields and
+  /// prepended to the list immediately. On success they are replaced with the
+  /// server-assigned records. On failure they are removed and [error] is set.
   Future<bool> logSnapshot(VitalSnapshot snapshot) async {
+    final placeholders = _placeholdersFromSnapshot(snapshot);
+    _vitals = [...placeholders, ..._vitals];
+    notifyListeners();
+
     try {
       final created = await _service.logSnapshot(snapshot);
+      for (final p in placeholders) {
+        _vitals.remove(p);
+      }
       _vitals = [...created, ..._vitals];
       notifyListeners();
       return true;
     } catch (e) {
+      for (final p in placeholders) {
+        _vitals.remove(p);
+      }
       _error = formatProviderError(e);
       notifyListeners();
       return false;
     }
+  }
+
+  /// Builds placeholder [VitalLog]s from each non-null field in [snapshot].
+  List<VitalLog> _placeholdersFromSnapshot(VitalSnapshot snapshot) {
+    final ps = <VitalLog>[];
+    final t = snapshot.recordedAt;
+    final n = snapshot.notes;
+
+    if (snapshot.bloodPressureSystolic != null) {
+      ps.add(VitalLog(
+        vitalType: 'blood_pressure',
+        value: snapshot.bloodPressureSystolic!,
+        valueSecondary: snapshot.bloodPressureDiastolic,
+        unit: 'mmHg',
+        recordedAt: t,
+        notes: n,
+      ));
+    }
+    if (snapshot.heartRate != null) {
+      ps.add(VitalLog(
+          vitalType: 'heart_rate',
+          value: snapshot.heartRate!,
+          unit: 'bpm',
+          recordedAt: t,
+          notes: n));
+    }
+    if (snapshot.bloodSugar != null) {
+      ps.add(VitalLog(
+          vitalType: 'blood_sugar',
+          value: snapshot.bloodSugar!,
+          unit: 'mg/dL',
+          recordedAt: t,
+          notes: n));
+    }
+    if (snapshot.weight != null) {
+      ps.add(VitalLog(
+          vitalType: 'weight',
+          value: snapshot.weight!,
+          unit: 'kg',
+          recordedAt: t,
+          notes: n));
+    }
+    if (snapshot.temperature != null) {
+      ps.add(VitalLog(
+          vitalType: 'temperature',
+          value: snapshot.temperature!,
+          unit: '°C',
+          recordedAt: t,
+          notes: n));
+    }
+    if (snapshot.spo2 != null) {
+      ps.add(VitalLog(
+          vitalType: 'spo2',
+          value: snapshot.spo2!,
+          unit: '%',
+          recordedAt: t,
+          notes: n));
+    }
+    return ps;
   }
 
   Future<bool> deleteVital(int id) async {
@@ -118,8 +192,4 @@ class VitalsProvider extends ChangeNotifier {
     }
   }
 
-  @override
-  void dispose() {
-    super.dispose();
-  }
 }

@@ -2,9 +2,12 @@ import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:dio/dio.dart';
 import 'package:provider/provider.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
+import 'package:kinsu_health/core/health_connect_sync_registry.dart';
 import 'package:kinsu_health/models/home_models.dart';
 import 'package:kinsu_health/providers/family_provider.dart';
+import 'package:kinsu_health/providers/health_sync_provider.dart';
 import 'package:kinsu_health/providers/illness_provider.dart';
 import 'package:kinsu_health/providers/medications_provider.dart';
 import 'package:kinsu_health/providers/reminders_provider.dart';
@@ -17,7 +20,9 @@ import 'package:kinsu_health/screens/track/illness/illness_list_screen.dart';
 import 'package:kinsu_health/screens/track/medications/add_medication_screen.dart';
 import 'package:kinsu_health/screens/track/reminders/add_reminder_screen.dart';
 import 'package:kinsu_health/screens/track/vitals/vitals_trends_screen.dart';
+import 'package:kinsu_health/services/exercise_service.dart';
 import 'package:kinsu_health/services/family_service.dart';
+import 'package:kinsu_health/services/health_connect_service.dart';
 import 'package:kinsu_health/services/home_service.dart';
 import 'package:kinsu_health/services/illness_service.dart';
 import 'package:kinsu_health/services/medications_service.dart';
@@ -177,23 +182,37 @@ void main() {
 
   testWidgets('Home appointments open inner overview sheet',
       (WidgetTester tester) async {
+    SharedPreferences.setMockInitialValues({});
+    final prefs = await SharedPreferences.getInstance();
     final dio = _testDio();
     await tester.binding.setSurfaceSize(const Size(1440, 2400));
     addTearDown(() => tester.binding.setSurfaceSize(null));
+
+    final vitalsProvider = VitalsProvider(VitalsService(dio));
+    final exerciseService = ExerciseService(dio);
+    final hcService = HealthConnectService();
+    final registry = HCSyncRegistry(prefs);
+    final hsp = HealthSyncProvider(
+      hcService: hcService,
+      registry: registry,
+      vitalsProvider: vitalsProvider,
+      exerciseService: exerciseService,
+      prefs: prefs,
+    );
 
     await tester.pumpWidget(
       MultiProvider(
         providers: [
           Provider<HomeService>.value(value: _FakeHomeService()),
           ChangeNotifierProvider(create: (_) => AppThemeProvider()),
-          ChangeNotifierProvider(
-              create: (_) => VitalsProvider(VitalsService(dio))),
+          ChangeNotifierProvider.value(value: vitalsProvider),
           ChangeNotifierProvider(
               create: (_) => MedicationsProvider(MedicationsService(dio))),
           ChangeNotifierProvider(
               create: (_) => RemindersProvider(RemindersService(dio))),
           ChangeNotifierProvider(
               create: (_) => FamilyProvider(FamilyService(dio))),
+          ChangeNotifierProvider.value(value: hsp),
         ],
         child: const MaterialApp(home: HomeScreen()),
       ),

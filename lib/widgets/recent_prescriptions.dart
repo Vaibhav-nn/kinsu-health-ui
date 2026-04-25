@@ -77,7 +77,7 @@ class _PrescriptionTile extends StatelessWidget {
         color: theme.colorScheme.surface,
         borderRadius: BorderRadius.circular(14),
         elevation: 0,
-        shadowColor: theme.colorScheme.shadow.withOpacity(0.08),
+        shadowColor: theme.colorScheme.shadow.withValues(alpha:0.08),
         child: InkWell(
           onTap: onTap,
           borderRadius: BorderRadius.circular(14),
@@ -89,7 +89,7 @@ class _PrescriptionTile extends StatelessWidget {
                   width: 44,
                   height: 44,
                   decoration: BoxDecoration(
-                    color: theme.colorScheme.primaryContainer.withOpacity(0.5),
+                    color: theme.colorScheme.primaryContainer.withValues(alpha:0.5),
                     borderRadius: BorderRadius.circular(12),
                   ),
                   child: Icon(
@@ -114,7 +114,7 @@ class _PrescriptionTile extends StatelessWidget {
                       Text(
                         prescription.doctor,
                         style: theme.textTheme.bodySmall?.copyWith(
-                          color: theme.colorScheme.onSurface.withOpacity(0.6),
+                          color: theme.colorScheme.onSurface.withValues(alpha:0.6),
                         ),
                       ),
                     ],
@@ -123,13 +123,13 @@ class _PrescriptionTile extends StatelessWidget {
                 Text(
                   prescription.timeAgo,
                   style: theme.textTheme.bodySmall?.copyWith(
-                    color: theme.colorScheme.onSurface.withOpacity(0.5),
+                    color: theme.colorScheme.onSurface.withValues(alpha:0.5),
                   ),
                 ),
                 const SizedBox(width: 4),
                 Icon(
                   Icons.chevron_right_rounded,
-                  color: theme.colorScheme.onSurface.withOpacity(0.4),
+                  color: theme.colorScheme.onSurface.withValues(alpha:0.4),
                   size: 22,
                 ),
               ],
