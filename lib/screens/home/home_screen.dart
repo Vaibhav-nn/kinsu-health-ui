@@ -6,6 +6,7 @@ import '../../providers/medications_provider.dart';
 import '../../providers/vitals_provider.dart';
 import '../../providers/vault_provider.dart';
 import '../../providers/family_provider.dart';
+import '../../utils/display_utils.dart';
 import '../ai/ai_screen.dart';
 import '../track/medications/medications_list_screen.dart';
 import '../track/vitals/vitals_trends_screen.dart';
@@ -34,19 +35,6 @@ class _HomeScreenState extends State<HomeScreen> {
     });
   }
 
-  String _greeting() {
-    final hour = DateTime.now().hour;
-    if (hour < 12) return 'Good Morning ☀️';
-    if (hour < 17) return 'Good Afternoon 🌤';
-    return 'Good Evening 🌙';
-  }
-
-  String _initialsFromName(String name) {
-    final parts = name.trim().split(RegExp(r'\s+')).where((s) => s.isNotEmpty).toList();
-    if (parts.isEmpty) return 'U';
-    if (parts.length == 1) return parts.first[0].toUpperCase();
-    return (parts[0][0] + parts[1][0]).toUpperCase();
-  }
 
   @override
   Widget build(BuildContext context) {
@@ -66,9 +54,9 @@ class _HomeScreenState extends State<HomeScreen> {
           );
     final displayName = activeProfile?.displayName ?? 'there';
     final firstName = displayName.split(' ').first;
-    final initials = _initialsFromName(displayName);
+    final initials = initialsFromName(displayName);
 
-    final activeMeds = medsProvider.medications.where((m) => m.isActive).toList();
+    final activeMeds = medsProvider.activeMedications;
     // sync map
     final keys = activeMeds.map((m) => m.id?.toString() ?? m.name).toSet();
     _todayMeds.removeWhere((k, _) => !keys.contains(k));
@@ -120,7 +108,7 @@ class _HomeScreenState extends State<HomeScreen> {
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Text(
-                        _greeting(),
+                        greeting(withEmoji: true),
                         style: const TextStyle(
                           fontSize: 12,
                           color: KinsuTheme.textSecondary,

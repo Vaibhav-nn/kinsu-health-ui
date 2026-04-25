@@ -13,6 +13,9 @@ class MedicationsProvider extends ChangeNotifier {
   List<Medication> _medications = [];
   List<Medication> get medications => _medications;
 
+  /// Pre-filtered list of active medications — avoids repeated .where() in build().
+  List<Medication> get activeMedications => _medications.where((m) => m.isActive).toList();
+
   MedicationDashboard? _dashboard;
   MedicationDashboard? get dashboard => _dashboard;
 

@@ -234,7 +234,7 @@ class _MedicationsListScreenState extends State<MedicationsListScreen> {
     return Consumer<MedicationsProvider>(
       builder: (context, provider, _) {
         final activeMeds =
-            provider.medications.where((m) => m.isActive).toList();
+            provider.activeMedications;
         final takenCount =
             activeMeds.where((m) => _taken[_medKey(m)] == true).length;
         final total = activeMeds.length;
@@ -574,10 +574,16 @@ class _DailyView extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    // Group by meal time (using notes as proxy since no mealTime field in model)
+    // Group by frequency since Medication has no mealTime field.
     final groups = <String, List<Medication>>{};
     for (final med in medications) {
-      final group = mealTimeLabel(null); // all go to "Anytime" without mealTime
+      final group = mealTimeLabel(med.frequency.toLowerCase().contains('morning')
+          ? 'morning'
+          : med.frequency.toLowerCase().contains('evening')
+              ? 'evening'
+              : med.frequency.toLowerCase().contains('night')
+                  ? 'night'
+                  : null);
       groups.putIfAbsent(group, () => []);
       groups[group]!.add(med);
     }
@@ -860,11 +866,8 @@ class _WeeklyView extends StatelessWidget {
                       overflow: TextOverflow.ellipsis,
                     ),
                   ),
-                  ...List.generate(7, (dayIdx) {
-                    // simulate: green if active, grey otherwise
-                    final color = med.isActive
-                        ? KinsuTheme.success
-                        : Colors.transparent;
+                  ...List.generate(7, (_) {
+                    // No local adherence history — show neutral pending dots.
                     return Expanded(
                       child: Center(
                         child: Container(
@@ -872,13 +875,9 @@ class _WeeklyView extends StatelessWidget {
                           height: 16,
                           decoration: BoxDecoration(
                             shape: BoxShape.circle,
-                            color: med.isActive
-                                ? color.withValues(alpha: 0.15)
-                                : Colors.transparent,
+                            color: Colors.transparent,
                             border: Border.all(
-                              color: med.isActive
-                                  ? color
-                                  : KinsuTheme.divider,
+                              color: KinsuTheme.divider,
                               width: 1.5,
                             ),
                           ),

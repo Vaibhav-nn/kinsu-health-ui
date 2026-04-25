@@ -35,7 +35,7 @@ class _AiInsightsView extends StatelessWidget {
     final medsProvider = context.watch<MedicationsProvider>();
     final vitalsProvider = context.watch<VitalsProvider>();
 
-    final activeMeds = medsProvider.medications.where((m) => m.isActive).toList();
+    final activeMeds = medsProvider.activeMedications;
     final total = activeMeds.length;
 
     // Compute BP average

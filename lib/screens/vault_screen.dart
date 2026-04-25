@@ -8,6 +8,7 @@ import 'package:syncfusion_flutter_pdfviewer/pdfviewer.dart';
 import '../core/theme.dart';
 import '../models/health_record.dart';
 import '../providers/vault_provider.dart';
+import '../widgets/kinsu_widgets.dart';
 import '../utils/file_utils.dart';
 import 'upload_record_screen.dart';
 
@@ -90,16 +91,7 @@ class _VaultScreenState extends State<VaultScreen> {
             mainAxisSize: MainAxisSize.min,
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Center(
-                child: Container(
-                  width: 40,
-                  height: 4,
-                  decoration: BoxDecoration(
-                    color: KinsuTheme.divider,
-                    borderRadius: BorderRadius.circular(2),
-                  ),
-                ),
-              ),
+              const KinsuDragHandle(),
               const SizedBox(height: 16),
               const Text(
                 'Filter Records',
@@ -225,16 +217,7 @@ class _VaultScreenState extends State<VaultScreen> {
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Center(
-              child: Container(
-                width: 40,
-                height: 4,
-                decoration: BoxDecoration(
-                  color: KinsuTheme.divider,
-                  borderRadius: BorderRadius.circular(2),
-                ),
-              ),
-            ),
+            const KinsuDragHandle(),
             const SizedBox(height: 16),
             const Text(
               'ABHA Linking',
@@ -331,14 +314,9 @@ class _VaultScreenState extends State<VaultScreen> {
       child: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
-          Container(
-            margin: const EdgeInsets.only(top: 12),
-            width: 40,
-            height: 4,
-            decoration: BoxDecoration(
-              color: KinsuTheme.divider,
-              borderRadius: BorderRadius.circular(2),
-            ),
+          const Padding(
+            padding: EdgeInsets.only(top: 12),
+            child: KinsuDragHandle(),
           ),
           Container(
             padding: const EdgeInsets.fromLTRB(20, 16, 20, 16),

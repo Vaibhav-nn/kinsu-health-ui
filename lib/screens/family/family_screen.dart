@@ -4,6 +4,8 @@ import 'package:provider/provider.dart';
 import '../../core/theme.dart';
 import '../../models/family_member_profile.dart';
 import '../../providers/family_provider.dart';
+import '../../utils/display_utils.dart';
+import '../../widgets/kinsu_widgets.dart';
 
 class FamilyScreen extends StatefulWidget {
   const FamilyScreen({super.key});
@@ -62,16 +64,7 @@ class _FamilyScreenState extends State<FamilyScreen> {
               mainAxisSize: MainAxisSize.min,
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Center(
-                  child: Container(
-                    width: 40,
-                    height: 4,
-                    decoration: BoxDecoration(
-                      color: KinsuTheme.divider,
-                      borderRadius: BorderRadius.circular(2),
-                    ),
-                  ),
-                ),
+                const KinsuDragHandle(),
                 const SizedBox(height: 16),
                 const Text(
                   'Add Family Member',
@@ -233,14 +226,7 @@ class _FamilyScreenState extends State<FamilyScreen> {
   }
 
   void _showDetailSheet(FamilyMemberProfile member) {
-    final initials = member.displayName.trim().isEmpty
-        ? 'F'
-        : member.displayName
-            .trim()
-            .split(RegExp(r'\s+'))
-            .take(2)
-            .map((s) => s[0].toUpperCase())
-            .join();
+    final initials = initialsFromName(member.displayName.isEmpty ? 'F' : member.displayName);
 
     final age = member.dateOfBirth != null
         ? '${DateTime.now().year - member.dateOfBirth!.year} yrs'
@@ -332,9 +318,9 @@ class _FamilyScreenState extends State<FamilyScreen> {
           children: [
             // ── Header ────────────────────────────────────────────────
             Container(
-              color: Colors.white,
               padding: const EdgeInsets.fromLTRB(16, 14, 16, 14),
               decoration: const BoxDecoration(
+                color: KinsuTheme.surface,
                 border: Border(
                   bottom: BorderSide(color: KinsuTheme.divider, width: 1),
                 ),
@@ -464,14 +450,7 @@ class _FamilyScreenState extends State<FamilyScreen> {
                       else
                         ...provider.members.map(
                           (member) {
-                            final initials = member.displayName.trim().isEmpty
-                                ? 'F'
-                                : member.displayName
-                                    .trim()
-                                    .split(RegExp(r'\s+'))
-                                    .take(2)
-                                    .map((s) => s[0].toUpperCase())
-                                    .join();
+                            final initials = initialsFromName(member.displayName.isEmpty ? 'F' : member.displayName);
                             final age = member.dateOfBirth != null
                                 ? '${DateTime.now().year - member.dateOfBirth!.year} yrs'
                                 : null;

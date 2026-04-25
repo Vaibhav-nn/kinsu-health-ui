@@ -6,8 +6,9 @@ import '../../core/theme.dart';
 import '../../core/router.dart';
 import '../../providers/vault_provider.dart';
 import '../../providers/vitals_provider.dart';
-import '../../providers/medications_provider.dart';
 import '../../providers/reminders_provider.dart';
+import '../../utils/display_utils.dart';
+import '../../widgets/kinsu_widgets.dart';
 import '../track/medications/medications_list_screen.dart';
 import '../track/vitals/vitals_trends_screen.dart';
 import '../upload_record_screen.dart';
@@ -22,13 +23,6 @@ class ProfileScreen extends StatefulWidget {
 class _ProfileScreenState extends State<ProfileScreen> {
   bool _darkMode = false;
 
-  String _initialsFromEmail(String email) {
-    final parts = email.split('@').first.split(RegExp(r'[\._]'));
-    if (parts.isEmpty) return 'U';
-    if (parts.length == 1) return parts.first[0].toUpperCase();
-    return (parts[0][0] + parts[1][0]).toUpperCase();
-  }
-
   @override
   Widget build(BuildContext context) {
     final user = FirebaseAuth.instance.currentUser;
@@ -38,17 +32,14 @@ class _ProfileScreenState extends State<ProfileScreen> {
         ? user!.providerData.first.providerId
         : 'email';
     final initials = user?.displayName != null
-        ? _initialsFromEmail(user!.displayName!)
-        : (email.isNotEmpty ? _initialsFromEmail(email) : 'U');
+        ? initialsFromName(user!.displayName!)
+        : (email.isNotEmpty ? initialsFromEmail(email) : 'U');
 
     final vaultProvider = context.watch<VaultProvider>();
     final remindersProvider = context.watch<RemindersProvider>();
-    final medsProvider = context.watch<MedicationsProvider>();
     final vitalsProvider = context.watch<VitalsProvider>();
 
     final activeReminders = remindersProvider.reminders.where((r) => r.isEnabled).length;
-    final activeMeds = medsProvider.medications.where((m) => m.isActive).toList();
-    final adherencePct = activeMeds.isEmpty ? 0 : 0; // no local taken state
     final vitalsCount = vitalsProvider.vitals.length;
     final recordsCount = vaultProvider.records.length;
 
@@ -134,10 +125,10 @@ class _ProfileScreenState extends State<ProfileScreen> {
                       label: 'Reminders',
                       value: activeReminders.toString())),
               const SizedBox(width: 8),
-              Expanded(
+              const Expanded(
                   child: _StatCard(
                       label: 'Adherence',
-                      value: '$adherencePct%')),
+                      value: '0%')),
               const SizedBox(width: 8),
               Expanded(
                   child: _StatCard(
@@ -196,7 +187,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
           const SizedBox(height: 16),
 
           // ── Health section ─────────────────────────────────────────
-          const _SectionLabel(label: 'Health'),
+          const KinsuSectionHeader(title: 'Health'),
           const SizedBox(height: 8),
           _MenuTile(
             icon: Icons.folder_outlined,
@@ -236,7 +227,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
           const SizedBox(height: 16),
 
           // ── Account section ────────────────────────────────────────
-          const _SectionLabel(label: 'Account'),
+          const KinsuSectionHeader(title: 'Account'),
           const SizedBox(height: 8),
           _MenuTile(
             icon: Icons.privacy_tip_outlined,
@@ -262,7 +253,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
           const SizedBox(height: 16),
 
           // ── Preferences section ────────────────────────────────────
-          const _SectionLabel(label: 'Preferences'),
+          const KinsuSectionHeader(title: 'Preferences'),
           const SizedBox(height: 8),
           _MenuTile(
             icon: Icons.settings_outlined,
@@ -365,24 +356,6 @@ class _StatCard extends StatelessWidget {
   }
 }
 
-class _SectionLabel extends StatelessWidget {
-  final String label;
-
-  const _SectionLabel({required this.label});
-
-  @override
-  Widget build(BuildContext context) {
-    return Text(
-      label.toUpperCase(),
-      style: const TextStyle(
-        fontSize: 11,
-        fontWeight: FontWeight.w700,
-        color: KinsuTheme.textSecondary,
-        letterSpacing: 1.2,
-      ),
-    );
-  }
-}
 
 class _MenuTile extends StatelessWidget {
   final IconData icon;

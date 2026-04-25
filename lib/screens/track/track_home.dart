@@ -3,8 +3,10 @@ import 'package:provider/provider.dart';
 import 'package:fl_chart/fl_chart.dart';
 
 import '../../core/theme.dart';
+import '../../providers/family_provider.dart';
 import '../../providers/medications_provider.dart';
 import '../../providers/vitals_provider.dart';
+import '../../utils/display_utils.dart';
 import 'medications/medications_list_screen.dart';
 import 'vitals/vitals_trends_screen.dart';
 import 'symptoms/symptoms_list_screen.dart';
@@ -28,21 +30,21 @@ class _TrackHomeState extends State<TrackHome> {
     });
   }
 
-  String _greeting() {
-    final hour = DateTime.now().hour;
-    if (hour < 12) return 'Good morning';
-    if (hour < 17) return 'Good afternoon';
-    return 'Good evening';
-  }
-
   @override
   Widget build(BuildContext context) {
     final medsProvider = context.watch<MedicationsProvider>();
     final vitalsProvider = context.watch<VitalsProvider>();
+    final familyProvider = context.watch<FamilyProvider>();
 
-    final activeMeds = medsProvider.medications.where((m) => m.isActive).toList();
-    const takenCount = 0; // no local taken state in track screen
-    const firstName = 'there'; // simplified — no auth provider needed here
+    final activeMeds = medsProvider.activeMedications;
+    const takenCount = 0; // no local taken state; requires backend session
+    final displayName = familyProvider.profiles.isEmpty
+        ? 'there'
+        : (familyProvider.profiles
+                .firstWhere((p) => p.isSelf,
+                    orElse: () => familyProvider.profiles.first)
+                .displayName);
+    final firstName = displayName.split(' ').first;
 
     // Build weekly vitals data
     final now = DateTime.now();
@@ -132,7 +134,7 @@ class _TrackHomeState extends State<TrackHome> {
 
             // ── Greeting ──────────────────────────────────────
             Text(
-              '${_greeting()}, $firstName.',
+              '${greeting()}, $firstName.',
               style: const TextStyle(
                 fontSize: 24,
                 fontWeight: FontWeight.w700,
