@@ -36,14 +36,17 @@ class VitalLog {
             : null,
       );
 
-  Map<String, dynamic> toJson() => {
-        'vital_type': vitalType,
-        'value': value,
-        'value_secondary': valueSecondary,
-        'unit': unit,
-        'recorded_at': recordedAt.toIso8601String(),
-        'notes': notes,
-      };
+  Map<String, dynamic> toJson() {
+    final json = <String, dynamic>{
+      'vital_type': vitalType,
+      'value': value,
+      'unit': unit,
+      'recorded_at': recordedAt.toIso8601String(),
+    };
+    if (valueSecondary != null) json['value_secondary'] = valueSecondary;
+    if (notes != null) json['notes'] = notes;
+    return json;
+  }
 }
 
 class VitalTrendPoint {
@@ -129,15 +132,18 @@ class VitalSnapshot {
     this.spo2,
   });
 
-  Map<String, dynamic> toJson() => {
-        'recorded_at': recordedAt.toIso8601String(),
-        'notes': notes,
-        'blood_pressure_systolic': bloodPressureSystolic,
-        'blood_pressure_diastolic': bloodPressureDiastolic,
-        'blood_sugar': bloodSugar,
-        'heart_rate': heartRate,
-        'weight': weight,
-        'temperature': temperature,
-        'spo2': spo2,
-      };
+  Map<String, dynamic> toJson() {
+    final json = <String, dynamic>{
+      'recorded_at': recordedAt.toIso8601String(),
+    };
+    if (notes != null) json['notes'] = notes;
+    if (bloodPressureSystolic != null) json['blood_pressure_systolic'] = bloodPressureSystolic;
+    if (bloodPressureDiastolic != null) json['blood_pressure_diastolic'] = bloodPressureDiastolic;
+    if (bloodSugar != null) json['blood_sugar'] = bloodSugar;
+    if (heartRate != null) json['heart_rate'] = heartRate;
+    if (weight != null) json['weight'] = weight;
+    if (temperature != null) json['temperature'] = temperature;
+    if (spo2 != null) json['spo2'] = spo2;
+    return json;
+  }
 }

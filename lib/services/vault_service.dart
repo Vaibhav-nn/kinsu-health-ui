@@ -51,6 +51,7 @@ class VaultService {
     String sortOrder = 'desc',
     int page = 1,
     int limit = 50,
+    CancelToken? cancelToken,
   }) async {
     final params = <String, dynamic>{
       'page': page,
@@ -87,6 +88,7 @@ class VaultService {
       final response = await _dio.get(
         ApiConstants.vaultRecords,
         queryParameters: params,
+        cancelToken: cancelToken,
       );
 
       final records = (response.data['records'] as List)

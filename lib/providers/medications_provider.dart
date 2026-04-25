@@ -1,7 +1,6 @@
-import 'package:dio/dio.dart';
 import 'package:flutter/foundation.dart';
 
-import '../core/constants.dart';
+import '../core/error_formatter.dart';
 import '../models/medication.dart';
 import '../services/medications_service.dart';
 
@@ -40,58 +39,6 @@ class MedicationsProvider extends ChangeNotifier {
   String? _adherenceError;
   String? get adherenceError => _adherenceError;
 
-  String _formatError(Object error) {
-    if (error is DioException) {
-      final statusCode = error.response?.statusCode;
-      final data = error.response?.data;
-
-      String? detail;
-      if (data is Map<String, dynamic>) {
-        final rawDetail = data['detail'];
-        if (rawDetail is String) {
-          detail = rawDetail;
-        } else if (rawDetail is List) {
-          detail = rawDetail
-              .map((item) => item is Map<String, dynamic>
-                  ? item['msg']?.toString() ?? item.toString()
-                  : item.toString())
-              .join(', ');
-        }
-      } else if (data is String && data.trim().isNotEmpty) {
-        detail = data;
-      }
-
-      if (statusCode == 401) {
-        return 'You are signed out. Please sign in again.';
-      }
-
-      if (statusCode == 404 && (detail?.contains('User not found') ?? false)) {
-        return 'Your account is being set up. Please try again.';
-      }
-
-      if (statusCode == 422) {
-        return detail == null || detail.isEmpty
-            ? 'Please check medication details and try again.'
-            : 'Please check medication details: $detail';
-      }
-
-      if (statusCode != null) {
-        return detail == null || detail.isEmpty
-            ? 'Request failed with status $statusCode.'
-            : 'Request failed ($statusCode): $detail';
-      }
-
-      if (error.type == DioExceptionType.connectionError ||
-          error.type == DioExceptionType.connectionTimeout ||
-          error.type == DioExceptionType.receiveTimeout ||
-          error.type == DioExceptionType.sendTimeout) {
-        return 'Cannot reach server at ${ApiConstants.baseUrl}.';
-      }
-    }
-
-    return 'Something went wrong. Please try again.';
-  }
-
   Future<void> loadMedications({bool? isActive}) async {
     _isLoading = true;
     _error = null;
@@ -100,7 +47,7 @@ class MedicationsProvider extends ChangeNotifier {
     try {
       _medications = await _service.listMedications(isActive: isActive);
     } catch (error) {
-      _error = _formatError(error);
+      _error = formatProviderError(error);
     } finally {
       _isLoading = false;
       notifyListeners();
@@ -115,7 +62,7 @@ class MedicationsProvider extends ChangeNotifier {
     try {
       _dashboard = await _service.fetchDashboard(targetDate: targetDate);
     } catch (error) {
-      _dashboardError = _formatError(error);
+      _dashboardError = formatProviderError(error);
     } finally {
       _isLoadingDashboard = false;
       notifyListeners();
@@ -136,7 +83,7 @@ class MedicationsProvider extends ChangeNotifier {
         referenceDate: referenceDate,
       );
     } catch (error) {
-      _adherenceError = _formatError(error);
+      _adherenceError = formatProviderError(error);
     } finally {
       _isLoadingAdherence = false;
       notifyListeners();
@@ -153,7 +100,7 @@ class MedicationsProvider extends ChangeNotifier {
       _medications.insert(0, created);
       return created;
     } catch (error) {
-      _error = _formatError(error);
+      _error = formatProviderError(error);
       return null;
     } finally {
       _isLoading = false;
@@ -175,7 +122,7 @@ class MedicationsProvider extends ChangeNotifier {
       }
       return true;
     } catch (error) {
-      _error = _formatError(error);
+      _error = formatProviderError(error);
       return false;
     } finally {
       _isLoading = false;
@@ -193,7 +140,7 @@ class MedicationsProvider extends ChangeNotifier {
       _medications.removeWhere((medication) => medication.id == id);
       return true;
     } catch (error) {
-      _error = _formatError(error);
+      _error = formatProviderError(error);
       return false;
     } finally {
       _isLoading = false;
@@ -228,10 +175,11 @@ class MedicationsProvider extends ChangeNotifier {
       ]);
       return true;
     } catch (error) {
-      _error = _formatError(error);
+      _error = formatProviderError(error);
+      return false;
+    } finally {
       _isLoading = false;
       notifyListeners();
-      return false;
     }
   }
 

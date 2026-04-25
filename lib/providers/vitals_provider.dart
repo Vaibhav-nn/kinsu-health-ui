@@ -1,6 +1,5 @@
 import 'package:flutter/foundation.dart';
 
-import '../core/constants.dart';
 import '../core/error_formatter.dart';
 import '../models/vital.dart';
 import '../services/health_connect_service.dart';
@@ -64,20 +63,29 @@ class VitalsProvider extends ChangeNotifier {
     notifyListeners();
   }
 
-  /// Logs a vital to the backend.
+  /// Logs a vital to the backend with optimistic UI update.
   ///
-  /// Set [skipHCWrite] to true when the vital was imported *from* Health
-  /// Connect — prevents an echo loop where we'd write it straight back.
+  /// The vital is added to the local list immediately. If the POST fails,
+  /// it is removed and [error] is set. Set [skipHCWrite] to true when the
+  /// vital was imported *from* Health Connect to prevent echo loops.
   Future<bool> logVital(VitalLog vital, {bool skipHCWrite = false}) async {
+    // Optimistic insert — user sees the new entry immediately.
+    _vitals.insert(0, vital);
+    notifyListeners();
+
     try {
       final created = await _service.logVital(vital);
-      _vitals.insert(0, created);
+      // Replace optimistic entry with server-assigned version (has real id).
+      final idx = _vitals.indexOf(vital);
+      if (idx >= 0) _vitals[idx] = created;
       notifyListeners();
       if (!skipHCWrite && _hcWriteBack && _hcService != null) {
         _hcService!.writeVitalFromLog(created);
       }
       return true;
     } catch (e) {
+      // Rollback optimistic insert.
+      _vitals.remove(vital);
       _error = formatProviderError(e);
       notifyListeners();
       return false;

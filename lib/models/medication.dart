@@ -49,20 +49,24 @@ class Medication {
             : null,
       );
 
-  Map<String, dynamic> toJson() => {
-        'name': name,
-        'dosage': dosage,
-        'frequency': frequency,
-        'route': route,
-        'start_date':
-            '${startDate.year}-${startDate.month.toString().padLeft(2, '0')}-${startDate.day.toString().padLeft(2, '0')}',
-        'end_date': endDate != null
-            ? '${endDate!.year}-${endDate!.month.toString().padLeft(2, '0')}-${endDate!.day.toString().padLeft(2, '0')}'
-            : null,
-        'prescribing_doctor': prescribingDoctor,
-        'is_active': isActive,
-        'notes': notes,
-      };
+  /// Formats a DateTime to a `yyyy-MM-dd` date string for the backend.
+  static String _dateOnly(DateTime dt) =>
+      '${dt.year}-${dt.month.toString().padLeft(2, '0')}-${dt.day.toString().padLeft(2, '0')}';
+
+  Map<String, dynamic> toJson() {
+    final json = <String, dynamic>{
+      'name': name,
+      'dosage': dosage,
+      'frequency': frequency,
+      'route': route,
+      'start_date': _dateOnly(startDate),
+      'is_active': isActive,
+    };
+    if (endDate != null) json['end_date'] = _dateOnly(endDate!);
+    if (prescribingDoctor != null) json['prescribing_doctor'] = prescribingDoctor;
+    if (notes != null) json['notes'] = notes;
+    return json;
+  }
 }
 
 class MedicationDashboardItem {

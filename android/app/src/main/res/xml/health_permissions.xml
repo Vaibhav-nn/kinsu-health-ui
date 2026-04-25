@@ -1,0 +1,27 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+    Declares the Health Connect data-type permissions this app uses.
+    Required on Android 13 (API 33) and below so the system can discover
+    the app's HC permissions before the permission dialog is shown.
+    On Android 14+ this is handled automatically by the platform.
+-->
+<health-permissions>
+    <uses-health-permission android:name="android.permission.health.READ_BLOOD_PRESSURE"/>
+    <uses-health-permission android:name="android.permission.health.WRITE_BLOOD_PRESSURE"/>
+    <uses-health-permission android:name="android.permission.health.READ_HEART_RATE"/>
+    <uses-health-permission android:name="android.permission.health.WRITE_HEART_RATE"/>
+    <uses-health-permission android:name="android.permission.health.READ_BLOOD_GLUCOSE"/>
+    <uses-health-permission android:name="android.permission.health.WRITE_BLOOD_GLUCOSE"/>
+    <uses-health-permission android:name="android.permission.health.READ_OXYGEN_SATURATION"/>
+    <uses-health-permission android:name="android.permission.health.WRITE_OXYGEN_SATURATION"/>
+    <uses-health-permission android:name="android.permission.health.READ_BODY_TEMPERATURE"/>
+    <uses-health-permission android:name="android.permission.health.WRITE_BODY_TEMPERATURE"/>
+    <uses-health-permission android:name="android.permission.health.READ_WEIGHT"/>
+    <uses-health-permission android:name="android.permission.health.WRITE_WEIGHT"/>
+    <uses-health-permission android:name="android.permission.health.READ_STEPS"/>
+    <uses-health-permission android:name="android.permission.health.WRITE_STEPS"/>
+    <uses-health-permission android:name="android.permission.health.READ_ACTIVE_CALORIES_BURNED"/>
+    <uses-health-permission android:name="android.permission.health.WRITE_ACTIVE_CALORIES_BURNED"/>
+    <uses-health-permission android:name="android.permission.health.READ_EXERCISE"/>
+    <uses-health-permission android:name="android.permission.health.WRITE_EXERCISE"/>
+</health-permissions>

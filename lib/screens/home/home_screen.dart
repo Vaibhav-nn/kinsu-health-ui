@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
 import '../../core/theme.dart';
+import '../../models/medication.dart';
 import '../../providers/health_sync_provider.dart';
 import '../../providers/medications_provider.dart';
 import '../../providers/vitals_provider.dart';
@@ -30,21 +31,31 @@ class _HomeScreenState extends State<HomeScreen> {
   void initState() {
     super.initState();
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      context.read<MedicationsProvider>().loadMedications(isActive: true);
-      context.read<VitalsProvider>().loadVitals();
-      context.read<VaultProvider>().loadRecords();
-      context.read<FamilyProvider>().loadFamilyData();
+      if (!mounted) return;
+      Future.wait([
+        context.read<MedicationsProvider>().loadMedications(isActive: true),
+        context.read<VitalsProvider>().loadVitals(),
+        context.read<VaultProvider>().loadRecords(),
+        context.read<FamilyProvider>().loadFamilyData(),
+      ]);
     });
   }
 
 
   @override
   Widget build(BuildContext context) {
+    // Use context.select so this screen only rebuilds when the specific
+    // fields it renders change — not on every provider update.
     final medsProvider = context.watch<MedicationsProvider>();
+    final activeMeds = context.select<MedicationsProvider, List<Medication>>(
+      (p) => p.activeMedications,
+    );
     final vitalsProvider = context.watch<VitalsProvider>();
     final vaultProvider = context.watch<VaultProvider>();
     final familyProvider = context.watch<FamilyProvider>();
-    final hsp = context.watch<HealthSyncProvider>();
+    final hsp = context.select<HealthSyncProvider, ({bool isAvailable, bool writeBackEnabled})>(
+      (p) => (isAvailable: p.isAvailable, writeBackEnabled: p.writeBackEnabled),
+    );
 
     final activeProfile = familyProvider.profiles.isEmpty
         ? null
@@ -59,7 +70,6 @@ class _HomeScreenState extends State<HomeScreen> {
     final firstName = displayName.split(' ').first;
     final initials = initialsFromName(displayName);
 
-    final activeMeds = medsProvider.activeMedications;
     // sync map
     final keys = activeMeds.map((m) => m.id?.toString() ?? m.name).toSet();
     _todayMeds.removeWhere((k, _) => !keys.contains(k));
@@ -77,11 +87,24 @@ class _HomeScreenState extends State<HomeScreen> {
       ..sort((a, b) => b.recordedAt.compareTo(a.recordedAt));
 
     final recentRecords = vaultProvider.records.take(2).toList();
+    final isLoading = medsProvider.isLoading && medsProvider.medications.isEmpty;
+    final loadError = medsProvider.error ?? vitalsProvider.error ?? vaultProvider.error;
 
     return Scaffold(
       backgroundColor: KinsuTheme.background,
       body: SafeArea(
-        child: ListView(
+        child: isLoading
+            ? const Center(child: CircularProgressIndicator())
+            : loadError != null && medsProvider.medications.isEmpty && vitalsProvider.vitals.isEmpty
+                ? _ErrorBanner(
+                    message: loadError,
+                    onRetry: () {
+                      context.read<MedicationsProvider>().loadMedications(isActive: true);
+                      context.read<VitalsProvider>().loadVitals();
+                      context.read<VaultProvider>().loadRecords();
+                    },
+                  )
+                : ListView(
           padding: const EdgeInsets.fromLTRB(16, 14, 16, 24),
           children: [
             // ── Top bar ──────────────────────────────────────────────
@@ -817,6 +840,47 @@ class _InsightCard extends StatelessWidget {
               style: TextStyle(fontSize: 11, color: KinsuTheme.textSecondary),
             ),
         ],
+      ),
+    );
+  }
+}
+
+// ── Error banner ──────────────────────────────────────────────────────────────
+
+class _ErrorBanner extends StatelessWidget {
+  final String message;
+  final VoidCallback onRetry;
+
+  const _ErrorBanner({required this.message, required this.onRetry});
+
+  @override
+  Widget build(BuildContext context) {
+    return Center(
+      child: Padding(
+        padding: const EdgeInsets.all(32),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            const Icon(Icons.cloud_off_rounded,
+                size: 48, color: KinsuTheme.textSecondary),
+            const SizedBox(height: 16),
+            Text(
+              message,
+              textAlign: TextAlign.center,
+              style: const TextStyle(
+                fontSize: 14,
+                color: KinsuTheme.textSecondary,
+                height: 1.5,
+              ),
+            ),
+            const SizedBox(height: 20),
+            ElevatedButton.icon(
+              onPressed: onRetry,
+              icon: const Icon(Icons.refresh, size: 16),
+              label: const Text('Retry'),
+            ),
+          ],
+        ),
       ),
     );
   }

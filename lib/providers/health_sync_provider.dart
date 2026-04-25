@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/widgets.dart';
 import '../health_shim.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -55,7 +56,7 @@ class HealthSyncProvider extends ChangeNotifier {
   int _lastImportCount = 0;
   String? _lastError;
 
-  late final AppLifecycleListener _lifecycleListener;
+  AppLifecycleListener? _lifecycleListener;
 
   static const _prefWriteBack = 'hc_write_back';
   static const _prefLastSync = 'hc_last_sync';
@@ -110,11 +111,11 @@ class HealthSyncProvider extends ChangeNotifier {
       _configureWriteBack(enabled: true);
     }
 
-    // Re-check permissions every time the app comes back to the foreground
-    // (user may have revoked permissions via Android Settings).
-    _lifecycleListener = AppLifecycleListener(
-      onResume: _onAppResume,
-    );
+    // Re-check permissions every time the app comes back to the foreground.
+    // AppLifecycleListener uses dart:ui channels — skip on web.
+    if (!kIsWeb) {
+      _lifecycleListener = AppLifecycleListener(onResume: _onAppResume);
+    }
 
     notifyListeners();
   }
@@ -193,14 +194,34 @@ class HealthSyncProvider extends ChangeNotifier {
       // Convert and group (handles BP pairing, unit conversion, etc.).
       final vitalsToLog = _groupAndConvert(newPoints);
 
-      // Post each vital to the backend; count successes.
-      for (final v in vitalsToLog) {
-        final ok = await _vitalsProvider.logVital(v, skipHCWrite: true);
-        if (ok) _lastImportCount++;
+      // Post each vital to the backend; track which HC UUIDs succeeded.
+      // We intentionally do NOT mark a UUID as synced if its POST failed —
+      // this ensures the next import retries it rather than silently skipping.
+      final successUuids = <String>[];
+      for (int i = 0; i < vitalsToLog.length; i++) {
+        final ok = await _vitalsProvider.logVital(vitalsToLog[i], skipHCWrite: true);
+        if (ok) {
+          _lastImportCount++;
+          // Map the converted vital back to its source HC point(s).
+          // BP vitals come from two points (sys + dia); all others are 1:1.
+          if (vitalsToLog[i].vitalType == 'blood_pressure') {
+            successUuids.addAll(
+              newPoints
+                  .where((p) =>
+                      p.type == HealthDataType.BLOOD_PRESSURE_SYSTOLIC ||
+                      p.type == HealthDataType.BLOOD_PRESSURE_DIASTOLIC)
+                  .map((p) => p.uuid),
+            );
+          } else if (i < newPoints.length) {
+            successUuids.add(newPoints[i].uuid);
+          }
+        }
       }
 
-      // Mark all new point UUIDs as processed.
-      await _registry.markSynced(newPoints.map((p) => p.uuid));
+      // Only mark successfully posted UUIDs as synced.
+      if (successUuids.isNotEmpty) {
+        await _registry.markSynced(successUuids);
+      }
 
       _lastSyncAt = DateTime.now();
       await _prefs.setString(_prefLastSync, _lastSyncAt!.toIso8601String());
@@ -328,7 +349,7 @@ class HealthSyncProvider extends ChangeNotifier {
 
   @override
   void dispose() {
-    _lifecycleListener.dispose();
+    _lifecycleListener?.dispose();
     super.dispose();
   }
 }

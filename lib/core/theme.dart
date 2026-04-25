@@ -152,3 +152,32 @@ class KinsuTheme {
         ),
       );
 }
+
+/// Spacing scale used across Kinsu Health UI.
+///
+/// Use these constants instead of raw numbers so adjusting the design
+/// system is a single-file change.
+class KinsuSpacing {
+  KinsuSpacing._();
+
+  /// 4 dp — micro gap (icon ↔ label, tight inline pairs)
+  static const double xs = 4.0;
+
+  /// 8 dp — small gap (between related items in a card)
+  static const double sm = 8.0;
+
+  /// 12 dp — medium gap (card internal padding, between sections)
+  static const double md = 12.0;
+
+  /// 16 dp — large gap (screen horizontal padding, between cards)
+  static const double lg = 16.0;
+
+  /// 20 dp — extra-large gap (section separators)
+  static const double xl = 20.0;
+
+  /// 24 dp — 2× large (bottom safe-area padding, modal headers)
+  static const double xxl = 24.0;
+
+  /// 32 dp — used for empty-state and onboarding vertical breathing room
+  static const double xxxl = 32.0;
+}

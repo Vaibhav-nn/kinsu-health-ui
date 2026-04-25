@@ -1,7 +1,7 @@
+import 'package:dio/dio.dart';
 import 'package:file_picker/file_picker.dart';
 import 'package:flutter/foundation.dart';
 
-import '../core/constants.dart';
 import '../core/error_formatter.dart';
 import '../models/health_record.dart';
 import '../models/vault_models.dart';
@@ -21,6 +21,8 @@ class VaultProvider extends ChangeNotifier {
   bool _isLoading = false;
   bool get isLoading => _isLoading;
 
+  CancelToken? _searchCancelToken;
+
   bool _isLoadingServices = false;
   bool get isLoadingServices => _isLoadingServices;
 
@@ -31,6 +33,9 @@ class VaultProvider extends ChangeNotifier {
   String? get servicesError => _servicesError;
 
   /// Load health records with optional server-side filters.
+  ///
+  /// Cancels any in-flight search request before starting a new one, so
+  /// stale results from a previous query can never overwrite newer ones.
   Future<void> loadRecords({
     String? recordType,
     String? documentSubtype,
@@ -43,6 +48,10 @@ class VaultProvider extends ChangeNotifier {
     String sortBy = 'record_date',
     String sortOrder = 'desc',
   }) async {
+    // Cancel previous in-flight search.
+    _searchCancelToken?.cancel('superseded');
+    _searchCancelToken = CancelToken();
+
     _isLoading = true;
     _error = null;
     notifyListeners();
@@ -59,13 +68,17 @@ class VaultProvider extends ChangeNotifier {
         hasFile: hasFile,
         sortBy: sortBy,
         sortOrder: sortOrder,
+        cancelToken: _searchCancelToken,
       );
+    } on DioException catch (e) {
+      if (e.type == DioExceptionType.cancel) return; // Superseded — discard.
+      _error = formatProviderError(e);
     } catch (e) {
       _error = formatProviderError(e);
+    } finally {
+      _isLoading = false;
+      notifyListeners();
     }
-
-    _isLoading = false;
-    notifyListeners();
   }
 
   Future<void> loadConnectedServices() async {
